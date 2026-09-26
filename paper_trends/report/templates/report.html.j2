@@ -11,12 +11,12 @@
 <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
 </head>
 <body>
-{% if not embedded %}<nav class="masthead"><div class="row">
-  <a class="brand" href="index.html">paper-trends</a>
+{% if nav %}<nav class="masthead"><div class="row">
+  <a class="brand" href="{{ './' if app_links else 'index.html' }}"{{ ' target="_top"' if app_links else '' }}>paper-trends</a>
   <div class="venues">
   {% for group, items in nav %}
     <span class="group">{{ group }}</span>
-    {% for slug, short in items %}<a href="{{ slug }}.html" class="{{ 'current' if slug == r.slug else '' }}">{{ short }}</a>{% endfor %}
+    {% for slug, short in items %}<a href="{{ ('?conference=' ~ slug) if app_links else (slug ~ '.html') }}"{{ ' target="_top"' if app_links else '' }} class="{{ 'current' if slug == r.slug else '' }}">{{ short }}</a>{% endfor %}
   {% endfor %}
   </div>
 </div></nav>{% endif %}

@@ -100,7 +100,13 @@ height="content")` (Streamlit measures the srcdoc height; `components.v1.html` i
 deprecated and did not auto-size). CSS is inlined and the masthead dropped in embedded
 mode. "Explore" is the older tabbed dashboard, kept for drill-down (papers behind a term,
 comparisons). Keep the two visually aligned via `.streamlit/config.toml` (paper
-background, red primary).
+background, red primary). Navigation: the masthead (conference links, brand = home) is
+rendered by Streamlit *outside* the iframe (`masthead()` + `.pt-masthead` CSS) because
+`st.iframe` is sandboxed without `allow-top-navigation`, so links inside the page cannot
+change the app's query string. No `?conference=` → the embedded index page (home). The
+sidebar starts collapsed and only holds controls; hide Streamlit chrome via
+`stToolbarActions`/`stMainMenu`/`stAppDeployButton`, never `stToolbar` itself — the
+expand-sidebar button lives inside it.
 
 **Streamlit app conventions**: all heavy work goes through `st.cache_data` keyed on
 (corpus path, mtime, params); fetches are serialized with a `threading.Lock` held in

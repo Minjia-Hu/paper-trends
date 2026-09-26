@@ -16,7 +16,7 @@ from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report
-from paper_trends.report.render import render_page
+from paper_trends.report.render import FULL, SHORT, nav_for, render_index, render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import compute_nmf, compute_openalex
@@ -70,16 +70,40 @@ PRESETS = {
 }
 FETCH_YEARS = (2016, 2026)
 
-st.set_page_config(page_title="paper-trends", page_icon="📈", layout="wide")
+st.set_page_config(page_title="paper-trends", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 alt.theme.register("paper_trends", enable=True)(viz.altair_theme)
 st.markdown(
     """<style>
-    #MainMenu, header[data-testid="stHeader"] { visibility: hidden; height: 0; }
-    .block-container { padding-top: 1.2rem; max-width: 1200px; }
-    section[data-testid="stSidebar"] h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+    #MainMenu, [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
+    [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapseButton"] button { color: #5C5C5C; }
+    header[data-testid="stHeader"] { background: transparent; height: 2.6rem; }
+    .block-container { padding-top: 0.2rem; padding-bottom: 0; max-width: 1240px; }
+    section[data-testid="stSidebar"] { border-right: 1px solid #E6E3DC; }
+    section[data-testid="stSidebar"] h3 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 1.35rem; letter-spacing: -0.01em; margin-bottom: 0; }
+    iframe[title="st.iframe"] { display: block; }
+    /* masthead rendered by Streamlit (outside the iframe, so links can change the query string) */
+    .pt-masthead { display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-masthead .brand { font-family: Newsreader, Georgia, serif; font-size: 20px; font-weight: 600; color: #1B1B1B; text-decoration: none; letter-spacing: -0.01em; }
+    .pt-masthead .venues { display: flex; gap: 4px 18px; flex-wrap: wrap; font-size: 13.5px; color: #5C5C5C; }
+    .pt-masthead .group { color: #8A877F; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; margin-right: 2px; }
+    .pt-masthead a { color: inherit; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+    .pt-masthead a:hover { color: #E3120B; }
+    .pt-masthead a.current { color: #E3120B; border-bottom-color: #E3120B; }
     </style>""",
     unsafe_allow_html=True,
 )
+
+
+def masthead(available: dict[str, dict], current: str) -> str:
+    parts = ['<nav class="pt-masthead"><a class="brand" href="./" target="_self">paper-trends</a><div class="venues">']
+    for group, items in nav_for(available):
+        parts.append(f'<span class="group">{group}</span>')
+        for slug_, short, _, _ in items:
+            cls = ' class="current"' if slug_ == current else ""
+            parts.append(f'<a href="?conference={slug_}" target="_self"{cls}>{short}</a>')
+    parts.append("</div></nav>")
+    return "".join(parts)
 
 # OpenAlex credentials: environment first, then Streamlit secrets (hosted demo).
 for _var in ("OPENALEX_MAILTO", "OPENALEX_API_KEY"):
@@ -105,6 +129,27 @@ def corpus_path(slug: str) -> Path:
 @st.cache_data(show_spinner=False)
 def load_records(path: str, mtime: float) -> list[dict]:
     return read_jsonl(Path(path))
+
+
+@st.cache_data(show_spinner=False)
+def corpus_size(path: str, mtime: float) -> int:
+    with open(path, "rb") as fh:
+        return sum(1 for line in fh if line.strip())
+
+
+def available_corpora() -> dict[str, dict]:
+    """Preset conferences that have data on this machine, for the masthead and the home page."""
+    out = {}
+    for label, cfg in PRESETS.items():
+        cp = corpus_path(cfg["slug"])
+        if cp.exists():
+            out[cfg["slug"]] = {"name": cfg["query"] if cfg["slug"] not in FULL else FULL[cfg["slug"]], "n_papers": corpus_size(str(cp), cp.stat().st_mtime)}
+    return out
+
+
+@st.cache_data(show_spinner=False)
+def cached_index_html(signature: tuple) -> str:
+    return render_index(nav_for({k: dict(v) for k, v in signature}), embedded=True, app_links=True)
 
 
 def records_for(slug: str) -> list[dict] | None:
@@ -170,7 +215,7 @@ def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, 
 def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str) -> str:
     recs = load_records(path, mtime)
     r = build_report(recs, name=name, slug=slug, years=years, stopwords=load_stopwords(extra_stop.split()))
-    return render_page(r, embedded=True)
+    return render_page(r, None, embedded=True, app_links=True)
 
 
 @st.cache_data(show_spinner="Ranking…")
@@ -251,16 +296,19 @@ def as_pct(df: pd.DataFrame, cols) -> pd.DataFrame:
 # ---- sidebar -----------------------------------------------------------------------
 
 with st.sidebar:
-    st.title("paper-trends")
-    st.caption("Publication trends for any conference, from OpenAlex.")
-    # ?conference=<slug> pre-selects a preset, so links to a specific conference can be shared
+    st.markdown("### Settings")
+    st.caption("Navigate between conferences in the page header; this panel holds the controls.")
+    # ?conference=<slug> selects a preset (the masthead links set it); nothing selected = home page
     wanted = st.query_params.get("conference", "")
-    options = [*PRESETS, "Custom…"]
-    default_idx = next((i for i, k in enumerate(PRESETS) if PRESETS[k]["slug"] == wanted), 0)
+    options = ["Home", *PRESETS, "Custom…"]
+    default_idx = next((i + 1 for i, k in enumerate(PRESETS) if PRESETS[k]["slug"] == wanted), 0)
     choice = st.selectbox("Conference", options, index=default_idx)
-    if choice != "Custom…" and PRESETS[choice]["slug"] != wanted:
-        st.query_params["conference"] = PRESETS[choice]["slug"]
-    if choice == "Custom…":
+    if choice == "Home":
+        query = slug = ""
+        doi_prefixes = []
+        if wanted:
+            del st.query_params["conference"]
+    elif choice == "Custom…":
         query = st.text_input("Conference name (as OpenAlex spells it)", placeholder="Custom Integrated Circuits Conference")
         doi_prefix = st.text_input("DOI prefix(es), optional, space-separated", placeholder="10.1109/cicc")
         doi_prefixes = doi_prefix.split()
@@ -268,15 +316,17 @@ with st.sidebar:
     else:
         preset = PRESETS[choice]
         query, doi_prefixes, slug = preset["query"], preset["doi_prefixes"], preset["slug"]
+        if slug != wanted:
+            st.query_params["conference"] = slug
 
     records = records_for(slug) if slug else None
-    if records is None:
-        st.info("No local data for this conference yet.")
+    if slug and records is None:
+        st.caption("No local data for this conference yet.")
         if st.button("Fetch from OpenAlex", type="primary", disabled=not query):
             run_fetch(query, doi_prefixes, slug)
-    else:
+    elif records:
         all_years = sorted({r["publication_year"] for r in records if r.get("publication_year")})
-        st.success(f"{len(records)} papers · {all_years[0]}–{all_years[-1]}")
+        st.caption(f"{len(records):,} papers · {all_years[0]}–{all_years[-1]} · cached locally")
         if st.button("Refresh from OpenAlex"):
             run_fetch(query, doi_prefixes, slug)
 
@@ -294,12 +344,12 @@ with st.sidebar:
 
 # ---- main ---------------------------------------------------------------------------
 
+available = available_corpora()
+st.markdown(masthead(available, slug), unsafe_allow_html=True)
 if not records:
-    st.title("paper-trends")
-    st.markdown(
-        "Pick a conference in the sidebar and fetch its papers from [OpenAlex](https://openalex.org). "
-        "Then explore keyword trends, topic evolution and who publishes where."
-    )
+    if slug:  # a conference was chosen but has no data yet: say so on the page, not just in the drawer
+        st.markdown(f"#### No local data for “{query or slug}” yet\nOpen Settings (top left) and press **Fetch from OpenAlex**.")
+    st.iframe(cached_index_html(tuple(sorted((k, tuple(sorted(v.items()))) for k, v in available.items()))), height="content")
     st.stop()
 
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime

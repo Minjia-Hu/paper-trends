@@ -70,14 +70,21 @@ def _env() -> Environment:
     return Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=select_autoescape(["html"]))
 
 
-def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False) -> str:
-    """HTML for one report. `embedded=True` inlines the CSS, drops the masthead and adds a
-    script that reports the page height to a hosting Streamlit iframe."""
-    css = (HERE / "static" / "report.css").read_text(encoding="utf-8") if embedded else None
+def _css() -> str:
+    return (HERE / "static" / "report.css").read_text(encoding="utf-8")
+
+
+def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False) -> str:
+    """HTML for one report. `embedded=True` inlines the CSS (for a Streamlit iframe);
+    `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`)."""
     return _env().get_template("report.html.j2").render(
         r=r, nav=nav or [], specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
-        embedded=embedded, inline_css=css,
+        embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
     )
+
+
+def render_index(nav_full: list, *, embedded: bool = False, app_links: bool = False) -> str:
+    return _env().get_template("index.html.j2").render(nav=nav_full, embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links)
 
 
 def render_site(reports: list[dict[str, Any]], out: Path) -> None:
@@ -89,7 +96,7 @@ def render_site(reports: list[dict[str, Any]], out: Path) -> None:
     for r in reports:
         (out / f"{r['slug']}.html").write_text(render_page(r, nav_short), encoding="utf-8")
         (out / f"{r['slug']}.json").write_text(json.dumps({k: v for k, v in r.items() if k != "topic_rows"}, ensure_ascii=False), encoding="utf-8")
-    (out / "index.html").write_text(env.get_template("index.html.j2").render(nav=nav_full), encoding="utf-8")
+    (out / "index.html").write_text(render_index(nav_full), encoding="utf-8")
     shutil.copy(HERE / "static" / "report.css", out / "report.css")
 
 

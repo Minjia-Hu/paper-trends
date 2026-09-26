@@ -38,6 +38,10 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
     at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
     at.run()
     assert not at.exception, at.exception
+    assert len(at.tabs) == 0 and not at.radio  # home page: an embedded index, no per-conference controls
+    at.query_params["conference"] = "ectc"
+    at.run()
+    assert not at.exception, at.exception
     assert len(at.tabs) == 0  # Report mode: the page is an embedded component, not tabs
     view = next(r for r in at.radio if r.label == "View")
     view.set_value("Explore").run()
