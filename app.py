@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import threading
+from urllib.parse import urlencode
 from pathlib import Path
 
 import altair as alt
@@ -96,14 +97,24 @@ st.markdown(
     .st-key-controls_search div[data-baseweb="input"]:focus-within { border-color: #1B1B1B !important; box-shadow: none !important; }
     .st-key-controls_search input { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
     /* buttons: ink, square corners, quiet */
-    .st-key-controls_search [data-testid="stPopover"] button, .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; box-shadow: none !important; }
+    .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; box-shadow: none !important; }
     .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { background: #1B1B1B !important; color: #FFFFFF !important; border-color: #1B1B1B !important; padding: 6px 18px !important; letter-spacing: 0.02em; }
     .st-key-fetch_btn button:hover, .st-key-fetch_prefix_btn button:hover { background: #E3120B !important; border-color: #E3120B !important; }
-    .st-key-controls_search [data-testid="stPopover"] button:hover { border-color: #1B1B1B !important; }
-    /* period pills and view radio */
-    .st-key-controls_row [data-testid="stPills"] button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; background: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 999px !important; color: #5C5C5C !important; }
-    .st-key-controls_row [data-testid="stPills"] button[aria-checked="true"], .st-key-controls_row [data-testid="stPills"] button[data-selected="true"] { color: #E3120B !important; border-color: #E3120B !important; }
-    .st-key-controls_row [data-testid="stRadio"] label { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; }
+    /* controls row: text links, no widgets */
+    .pt-controls { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; color: #5C5C5C; padding: 12px 24px 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 14px; }
+    .pt-controls .lbl { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A877F; margin-right: 4px; }
+    .pt-controls .lbl.gap { margin-left: 22px; }
+    .pt-controls a { color: #5C5C5C; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+    .pt-controls a:hover { color: #E3120B; }
+    .pt-controls a.current { color: #E3120B; border-bottom-color: #E3120B; }
+    .st-key-custom_period { padding: 4px 24px 0; max-width: 520px; }
+    .st-key-options_form { margin: 10px 24px 0; padding: 12px 18px 6px; border: 1px solid #E6E3DC; border-radius: 2px; background: #FFFFFF; }
+    .pt-options-head { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A877F; margin-bottom: 4px; }
+    .pt-options-head a { color: #E3120B; text-decoration: none; margin-left: 12px; text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .st-key-options_form label p, .st-key-options_form label { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; color: #5C5C5C !important; }
+    .st-key-options_form div[data-baseweb="input"], .st-key-options_form div[data-baseweb="input"] > div, .st-key-options_form div[data-baseweb="base-input"], .st-key-options_form div[data-baseweb="textarea"], .st-key-options_form textarea { background-color: #FCFBF8 !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14px !important; }
+    .st-key-refresh_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; }
+    .st-key-refresh_btn button:hover { border-color: #1B1B1B !important; }
     /* resolution card */
     .pt-found { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
     .pt-found .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 4px; }
@@ -362,11 +373,10 @@ available = available_corpora()
 
 masthead_slot = st.empty()  # filled after the search row is resolved, so a new search un-highlights the old venue
 
-# search row: any conference in OpenAlex
+# search row: any conference in OpenAlex (the only Streamlit widget on the page)
 with st.container(key="controls_search"):
-    sc1, sc2 = st.columns([5, 1])
-    typed = sc1.text_input("Search", value=custom_q, placeholder="Any conference in OpenAlex, as it spells the name — e.g. Design Automation Conference",
-                           label_visibility="collapsed", key="search")
+    typed = st.text_input("Search", value=custom_q, placeholder="Any conference in OpenAlex — an acronym like DAC or ISCAS, or the name as OpenAlex spells it",
+                          label_visibility="collapsed", key="search")
     if typed.strip() and typed.strip() != custom_q:
         # a new search replaces whatever was selected; update the URL in this run (no st.rerun —
         # a rerun issued right after changing query params can drop the URL update)
@@ -378,13 +388,45 @@ with st.container(key="controls_search"):
         else:
             st.query_params["q"] = typed.strip()
             custom_q, wanted, custom_prefix = typed.strip(), "", ""
-    with sc2.popover("Options", width="stretch"):
-        st.caption("Advanced")
-        doi_prefix_in = st.text_input("DOI prefix(es) for a custom conference, space-separated", value=custom_prefix, placeholder="10.1109/dac")
+
+# URL state beyond the selection
+period_key = st.query_params.get("period", "10")
+view_key = st.query_params.get("view", "report")
+show_options = st.query_params.get("options") == "1"
+
+
+def link(**changes: str | None) -> str:
+    """Current URL with some query parameters changed; None removes one."""
+    params = {k: v for k, v in st.query_params.to_dict().items()}
+    for k, v in changes.items():
+        if v is None:
+            params.pop(k, None)
+        else:
+            params[k] = v
+    return "?" + urlencode(params) if params else "?"
+
+
+def links_row(items: list[tuple[str, str, bool]]) -> str:
+    """items: (label, href, is_current)."""
+    return "".join(f'<a href="{h}" target="_self" class="{"current" if c else ""}">{l}</a>' for l, h, c in items)
+
+
+# options form (DOI prefix, stopwords, refresh) — shown only when asked for
+extra_stop = st.session_state.get("extra_stop_saved", "")
+doi_prefix_in = custom_prefix
+opt_refresh = False
+if show_options:
+    with st.container(key="options_form"):
+        st.markdown('<div class="pt-options-head">Options <a href="' + link(options=None) + '" target="_self">close</a></div>', unsafe_allow_html=True)
+        o1, o2 = st.columns([1, 1])
+        doi_prefix_in = o1.text_input("DOI prefix(es) for a custom conference, space-separated", value=custom_prefix, placeholder="10.1109/dac")
         if doi_prefix_in.strip() != custom_prefix:
             st.query_params["prefix"] = doi_prefix_in.strip()
-        extra_stop = st.text_area("Extra stopwords", placeholder="one per line", height=68, help="Words to ignore in keyword and topic analyses, e.g. your field's boilerplate.")
-        opt_refresh = st.button("Refresh data from OpenAlex")
+        stop_in = o2.text_area("Extra stopwords, one per line", value=extra_stop, height=68, help="Words to ignore in keyword and topic analyses, e.g. your field's boilerplate.")
+        if stop_in != extra_stop:
+            st.session_state["extra_stop_saved"] = stop_in
+            extra_stop = stop_in
+        opt_refresh = st.button("Refresh data from OpenAlex", key="refresh_btn")
 
 masthead_slot.markdown(masthead(available, wanted), unsafe_allow_html=True)
 preset = next((v for v in PRESETS.values() if v["slug"] == wanted), None)
@@ -433,28 +475,37 @@ if not records:
     st.markdown(home_page(available), unsafe_allow_html=True)
     st.stop()
 
-# ---- controls row: period, view -------------------------------------------------------
+# ---- controls row: period and view as links, not widgets ---------------------------
 all_years = sorted({r["publication_year"] for r in records if r.get("publication_year")})
 cov = frames.coverage_frame(records)
 good = cov[cov["coverage"] >= 0.5]["year"].tolist() or all_years
 last_good = good[-1]
 periods = {
-    f"Last 10 years ({max(good[0], last_good - 9)}–{last_good})": (max(good[0], last_good - 9), last_good),
-    f"Last 5 years ({max(good[0], last_good - 4)}–{last_good})": (max(good[0], last_good - 4), last_good),
-    f"All ({all_years[0]}–{all_years[-1]})": (all_years[0], all_years[-1]),
-    "Custom…": None,
+    "10": (f"Last 10 years", (max(good[0], last_good - 9), last_good)),
+    "5": ("Last 5 years", (max(good[0], last_good - 4), last_good)),
+    "all": (f"All {all_years[0]}–{all_years[-1]}", (all_years[0], all_years[-1])),
+    "custom": ("Custom", None),
 }
-with st.container(key="controls_row"):
-    c1, c2 = st.columns([4, 1.4])
-    period = c1.pills("Period", list(periods), default=list(periods)[0], label_visibility="collapsed", key="period")
-    mode = c2.radio("View", ["Report", "Explore"], horizontal=True, label_visibility="collapsed", key="view")
-    if period == "Custom…":
-        years = c1.slider("Years", all_years[0], all_years[-1], (all_years[0], all_years[-1]), label_visibility="collapsed")
-    else:
-        years = periods[period or list(periods)[0]]
-    low = cov[(cov["year"] >= years[0]) & (cov["year"] <= years[1]) & (cov["coverage"] < 0.5)]["year"].tolist()
-    if low:
-        st.caption(f"Abstracts are mostly missing for {low}; text analyses under-count those years.")
+if period_key not in periods:
+    period_key = "10"
+mode = "Explore" if view_key == "explore" else "Report"
+row = (
+    '<div class="pt-controls"><span class="lbl">Period</span>'
+    + links_row([(lbl, link(period=k), k == period_key) for k, (lbl, _) in periods.items()])
+    + '<span class="lbl gap">View</span>'
+    + links_row([("Report", link(view=None), mode == "Report"), ("Explore", link(view="explore"), mode == "Explore")])
+    + '<span class="lbl gap"></span>' + links_row([("Options", link(options="1"), show_options)])
+    + "</div>"
+)
+st.markdown(row, unsafe_allow_html=True)
+if period_key == "custom":
+    with st.container(key="custom_period"):
+        years = st.slider("Years", all_years[0], all_years[-1], (all_years[0], all_years[-1]), label_visibility="collapsed")
+else:
+    years = periods[period_key][1]
+low = cov[(cov["year"] >= years[0]) & (cov["year"] <= years[1]) & (cov["coverage"] < 0.5)]["year"].tolist()
+if low:
+    st.markdown(f'<div class="pt-note">Abstracts are mostly missing for {", ".join(map(str, low))}; text analyses under-count those years.</div>', unsafe_allow_html=True)
 
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime
 recs = filter_years(records, years)

@@ -98,10 +98,15 @@ tests/              # pytest, incl. a streamlit.testing AppTest smoke test of ap
 (brand = home, grouped conference links; Streamlit-rendered HTML because the report iframe
 is sandboxed without top navigation), a search row (`st.text_input` for any OpenAlex
 conference + an **Options** popover holding DOI prefix, extra stopwords and refresh), then
-for a selected conference a controls row (period pills, Report/Explore radio) and either
+for a selected conference a controls row of plain text links (period, Report/Explore,
+Options — all `?param=` links, no widgets: Streamlit widgets cannot be restyled enough to
+match the page) and either
 the embedded report (`st.iframe(render_page(..., embedded=True), height="content")`) or the
 tabbed Explore dashboard. Selection lives in the URL: `?conference=<preset slug>` or
-`?q=<custom name>&prefix=...`; nothing selected = the native home page (`home_page()`).
+`?q=<custom name>&prefix=...`, plus `period=10|5|all|custom`, `view=explore`, `options=1`;
+nothing selected = the native home page (`home_page()`). The only widgets are the search
+box, the custom-period slider and the Options form (stopwords persist in
+`st.session_state["extra_stop_saved"]` because the form is not always rendered).
 Do not call `st.rerun()` right after changing `st.query_params` — the URL update is lost;
 set the params and continue the run. Hide Streamlit chrome via `stToolbarActions`,
 `stMainMenu`, `stAppDeployButton` and make the header `pointer-events: none`, otherwise

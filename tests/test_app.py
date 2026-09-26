@@ -42,9 +42,9 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
     at.query_params["conference"] = "ectc"
     at.run()
     assert not at.exception, at.exception
-    assert len(at.tabs) == 0  # Report mode: the page is an embedded component, not tabs
-    view = next(r for r in at.radio if r.label == "View")
-    view.set_value("Explore").run()
+    assert len(at.tabs) == 0 and not at.radio  # Report view: an embedded page, controls are links
+    at.query_params["view"] = "explore"
+    at.run()
     assert not at.exception, at.exception
     assert at.title[0].value.startswith("Electronic Components")
     assert len(at.tabs) == 6
@@ -58,6 +58,6 @@ def test_query_param_selects_preset(tmp_path, monkeypatch):
     at.query_params["conference"] = "imw"
     at.run()
     assert not at.exception, at.exception
-    view = next(r for r in at.radio if r.label == "View")
-    view.set_value("Explore").run()
+    at.query_params["view"] = "explore"
+    at.run()
     assert at.title[0].value == "International Memory Workshop"
