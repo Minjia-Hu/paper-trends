@@ -53,15 +53,37 @@ def small_multiple(series: list[dict], years: list[int], ymax: float, color: str
     return spec
 
 
-def papers_bars(rows: list[dict]) -> dict[str, Any]:
-    spec = _base(90, {"left": 4, "right": 4, "top": 4, "bottom": 4})
+def papers_bars(rows: list[dict], value: str = "papers", fmt: str = "d", height: int = 90) -> dict[str, Any]:
+    """Quiet grey bars per year (papers, or any per-year value such as coverage)."""
+    spec = _base(height, {"left": 4, "right": 4, "top": 4, "bottom": 4})
     spec["data"] = {"values": rows}
     spec["mark"] = {"type": "bar", "color": GREY, "cornerRadiusEnd": 2}
     spec["encoding"] = {
         "x": {"field": "year", "type": "ordinal", "axis": {"title": None, "labelExpr": "datum.value % 3 == 0 ? datum.value : ''"}},
-        "y": {"field": "papers", "type": "quantitative", "axis": {"title": None, "tickCount": 2, "format": "d"}},
-        "tooltip": [{"field": "year"}, {"field": "papers"}, {"field": "abstracts"}],
+        "y": {"field": value, "type": "quantitative", "axis": {"title": None, "tickCount": 2, "format": fmt}},
+        "tooltip": [{"field": "year"}, {"field": value, "format": fmt}],
     }
+    return spec
+
+
+def multi_line(rows: list[dict], names: list[str], years: list[int], title: str | None = None, height: int = 220) -> dict[str, Any]:
+    """Several series (e.g. conferences) on one chart: fixed palette, direct end labels, no legend."""
+    last = years[-1]
+    colors = (TOPIC_COLORS + [OTHER])[: len(names)]
+    spec = _base(height, {"left": 4, "right": 150, "top": 8, "bottom": 4})
+    spec["data"] = {"values": rows}
+    x = {"field": "year", "type": "quantitative", "axis": {"format": "d", "title": None, "tickCount": min(len(years), 10)}, "scale": {"domain": [years[0], last], "nice": False}}
+    y = {"field": "share", "type": "quantitative", "axis": {"format": ".0%", "title": None, "tickCount": 3}}
+    color = {"field": "name", "type": "nominal", "scale": {"domain": names, "range": colors}, "legend": None}
+    spec["layer"] = [
+        {"mark": {"type": "line", "strokeWidth": 2.2, "interpolate": "monotone"}, "encoding": {"x": x, "y": y, "color": color}},
+        {"mark": {"type": "point", "filled": True, "size": 55}, "transform": [{"filter": f"datum.year == {last}"}], "encoding": {"x": x, "y": y, "color": color}},
+        {"mark": {"type": "text", "align": "left", "dx": 8, "fontSize": 12, "fontWeight": 500}, "transform": [{"filter": f"datum.year == {last}"}],
+         "encoding": {"x": x, "y": y, "color": color, "text": {"field": "name"}}},
+        {"mark": {"type": "rule", "color": "transparent", "strokeWidth": 14}, "encoding": {"x": x, "tooltip": [{"field": "name"}, {"field": "year"}, {"field": "share", "format": ".1%"}, {"field": "papers"}]}},
+    ]
+    if title:
+        spec["title"] = {"text": title, "anchor": "start", "font": "Newsreader, Georgia, serif", "fontSize": 17, "fontWeight": 500, "color": INK, "offset": 12}
     return spec
 
 
@@ -120,7 +142,8 @@ def ranked_bars(rows: list[dict], value: str = "papers", highlight: int = 3) -> 
         data.append({**r, "rank": i, "label": f"{r[value]:,}  {arrow} {abs(d):.1%}", "hi": i < highlight})
     spec = _base(22 * len(rows) + 10, {"left": 4, "right": 110, "top": 4, "bottom": 4})
     spec["data"] = {"values": data}
-    enc_y = {"field": "name", "type": "nominal", "sort": {"field": "rank"}, "axis": {"title": None, "labelLimit": 340, "labelColor": INK, "labelFontSize": 12.5}}
+    # explicit order: a field-based sort is dropped when Streamlit re-serialises the data
+    enc_y = {"field": "name", "type": "nominal", "sort": [r["name"] for r in rows], "axis": {"title": None, "labelLimit": 340, "labelColor": INK, "labelFontSize": 12.5}}
     enc_x = {"field": value, "type": "quantitative", "axis": None}
     spec["layer"] = [
         {"mark": {"type": "bar", "height": 14, "cornerRadiusEnd": 2},

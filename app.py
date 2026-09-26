@@ -7,16 +7,16 @@ import threading
 from urllib.parse import urlencode
 from pathlib import Path
 
-import altair as alt
 import pandas as pd
 import streamlit as st
 
-from paper_trends import compare, frames, viz
+from paper_trends import compare, frames
+from paper_trends.report import charts
 from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
-from paper_trends.report.build import build_report
+from paper_trends.report.build import build_report, country_name
 from paper_trends.report.render import FULL, SHORT, nav_for, render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
@@ -72,7 +72,6 @@ PRESETS = {
 FETCH_YEARS = (2016, 2026)
 
 st.set_page_config(page_title="paper-trends", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
-alt.theme.register("paper_trends", enable=True)(viz.altair_theme)
 st.markdown(
     """<style>
     @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
@@ -131,6 +130,15 @@ st.markdown(
     .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
     .block-container [data-testid="stToggle"] label p { font-size: 13px !important; }
     .block-container [data-testid="stSlider"] { padding-top: 4px; }
+    /* figures in Explore, same anatomy as the report */
+    .pt-fig { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 6px; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-fig .headline { font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; line-height: 1.25; color: #1B1B1B; }
+    .pt-fig .sub { color: #5C5C5C; font-size: 13.5px; }
+    .pt-source { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #8A877F; font-size: 12.5px; margin: 2px 0 14px; }
+    .pt-sm { border-top: 2px solid #1B1B1B; padding-top: 6px; margin-top: 10px; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-sm .term { font-family: Newsreader, Georgia, serif; font-size: 17px; font-weight: 500; line-height: 1.2; margin: 0 0 2px; color: #1B1B1B; }
+    .pt-sm .move { font-size: 12.5px; color: #5C5C5C; margin: 0; }
+    [data-testid="stVegaLiteChart"] { margin-top: -6px; }
     /* resolution card */
     .pt-found { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
     .pt-found .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 4px; }
@@ -309,66 +317,39 @@ def cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str,
     return compute_ranking(filter_years(load_records(path, mtime), years), entity, roll_up=roll_up)
 
 
-# ---- charts ------------------------------------------------------------------------
+# ---- charts: the report's Vega-Lite specs, rendered by Streamlit -------------------------
 
 
-def share_line_chart(df: pd.DataFrame, series: str, title: str) -> alt.Chart:
-    names = list(dict.fromkeys(df[series]))
-    domain, rng = viz.series_colors(names)
-    base = alt.Chart(df).encode(
-        x=alt.X("year:O", title=None),
-        y=alt.Y("share:Q", title="share of papers", axis=alt.Axis(format="%")),
-        color=alt.Color(f"{series}:N", scale=alt.Scale(domain=domain, range=rng), legend=alt.Legend(title=None, orient="bottom", columns=4)),
-        tooltip=[alt.Tooltip(f"{series}:N"), alt.Tooltip("year:O"), alt.Tooltip("papers:Q"), alt.Tooltip("share:Q", format=".1%")],
-    )
-    return (base.mark_line() + base.mark_point()).properties(height=340, title=title)
+def vl(spec: dict, key: str | None = None) -> None:
+    st.vega_lite_chart(spec, width="stretch", theme=None, key=key)
 
 
-def stacked_area_chart(df: pd.DataFrame, title: str) -> alt.Chart:
-    names = list(dict.fromkeys(df["topic"]))
-    df = df.assign(rank=df["topic"].map({n: i for i, n in enumerate(names)}))
-    domain, rng = viz.series_colors(names)
-    return (
-        alt.Chart(df)
-        .mark_area(stroke="#ffffff", strokeWidth=1.5, interpolate="monotone")
-        .encode(
-            x=alt.X("year:Q", title=None, axis=alt.Axis(format="d", tickMinStep=1), scale=alt.Scale(nice=False, padding=0)),
-            y=alt.Y("share:Q", stack="normalize", title="share of papers", axis=alt.Axis(format="%")),
-            color=alt.Color("topic:N", scale=alt.Scale(domain=domain, range=rng), legend=alt.Legend(title=None, orient="bottom", columns=2)),
-            order=alt.Order("rank:Q"),  # fixed stacking order across years (largest topic at the bottom)
-            tooltip=[alt.Tooltip("topic:N"), alt.Tooltip("year:Q", format="d"), alt.Tooltip("papers:Q"), alt.Tooltip("share:Q", format=".1%")],
-        )
-        .properties(height=380, title=title)
-    )
+def source_line() -> None:
+    st.markdown('<p class="pt-source">Source: OpenAlex · paper-trends</p>', unsafe_allow_html=True)
 
 
-def bar_chart(df: pd.DataFrame, x: str, y: str, title: str, fmt: str | None = None) -> alt.Chart:
-    return (
-        alt.Chart(df)
-        .mark_bar(color="#B8B5AE")
-        .encode(
-            x=alt.X(f"{x}:O", title=None),
-            y=alt.Y(f"{y}:Q", title=y, axis=alt.Axis(format=fmt) if fmt else alt.Axis()),
-            tooltip=[alt.Tooltip(f"{x}:O"), alt.Tooltip(f"{y}:Q", format=fmt or "")],
-        )
-        .properties(height=260, title=title)
-    )
+def figure_head(title: str, sub: str | None = None) -> None:
+    st.markdown(f'<div class="pt-fig"><span class="headline">{title}</span>' + (f'<span class="sub">{sub}</span>' if sub else "") + "</div>", unsafe_allow_html=True)
 
 
-def hbar_chart(df: pd.DataFrame, label: str, value: str, title: str, highlight: int = 3) -> alt.Chart:
-    """Grey bars, the top `highlight` in red — the report's convention."""
-    df = df.assign(_hi=[i < highlight for i in range(len(df))])
-    return (
-        alt.Chart(df)
-        .mark_bar(height=14)
-        .encode(
-            y=alt.Y(f"{label}:N", sort="-x", title=None, axis=alt.Axis(labelLimit=280, labelOverlap=False)),
-            x=alt.X(f"{value}:Q", title=value, axis=alt.Axis(grid=True)),
-            color=alt.Color("_hi:N", scale=alt.Scale(domain=[True, False], range=[viz.PRIMARY, "#B8B5AE"]), legend=None),
-            tooltip=[alt.Tooltip(f"{label}:N"), alt.Tooltip(f"{value}:Q")],
-        )
-        .properties(height=max(200, 26 * len(df) + 20), title=title)
-    )
+def small_multiples(items: list[dict], years: list[int], color: str, per_row: int = 4) -> None:
+    """items: {term, early, late, series}. Same layout as the report's rising/fading grids."""
+    ymax = max((pt["share"] for it in items for pt in it["series"]), default=0.1) * 1.15
+    for i in range(0, len(items), per_row):
+        cols = st.columns(per_row)
+        for col, it in zip(cols, items[i : i + per_row]):
+            with col:
+                st.markdown(f'<div class="pt-sm" style="border-top-color: {color}"><p class="term">{it["term"]}</p>'
+                            f'<p class="move">{it["early"]:.1%} → <span style="color: {color}; font-weight: 600">{it["late"]:.1%}</span></p></div>', unsafe_allow_html=True)
+                vl(charts.small_multiple(it["series"], years, ymax, color), key=f"sm-{color}-{it['term']}")
+
+
+def ranking_rows(rk, keys: list[str], value: str = "papers") -> list[dict]:
+    rows = []
+    for k in keys:
+        e, l, d = rk.momentum(k)
+        rows.append({"name": rk.names[k], "papers": rk.total(k), "citations": rk.citations.get(k, 0), "early": e, "late": l, "delta": d})
+    return rows
 
 
 def pct_cols(df: pd.DataFrame, cols) -> dict:
@@ -558,12 +539,23 @@ def note(text: str) -> None:
 
 if section == "overview":
     a, b = st.columns(2)
-    a.altair_chart(bar_chart(cov_y, "year", "papers", "Papers per year"), width="stretch")
-    b.altair_chart(bar_chart(cov_y, "year", "coverage", "Abstract coverage", fmt="%"), width="stretch")
+    rows_y = cov_y.to_dict("records")
+    with a:
+        figure_head("Papers per year")
+        vl(charts.papers_bars(rows_y, "papers", "d", 120), key="ov-papers")
+    with b:
+        figure_head("Abstract coverage", "Share of each year's papers with an abstract in OpenAlex")
+        vl(charts.papers_bars(rows_y, "coverage", ".0%", 120), key="ov-cov")
     rk_c = cached_ranking(path, mtime, years, "country")
     top_c = rk_c.top(12)
-    a.altair_chart(hbar_chart(frames.ranking_table(rk_c, top_c)[["country", "papers"]], "country", "papers", "Papers by country (full counting)"), width="stretch")
-    b.dataframe(frames.ranking_table(rk_c, top_c), hide_index=True, width="stretch")
+    a2, b2 = st.columns(2)
+    with a2:
+        figure_head("Papers by country", "A paper counts once per country; the arrow is the change in share between the two halves of the period")
+        vl(charts.ranked_bars([{**r, "name": country_name(r["name"])} for r in ranking_rows(rk_c, top_c)]), key="ov-country")
+        source_line()
+    with b2:
+        figure_head("By year")
+        st.dataframe(frames.ranking_table(rk_c, top_c), hide_index=True, width="stretch")
 
 if section == "keywords":
     o1, o2, o3 = st.columns([1, 1, 2])
@@ -576,7 +568,9 @@ if section == "keywords":
     default_terms = [t for t, *_ in rising[:5]]
     terms = o3.multiselect("Plot terms", kt.top_terms(300), default=default_terms)
     if terms:
-        st.altair_chart(share_line_chart(frames.keyword_series(kt, terms), "term", "Share of papers mentioning the term"), width="stretch")
+        figure_head("Share of papers mentioning the phrase", f"{years[0]}–{years[1]}; the number at the end of each line is the latest year")
+        small_multiples([{"term": t, "early": kt.momentum(t)[0], "late": kt.momentum(t)[1], "series": [{"year": y, "share": kt.share(t, y), "papers": kt.doc_freq[t].get(y, 0)} for y in kt.years]} for t in terms], kt.years, charts.RED)
+        source_line()
     r, f = st.columns(2)
     r.markdown('<h2 class=\"pt-h2\">' + "Rising" + '</h2>', unsafe_allow_html=True)
     r.dataframe(as_pct(frames.movers_table(rising), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
@@ -609,7 +603,11 @@ if section == "topics":
     method = o1.selectbox("Method", ["nmf", "openalex", "openalex-subfield"], format_func=lambda m: {"nmf": "NMF on titles + abstracts", "openalex": "OpenAlex topic labels", "openalex-subfield": "OpenAlex subfields"}[m])
     n_topics = o2.slider("Topics (NMF)", 6, 20, 10, disabled=method != "nmf")
     tt = cached_topics(path, mtime, years, method, n_topics, extra_stop)
-    st.altair_chart(stacked_area_chart(frames.topic_series(tt), "Topic mix per year (dominant topic per paper)"), width="stretch")
+    ordered = tt.ordered()
+    topic_rows = [{"topic": t.label, "year": y, "share": tt.share(t.id, y)} for t in ordered for y in tt.years]
+    figure_head("Share of papers by dominant topic", "Each paper assigned to its strongest topic; smaller topics folded into “Other”")
+    vl(charts.streamgraph(topic_rows, [t.label for t in ordered], tt.years), key="topics-stream")
+    source_line()
     ttab = frames.topic_table(tt)
     st.dataframe(as_pct(ttab, ["early", "late", "delta"]), hide_index=True, width="stretch",
                  column_config={**pct_cols(None, ["early", "late", "delta"]), "terms": st.column_config.TextColumn(width="large"), "example": st.column_config.TextColumn(width="large")})
@@ -626,7 +624,12 @@ if section == "rankings":
     rk = cached_ranking(path, mtime, years, entity, roll_up and entity == "institution")
     keys = rk.top(top_n, by=sort_by)
     table = frames.ranking_table(rk, keys)
-    st.altair_chart(hbar_chart(table[[entity, sort_by]], entity, sort_by, f"Top {entity}s by {sort_by}"), width="stretch")
+    figure_head(f"Top {entity}s by {sort_by}", "Top three in red; the arrow is the change in share of papers between the two halves of the period")
+    rows_r = ranking_rows(rk, keys)
+    if entity == "country":
+        rows_r = [{**r, "name": country_name(r["name"])} for r in rows_r]
+    vl(charts.ranked_bars(rows_r, value=sort_by), key=f"rank-{entity}-{sort_by}")
+    source_line()
     st.dataframe(table, hide_index=True, width="stretch")
     r, f = st.columns(2)
     r.markdown('<h2 class=\"pt-h2\">' + "Gaining share" + '</h2>', unsafe_allow_html=True)
@@ -649,21 +652,13 @@ if section == "compare":
             trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, "title+abstract", (2, 3), extra_stop)
         df = pd.DataFrame(compare.term_shares(trends, cmp_terms))
         names = list(trends)
-        domain, rng = viz.series_colors(names)
-        chart = (
-            alt.Chart(df)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("year:O", title=None),
-                y=alt.Y("share:Q", title="share of papers", axis=alt.Axis(format="%")),
-                color=alt.Color("conference:N", scale=alt.Scale(domain=domain, range=rng), legend=alt.Legend(title=None, orient="bottom")),
-                tooltip=[alt.Tooltip("conference:N"), alt.Tooltip("term:N"), alt.Tooltip("year:O"), alt.Tooltip("papers:Q"), alt.Tooltip("share:Q", format=".1%")],
-            )
-            .properties(height=220, width=430)
-            .facet(facet=alt.Facet("term:N", title=None, header=alt.Header(labelFontSize=13, labelFontWeight="bold")), columns=2)
-            .resolve_scale(y="independent")
-        )
-        st.altair_chart(chart, width="stretch")
+        yrs = sorted(df["year"].unique().tolist())
+        cols = st.columns(2)
+        for i, term in enumerate(cmp_terms):
+            rows_t = [{"name": r["conference"], "year": r["year"], "share": r["share"], "papers": r["papers"]} for r in df[df["term"] == term].to_dict("records")]
+            with cols[i % 2]:
+                vl(charts.multi_line(rows_t, names, yrs, title=term), key=f"cmp-{term}")
+        source_line()
         wide = df.pivot_table(index=["term", "conference"], columns="year", values="share").reset_index()
         wide.columns = [str(c) for c in wide.columns]
         ycols = [c for c in wide.columns if c.isdigit()]
