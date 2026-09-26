@@ -44,7 +44,7 @@
 
 <section id="rising">
   <h2>What is rising</h2>
-  <p class="lede">Share of papers whose title or abstract mentions the phrase. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
+  <p class="lede">Share of papers whose {{ "title" if r.text_mode == "title" else "title or abstract" }} mentions the phrase{{ " (titles only: OpenAlex lacks most abstracts for this venue)" if r.text_mode == "title" else "" }}. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
   <div class="grid">
   {% for t in r.rising %}
     <figure>

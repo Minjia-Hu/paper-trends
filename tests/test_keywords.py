@@ -61,3 +61,16 @@ def test_emerging_and_papers_with():
     hits = papers_with(recs, "Chiplet Integration", text="title")
     assert len(hits) == 4 and hits[0]["publication_year"] == 2021
     assert papers_with(recs, "integration chiplet", text="title") == []  # phrase order matters
+
+
+def test_restore_hyphens_from_corpus_spelling():
+    from collections import Counter
+    from paper_trends.keywords import hyphen_forms, restore_hyphens
+
+    recs = [_rec(2020, "Co-packaged optics and wafer-level packaging")] * 3 + [_rec(2021, "co packaged optics")]
+    forms = hyphen_forms(recs, text="title")
+    assert forms["co-packaged"] == 3 and forms["wafer-level"] == 3
+    assert restore_hyphens("co packaged optics", forms) == "co-packaged optics"
+    assert restore_hyphens("wafer level packaging", forms) == "wafer-level packaging"
+    assert restore_hyphens("hybrid bonding", forms) == "hybrid bonding"
+    assert restore_hyphens("state of the art", Counter({"state-of-the-art": 5})) == "state-of-the-art"

@@ -20,6 +20,19 @@ GROUPS = [
     ("Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
     ("Other fields", ["cvpr", "interspeech"]),
 ]
+FULL = {
+    "ectc": "Electronic Components and Technology Conference",
+    "eptc": "Electronics Packaging Technology Conference",
+    "itherm": "ITherm: Thermal and Thermomechanical Phenomena in Electronic Systems",
+    "irps": "International Reliability Physics Symposium",
+    "eurosime": "EuroSimE: Thermal, Mechanical and Multi-Physics Simulation in Microelectronics",
+    "iedm": "International Electron Devices Meeting",
+    "isscc": "International Solid-State Circuits Conference",
+    "vlsi": "Symposium on VLSI Technology and Circuits",
+    "imw": "International Memory Workshop",
+    "cvpr": "Conference on Computer Vision and Pattern Recognition",
+    "interspeech": "Interspeech",
+}
 SHORT = {"ectc": "ECTC", "eptc": "EPTC", "itherm": "ITherm", "irps": "IRPS", "eurosime": "EuroSimE", "iedm": "IEDM",
          "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech"}
 
@@ -82,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     reports = []
     for i, path in enumerate(args.jsonl):
         slug = path.stem
-        name = args.name[i] if i < len(args.name) else SHORT.get(slug, slug.upper())
+        name = args.name[i] if i < len(args.name) else FULL.get(slug, slug.upper())
         print(f"[report] {slug}: analysing…", file=sys.stderr)
         reports.append(build_report(read_jsonl(path), name=name, slug=slug, years=yrs, n_topics=args.n_topics))
     render_site(reports, args.out)

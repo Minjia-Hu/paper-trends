@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import date
 from typing import Any
 
-from ..keywords import KeywordTrends, compute_trends
+from ..keywords import KeywordTrends, compute_trends, hyphen_forms, restore_hyphens
 from ..rank import compute_ranking
 from ..store import Record, filter_years
 from ..text import STOPWORDS
@@ -33,6 +33,24 @@ def _pct(x: float) -> str:
 
 def _series(kt: KeywordTrends, term: str) -> list[dict[str, Any]]:
     return [{"year": y, "share": kt.share(term, y), "papers": kt.doc_freq[term].get(y, 0)} for y in kt.years]
+
+
+def _singular(term: str) -> str:
+    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in term.split())
+
+
+def _dedupe(rows: list[tuple]) -> list[tuple]:
+    """Drop singular/plural twins ("diffusion model" next to "diffusion models"), keeping the
+    higher-ranked one."""
+    seen: set[str] = set()
+    out = []
+    for row in rows:
+        key = _singular(row[0])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(row)
+    return out
 
 
 def growth_sentence(papers: dict[int, int]) -> str:
@@ -63,13 +81,22 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     ys = sorted(per_year)
     y0, y1 = ys[0], ys[-1]
 
-    kt = compute_trends(recs, n_min=2, n_max=3, stopwords=STOPWORDS)
-    rising = kt.rising(n_multiples, min_total=10)
-    falling = kt.falling(n_multiples, min_total=10)
-    emerging = kt.emerging(10, min_total=10)
+    coverage = sum(with_abs.values()) / max(len(recs), 1)
+    # Venues whose abstracts OpenAlex mostly lacks (Interspeech) are analysed on titles only,
+    # otherwise the years with abstracts would dominate every share.
+    text_mode = "title+abstract" if coverage >= 0.6 else "title"
+    kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=STOPWORDS)
+    rising = _dedupe(kt.rising(n_multiples * 2, min_total=10))[:n_multiples]
+    falling = _dedupe(kt.falling(n_multiples * 2, min_total=10))[:n_multiples]
+    emerging = _dedupe(kt.emerging(20, min_total=10))[:10]
+    forms = hyphen_forms(recs, text=text_mode)
+    show = lambda t: restore_hyphens(t, forms)  # noqa: E731  display form only; counts stay keyed by the split form
 
     tt = compute_nmf(recs, n_topics=n_topics)
     topics = tt.ordered()
+    for t in topics:  # display forms for labels and term lists (counts are keyed by topic id)
+        t.label = " / ".join(show(x) for x in t.label.split(" / "))
+        t.terms = [show(x) for x in t.terms]
     topic_rows = []
     for rank, t in enumerate(topics):
         for y in tt.years:
@@ -92,7 +119,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     ]
     if top_rise:
         t, e, l, _ = top_rise
-        glance.append(f"The fastest-growing phrase is “{t}”, up from {_pct(e)} to {_pct(l)} of papers.")
+        glance.append(f"The fastest-growing phrase is “{show(t)}”, up from {_pct(e)} to {_pct(l)} of papers.")
     if inst_gainer or country_gainer:
         bits = []
         if inst_gainer:
@@ -103,7 +130,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
             bits.append(f"{country_name(country.names[k])} among countries ({_pct(e)} → {_pct(l)})")
         glance.append("; ".join(bits) + ".")
     if emerging:
-        glance.append("New vocabulary: " + ", ".join(t for t, *_ in emerging[:4]) + ".")
+        glance.append("New vocabulary: " + ", ".join(show(t) for t, *_ in emerging[:4]) + ".")
 
     topic_sentence = (
         f"“{gainer[0]}” grew from {_pct(gainer[1])} to {_pct(gainer[2])} of papers, "
@@ -116,13 +143,14 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "years": ys,
         "year_range": [y0, y1],
         "n_papers": len(recs),
-        "abstract_coverage": sum(with_abs.values()) / max(len(recs), 1),
+        "abstract_coverage": coverage,
+        "text_mode": text_mode,
         "generated": date.today().isoformat(),
         "papers_per_year": [{"year": y, "papers": per_year[y], "abstracts": with_abs[y]} for y in ys],
         "glance": glance,
-        "rising": [{"term": t, "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in rising],
-        "falling": [{"term": t, "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in falling],
-        "emerging": [{"term": t, "first": f, "early": e, "late": l, "series": _series(kt, t)} for t, f, e, l in emerging],
+        "rising": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in rising],
+        "falling": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in falling],
+        "emerging": [{"term": show(t), "first": f, "early": e, "late": l, "series": _series(kt, t)} for t, f, e, l in emerging],
         "topics": [{"label": t.label, "terms": t.terms, "examples": t.examples, "papers": tt.total(t.id)} for t in topics],
         "topic_rows": topic_rows,
         "topic_sentence": topic_sentence,

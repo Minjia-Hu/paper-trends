@@ -189,7 +189,10 @@ faint and dashed, a "Source:" line, tables only inside `<details>`. Vega-Lite sp
 built in `charts.py` with a shared `CONFIG`; the streamgraph stacks by `rank` ascending
 so the right-edge labels (computed in Python) line up with the bands. Preview with
 `python3 -m http.server --directory site` + Playwright screenshots; the CDN scripts need
-network. `site/` is git-ignored.
+network. `site/` is git-ignored. `build_report` switches to title-only phrase counting when
+abstract coverage is under 60 % (Interspeech), restores corpus hyphenation for display
+(`restore_hyphens`: "co-packaged optics"), and drops singular/plural twins from the lists.
+`render.FULL`/`SHORT`/`GROUPS` hold the preset names and the masthead grouping.
 
 ## Known data caveats (ECTC run, 2026-09)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -127,6 +128,40 @@ def papers_with(records: list[Record], term: str, text: str = "title+abstract") 
             hits.append(r)
     hits.sort(key=lambda r: (-(r.get("publication_year") or 0), -(r.get("cited_by_count") or 0)))
     return hits
+
+
+def hyphen_forms(records: list[Record], text: str = "title+abstract") -> Counter[str]:
+    """How often each hyphenated compound ("co-packaged", "wafer-level") occurs in the raw
+    text. Tokenisation splits hyphens so that spellings merge for counting; this lets the
+    display layer put them back."""
+    pat = re.compile(r"\b[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+\b")
+    c: Counter[str] = Counter()
+    for r in records:
+        for m in pat.findall(build_text(r, text)):
+            c[m.lower()] += 1
+    return c
+
+
+def restore_hyphens(term: str, forms: Counter[str], min_count: int = 3) -> str:
+    """Re-join adjacent words of `term` when the corpus mostly writes them hyphenated:
+    "co packaged optics" -> "co-packaged optics" if "co-packaged" is common."""
+    words = term.split()
+    out: list[str] = []
+    i = 0
+    while i < len(words):
+        joined = None
+        # longest hyphenated run first (e.g. "state-of-the-art")
+        for j in range(len(words), i + 1, -1):
+            cand = "-".join(words[i:j])
+            if forms.get(cand, 0) >= min_count:
+                joined, i = cand, j
+                break
+        if joined is None:
+            out.append(words[i])
+            i += 1
+        else:
+            out.append(joined)
+    return " ".join(out)
 
 
 def build_text(rec: Record, mode: str) -> str:

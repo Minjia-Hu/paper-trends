@@ -41,3 +41,10 @@ def test_build_and_render(tmp_path):
     html = (tmp_path / "test.html").read_text()
     assert "Test Conf" in html and "fig-topics" in html and "report.css" in html
     assert (tmp_path / "index.html").exists() and (tmp_path / "report.css").exists()
+
+
+def test_dedupe_singular_plural():
+    from paper_trends.report.build import _dedupe
+
+    rows = [("diffusion models", 1), ("diffusion model", 2), ("vision language", 3), ("solder joint", 4), ("solder joints", 5), ("stress", 6)]
+    assert [r[0] for r in _dedupe(rows)] == ["diffusion models", "vision language", "solder joint", "stress"]
