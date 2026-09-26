@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ r.name }} · paper-trends</title>
+<meta name="description" content="How {{ r.name }} changed {{ r.year_range[0] }}–{{ r.year_range[1] }}: rising and fading topics, new vocabulary, who publishes. Built from OpenAlex.">
+<link rel="stylesheet" href="report.css">
+<script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
+</head>
+<body>
+<nav class="masthead"><div class="row">
+  <a class="brand" href="index.html">paper-trends</a>
+  <div class="venues">
+  {% for group, items in nav %}
+    <span class="group">{{ group }}</span>
+    {% for slug, short in items %}<a href="{{ slug }}.html" class="{{ 'current' if slug == r.slug else '' }}">{{ short }}</a>{% endfor %}
+  {% endfor %}
+  </div>
+</div></nav>
+
+<main class="page">
+<header class="title">
+  <div class="kicker">Publication trends · {{ r.year_range[0] }}–{{ r.year_range[1] }}</div>
+  <h1>{{ r.name }}</h1>
+  <div class="meta">
+    <span><b>{{ "{:,}".format(r.n_papers) }}</b> papers</span>
+    <span><b>{{ r.years|length }}</b> editions</span>
+    <span><b>{{ "%.0f"|format(r.abstract_coverage * 100) }}%</b> with abstracts</span>
+    <span>data from OpenAlex, fetched {{ r.generated }}</span>
+  </div>
+</header>
+
+<section id="glance">
+  <h2>At a glance</h2>
+  <ul class="glance">{% for s in r.glance %}<li>{{ s }}</li>{% endfor %}</ul>
+  <figure style="max-width: 520px; margin-top: 28px">
+    <figcaption><span class="sub">Papers per year</span></figcaption>
+    <div class="viz" id="fig-papers"></div>
+  </figure>
+</section>
+
+<section id="rising">
+  <h2>What is rising</h2>
+  <p class="lede">Share of papers whose title or abstract mentions the phrase. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
+  <div class="grid">
+  {% for t in r.rising %}
+    <figure>
+      <p class="term">{{ t.term }}</p>
+      <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="up">{{ "%.1f"|format(t.late*100) }}%</span></p>
+      <div class="viz" id="fig-rise-{{ loop.index }}"></div>
+    </figure>
+  {% endfor %}
+  </div>
+  <p class="source">OpenAlex · paper-trends</p>
+</section>
+
+<section id="fading">
+  <h2>What is fading</h2>
+  <p class="lede">The same measure for the phrases losing the most share. A fading phrase is often a technique that became standard and stopped being worth mentioning.</p>
+  <div class="grid">
+  {% for t in r.falling %}
+    <figure class="fading">
+      <p class="term">{{ t.term }}</p>
+      <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="down">{{ "%.1f"|format(t.late*100) }}%</span></p>
+      <div class="viz" id="fig-fall-{{ loop.index }}"></div>
+    </figure>
+  {% endfor %}
+  </div>
+  <p class="source">OpenAlex · paper-trends</p>
+</section>
+
+<section id="vocabulary">
+  <h2>New vocabulary</h2>
+  <p class="lede">Phrases that were almost absent before {{ r.split_year }} and now appear in at least one paper in a hundred. ✚ marks the first year a phrase shows up.</p>
+  <figure style="max-width: 760px">
+    <div class="viz" id="fig-emerging"></div>
+    <p class="source">OpenAlex · paper-trends</p>
+  </figure>
+</section>
+
+<section id="topics">
+  <h2>How the field's topics shifted</h2>
+  <p class="lede">{{ r.topic_sentence }}</p>
+  <figure class="wide">
+    <figcaption><span class="headline">Share of papers by dominant topic</span><span class="sub">Topics fitted with NMF on titles and abstracts; each paper assigned to its strongest topic. Smaller topics folded into “Other”.</span></figcaption>
+    <div class="viz" id="fig-topics"></div>
+    <p class="source">OpenAlex · paper-trends</p>
+  </figure>
+  <ul class="topic-list">
+  {% for t in r.topics %}
+    <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><b>{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} papers)</span></li>
+  {% endfor %}
+  </ul>
+</section>
+
+<section id="who">
+  <h2>Who publishes</h2>
+  <p class="lede">Papers with at least one author at the institution (a paper counts once per institution; subsidiaries and institutes are credited to their parent). The arrow is the change in share of papers between the two halves of the period.</p>
+  <div class="two">
+    <figure>
+      <figcaption><span class="headline">Institutions</span></figcaption>
+      <div class="viz" id="fig-inst"></div>
+    </figure>
+    <figure>
+      <figcaption><span class="headline">Countries</span></figcaption>
+      <div class="viz" id="fig-country"></div>
+    </figure>
+  </div>
+  <p class="source">OpenAlex · paper-trends</p>
+</section>
+
+<footer class="about" id="about">
+  <h2>About the data</h2>
+  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrase shares are document frequencies: the fraction of that year's papers mentioning a phrase at least once in the title or abstract. “Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
+  <p>Topics come from non-negative matrix factorisation of TF-IDF vectors with a fixed seed, so they are reproducible; labels are the topic's top terms. Institution names and parent relationships are OpenAlex's, which are good but not perfect.</p>
+  <details><summary>Coverage by year</summary>
+    <table><thead><tr><th>Year</th><th class="num">Papers</th><th class="num">With abstract</th></tr></thead><tbody>
+    {% for row in r.papers_per_year %}<tr><td>{{ row.year }}</td><td class="num">{{ row.papers }}</td><td class="num">{{ "%.0f"|format(row.abstracts / row.papers * 100) }}%</td></tr>{% endfor %}
+    </tbody></table>
+  </details>
+  <p style="margin-top: 20px">Generated {{ r.generated }} by <a href="https://github.com/Minjia-Hu/paper-trends">paper-trends</a>.</p>
+</footer>
+</main>
+
+<script>
+const specs = {{ specs_json }};
+const opts = { actions: false, renderer: "svg" };
+for (const [id, spec] of Object.entries(specs)) { vegaEmbed("#" + id, spec, opts); }
+</script>
+</body>
+</html>

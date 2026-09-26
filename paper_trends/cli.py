@@ -10,6 +10,7 @@ COMMANDS = {
     "rank": "paper_trends.rank",
     "topics": "paper_trends.topics",
     "compare": "paper_trends.compare",
+    "report": "paper_trends.report.render",
 }
 
 

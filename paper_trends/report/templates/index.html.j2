@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paper-trends</title>
+<link rel="stylesheet" href="report.css">
+</head>
+<body>
+<nav class="masthead"><div class="row"><a class="brand" href="index.html">paper-trends</a></div></nav>
+<main class="page">
+<header class="title">
+  <div class="kicker">Publication trends for academic conferences</div>
+  <h1>What a field talks about, year by year</h1>
+  <div class="meta"><span>Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes.</span></div>
+</header>
+{% for group, items in nav %}
+<section>
+  <h2>{{ group }}</h2>
+  <ul class="glance">
+  {% for slug, short, name, n in items %}<li><a href="{{ slug }}.html"><em>{{ short }}</em> — {{ name }}</a> <span style="color: var(--faint); font-family: var(--sans); font-size: 14px">{{ "{:,}".format(n) }} papers</span></li>{% endfor %}
+  </ul>
+</section>
+{% endfor %}
+</main>
+</body>
+</html>

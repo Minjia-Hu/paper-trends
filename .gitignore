@@ -19,3 +19,6 @@ build/
 
 # streamlit
 .streamlit/secrets.toml
+
+# generated report site
+site/

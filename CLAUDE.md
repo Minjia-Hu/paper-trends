@@ -49,6 +49,7 @@ uv run python -m paper_trends rank     data/ectc.jsonl --years 2016-2025 --by in
 uv run python -m paper_trends compare  data/ectc.jsonl data/iedm.jsonl --years 2016-2025 --term chiplet
 
 uv run streamlit run app.py               # interactive UI (same analysis functions)
+uv run python -m paper_trends report data/ectc.jsonl --name "..." --years 2016-2025 --out site   # static report pages
 uv run python -m paper_trends fetch --help
 uv run pytest -q                          # tests live in tests/, pythonpath="." set in pyproject
 uv run pytest -q tests/test_keywords.py::test_rising_and_falling   # single test
@@ -83,6 +84,8 @@ paper_trends/
   compare.py   # same terms across several corpora; "shared risers"
   frames.py    # analysis results -> tidy pandas DataFrames (charts/tables)
   viz.py       # chart palette (CVD-validated, fixed slot order) + Altair theme
+  report/      # static report site: build.py (numbers + sentences), charts.py (Vega-Lite specs),
+               #   render.py (Jinja2 -> site/), templates/, static/report.css
 app.py         # Streamlit UI: sidebar presets/fetch, tabs Overview/Keywords/Topics/Rankings/Compare/Data
 .github/workflows/ci.yml  # pytest on push/PR (tests are fully offline: OpenAlex is mocked)
 .streamlit/config.toml  # theme; secrets.toml (git-ignored) may hold OPENALEX_MAILTO when hosted
@@ -175,6 +178,18 @@ ICRA…) are complete. Interspeech (ISCA, `10.21437/interspeech`) has every pape
 abstracts for only ~40 % (2023+ ~20 %): use `--text title` there. Venues without DOIs
 (NeurIPS, ICML, CHI) are patchy in OpenAlex — NeurIPS' source covers 2016–2021 only —
 so they are not good showcases; say so rather than fetching them.
+
+**Report design (the public face; Streamlit is the local tool).** Editorial data-journalism
+style after Our World in Data / The Economist, agreed with Minjia on 2026-09-26: warm
+paper background `#FCFBF8`, ink `#1B1B1B`, one accent red `#E3120B` for the focus series
+and key numbers, blue `#1F4E79` for "fading", grey `#B8B5AE` for context; Newsreader for
+headings, IBM Plex Sans (tabular numerals) for everything else. Rules: every chart gets a
+conclusion sentence, direct end labels instead of legends, one focus series, gridlines
+faint and dashed, a "Source:" line, tables only inside `<details>`. Vega-Lite specs are
+built in `charts.py` with a shared `CONFIG`; the streamgraph stacks by `rank` ascending
+so the right-edge labels (computed in Python) line up with the bands. Preview with
+`python3 -m http.server --directory site` + Playwright screenshots; the CDN scripts need
+network. `site/` is git-ignored.
 
 ## Known data caveats (ECTC run, 2026-09)
 

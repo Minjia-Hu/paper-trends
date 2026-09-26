@@ -9,9 +9,9 @@ reports keyword trends, topic evolution, and institution / author / country rank
 First showcase: **ECTC (IEEE Electronic Components and Technology Conference), 2016–2026**.
 The same command works for ISSCC, IEDM, or any other venue indexed by OpenAlex.
 
-> Status: early but usable. Command-line tools for fetching and analysis, plus a Streamlit app.
+> Status: early but usable. Command-line tools for fetching and analysis, a static report generator, and a Streamlit app.
 
-![Keyword trends in the Streamlit app](docs/screenshot-keywords.png)
+![Report page: what is rising at ECTC](docs/screenshot-report-rising.png)
 
 ## Requirements
 
@@ -35,6 +35,21 @@ echo "OPENALEX_API_KEY=your_key" >> .env
 ```
 
 ## Usage
+
+### Report pages
+
+```bash
+uv run python -m paper_trends report data/ectc.jsonl --name "Electronic Components and Technology Conference" --years 2016-2025 --out site
+open site/ectc.html
+```
+
+Renders one static page per conference in an editorial layout: a few sentences at a
+glance, small multiples of rising and fading phrases, the new vocabulary, a topic
+streamgraph, and who publishes — each chart with a one-line conclusion and a source
+line. Pass several corpora to get a linked set with an index page. The pages are plain
+HTML + CSS with Vega-Lite charts, so they can be hosted anywhere static.
+
+![Report page header](docs/screenshot-report-top.png)
 
 ### Interactive app
 
@@ -265,8 +280,8 @@ pass your field's boilerplate with `--stopwords` or the sidebar box.
 - [x] `rank`: institution / author / country rankings with citations
 - [x] Streamlit app
 - [x] Compare terms across conferences (CLI + app tab)
-- [ ] Hosted demo with pre-fetched presets
-- [ ] Static HTML report
+- [x] Static report pages (`report`)
+- [ ] Hosted report site with pre-fetched presets (GitHub Pages)
 
 ## Data & license
 
