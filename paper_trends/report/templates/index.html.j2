@@ -21,6 +21,13 @@
   </ul>
 </section>
 {% endfor %}
+<section>
+  <h2>Your own conference</h2>
+  <p class="lede">These pages are generated ahead of time. Any conference indexed by OpenAlex can get the same page in two commands; venues outside the groups above land in a “More” group.</p>
+  <pre class="code">uv run python -m paper_trends fetch "Design Automation Conference" --doi-prefix 10.1109/dac --years 2016-2026 --name dac
+uv run python -m paper_trends report data/dac.jsonl --years 2016-2025 --out site</pre>
+  <p class="lede">For live exploration — pick a term, see the papers behind it, compare venues — run the interactive app: <span class="mono">uv run streamlit run app.py</span>. Source and instructions: <a href="https://github.com/Minjia-Hu/paper-trends">github.com/Minjia-Hu/paper-trends</a>.</p>
+</section>
 </main>
 </body>
 </html>
