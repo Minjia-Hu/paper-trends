@@ -35,6 +35,7 @@ def _write_corpus(path: Path) -> None:
 def test_app_renders_all_tabs(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write_corpus(tmp_path / "data" / "ectc.jsonl")
+    _write_corpus(tmp_path / "data" / "imw.jsonl")  # a second corpus so Compare has something to compare with
     at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
     at.run()
     assert not at.exception, at.exception
@@ -53,6 +54,8 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
         at.query_params["section"] = section
         at.run()
         assert not at.exception, (section, at.exception)
+        if section == "compare":
+            assert any("Rising everywhere" in m.value for m in at.markdown)  # the multi-corpus path ran
 
 
 def test_query_param_selects_preset(tmp_path, monkeypatch):
