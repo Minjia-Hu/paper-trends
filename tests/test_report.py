@@ -48,3 +48,10 @@ def test_dedupe_singular_plural():
 
     rows = [("diffusion models", 1), ("diffusion model", 2), ("vision language", 3), ("solder joint", 4), ("solder joints", 5), ("stress", 6)]
     assert [r[0] for r in _dedupe(rows)] == ["diffusion models", "vision language", "solder joint", "stress"]
+
+
+def test_coverage_note():
+    from paper_trends.report.build import coverage_note
+
+    assert coverage_note({2016: 100, 2017: 100}, {2016: 99, 2017: 100}) == ""
+    assert coverage_note({2016: 100, 2020: 100}, {2016: 99, 2020: 91}) == ", lowest 91% in 2020"

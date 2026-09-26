@@ -16,7 +16,7 @@ from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
-from paper_trends.report.build import build_report, country_name
+from paper_trends.report.build import build_report, country_name, coverage_note, growth_sentence
 from paper_trends.report.render import FULL, SHORT, nav_for, render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
@@ -538,14 +538,14 @@ def note(text: str) -> None:
 
 
 if section == "overview":
-    a, b = st.columns(2)
     rows_y = cov_y.to_dict("records")
+    per_year = {r["year"]: r["papers"] for r in rows_y}
+    with_abs = {r["year"]: r["abstracts"] for r in rows_y}
+    g = growth_sentence(per_year)
+    figure_head("Papers per year", f"{g[0].upper()}{g[1:]}; abstract coverage {cov_y['abstracts'].sum() / max(len(recs), 1):.0%}{coverage_note(per_year, with_abs)}.")
+    a, b = st.columns([1, 1])
     with a:
-        figure_head("Papers per year")
-        vl(charts.papers_bars(rows_y, "papers", "d", 120), key="ov-papers")
-    with b:
-        figure_head("Abstract coverage", "Share of each year's papers with an abstract in OpenAlex")
-        vl(charts.papers_bars(rows_y, "coverage", ".0%", 120), key="ov-cov")
+        vl(charts.trend_line(rows_y), key="ov-papers")
     rk_c = cached_ranking(path, mtime, years, "country")
     top_c = rk_c.top(12)
     a2, b2 = st.columns(2)

@@ -40,7 +40,7 @@ SHORT = {"ectc": "ECTC", "eptc": "EPTC", "icept": "ICEPT", "itherm": "ITherm", "
 
 def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
     years = r["years"]
-    specs: dict[str, dict] = {"fig-papers": charts.papers_bars(r["papers_per_year"])}
+    specs: dict[str, dict] = {"fig-papers": charts.trend_line(r["papers_per_year"])}
     for kind, key in (("rise", "rising"), ("fall", "falling")):
         items = r[key]
         ymax = max((s["share"] for t in items for s in t["series"]), default=0.1) * 1.15

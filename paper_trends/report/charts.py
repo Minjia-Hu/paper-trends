@@ -66,6 +66,28 @@ def papers_bars(rows: list[dict], value: str = "papers", fmt: str = "d", height:
     return spec
 
 
+def trend_line(rows: list[dict], value: str = "papers", fmt: str = ",d", height: int = 120, color: str = INK) -> dict[str, Any]:
+    """One quantity over the years as a line, first and last values labelled — for "how
+    much" over time, where bars of near-equal height would say nothing."""
+    years = [r["year"] for r in rows]
+    first, last = years[0], years[-1]
+    vmax = max(r[value] for r in rows)
+    spec = _base(height, {"left": 20, "right": 24, "top": 14, "bottom": 4})
+    spec["data"] = {"values": rows}
+    x = {"field": "year", "type": "quantitative", "axis": {"format": "d", "title": None, "values": [first, last]}, "scale": {"domain": [first, last], "nice": False}}
+    # no y axis: the first and last values are written on the line itself (sparkline style)
+    y = {"field": value, "type": "quantitative", "axis": None, "scale": {"domain": [0, vmax * 1.3]}}
+    ends = {"filter": f"datum.year == {first} || datum.year == {last}"}
+    spec["layer"] = [
+        {"mark": {"type": "line", "color": color, "strokeWidth": 2.2, "interpolate": "monotone"}, "encoding": {"x": x, "y": y}},
+        {"mark": {"type": "point", "filled": True, "color": color, "size": 55}, "transform": [ends], "encoding": {"x": x, "y": y}},
+        {"mark": {"type": "text", "dy": -12, "color": color, "fontWeight": 600, "fontSize": 12}, "transform": [ends],
+         "encoding": {"x": x, "y": y, "text": {"field": value, "format": fmt}}},
+        {"mark": {"type": "rule", "color": "transparent", "strokeWidth": 14}, "encoding": {"x": x, "tooltip": [{"field": "year"}, {"field": value, "format": fmt}]}},
+    ]
+    return spec
+
+
 def multi_line(rows: list[dict], names: list[str], years: list[int], title: str | None = None, height: int = 220) -> dict[str, Any]:
     """Several series (e.g. conferences) on one chart: fixed palette, direct end labels, no legend."""
     last = years[-1]

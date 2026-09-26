@@ -58,6 +58,15 @@ def _dedupe(rows: list[tuple]) -> list[tuple]:
     return out
 
 
+def coverage_note(papers: dict[int, int], with_abs: dict[int, int]) -> str:
+    """", lowest 97% in 2020" when a year dips below the rest; empty when it is even."""
+    shares = {y: with_abs.get(y, 0) / papers[y] for y in papers if papers[y]}
+    if not shares:
+        return ""
+    y, low = min(shares.items(), key=lambda kv: kv[1])
+    return f", lowest {low:.0%} in {y}" if low < 0.97 else ""
+
+
 def growth_sentence(papers: dict[int, int]) -> str:
     ys = sorted(papers)
     if len(ys) < 3:
@@ -152,6 +161,8 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "text_mode": text_mode,
         "generated": date.today().isoformat(),
         "papers_per_year": [{"year": y, "papers": per_year[y], "abstracts": with_abs[y]} for y in ys],
+        "growth_sentence": growth_sentence(per_year),
+        "coverage_note": coverage_note(per_year, with_abs),
         "glance": glance,
         "rising": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in rising],
         "falling": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in falling],

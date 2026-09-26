@@ -37,7 +37,7 @@
   <h2>At a glance</h2>
   <ul class="glance">{% for s in r.glance %}<li>{{ s }}</li>{% endfor %}</ul>
   <figure style="max-width: 520px; margin-top: 28px">
-    <figcaption><span class="sub">Papers per year</span></figcaption>
+    <figcaption><span class="headline">Papers per year</span><span class="sub">{{ r.growth_sentence[0]|upper }}{{ r.growth_sentence[1:] }}; abstract coverage {{ "%.0f"|format(r.abstract_coverage * 100) }}%{{ r.coverage_note }}.</span></figcaption>
     <div class="viz" id="fig-papers"></div>
   </figure>
 </section>
