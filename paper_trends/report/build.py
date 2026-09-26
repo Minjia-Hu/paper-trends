@@ -73,7 +73,7 @@ def growth_sentence(papers: dict[int, int]) -> str:
 
 
 def build_report(records: list[Record], *, name: str, slug: str, years: tuple[int, int] | None = None,
-                 n_topics: int = 8, n_multiples: int = 8) -> dict[str, Any]:
+                 n_topics: int = 8, n_multiples: int = 8, stopwords: frozenset[str] = STOPWORDS) -> dict[str, Any]:
     recs = filter_years(records, years)
     per_year: Counter[int] = Counter()
     with_abs: Counter[int] = Counter()
@@ -90,14 +90,14 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     # Venues whose abstracts OpenAlex mostly lacks (Interspeech) are analysed on titles only,
     # otherwise the years with abstracts would dominate every share.
     text_mode = "title+abstract" if coverage >= 0.6 else "title"
-    kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=STOPWORDS)
+    kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=stopwords)
     rising = _dedupe(kt.rising(n_multiples * 2, min_total=10))[:n_multiples]
     falling = _dedupe(kt.falling(n_multiples * 2, min_total=10))[:n_multiples]
     emerging = _dedupe(kt.emerging(20, min_total=10))[:10]
     forms = hyphen_forms(recs, text=text_mode)
     show = lambda t: restore_hyphens(t, forms)  # noqa: E731  display form only; counts stay keyed by the split form
 
-    tt = compute_nmf(recs, n_topics=n_topics)
+    tt = compute_nmf(recs, n_topics=n_topics, stopwords=stopwords)
     topics = tt.ordered()
     for t in topics:  # display forms for labels and term lists (counts are keyed by topic id)
         t.label = " / ".join(show(x) for x in t.label.split(" / "))

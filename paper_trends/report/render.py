@@ -66,16 +66,28 @@ def nav_for(available: dict[str, dict]) -> list[tuple[str, list]]:
     return nav
 
 
+def _env() -> Environment:
+    return Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=select_autoescape(["html"]))
+
+
+def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False) -> str:
+    """HTML for one report. `embedded=True` inlines the CSS, drops the masthead and adds a
+    script that reports the page height to a hosting Streamlit iframe."""
+    css = (HERE / "static" / "report.css").read_text(encoding="utf-8") if embedded else None
+    return _env().get_template("report.html.j2").render(
+        r=r, nav=nav or [], specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
+        embedded=embedded, inline_css=css,
+    )
+
+
 def render_site(reports: list[dict[str, Any]], out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
-    env = Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=select_autoescape(["html"]))
+    env = _env()
     available = {r["slug"]: r for r in reports}
     nav_full = nav_for(available)
     nav_short = [(g, [(s, short) for s, short, _, _ in items]) for g, items in nav_full]
-    page = env.get_template("report.html.j2")
     for r in reports:
-        html = page.render(r=r, nav=nav_short, specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER)
-        (out / f"{r['slug']}.html").write_text(html, encoding="utf-8")
+        (out / f"{r['slug']}.html").write_text(render_page(r, nav_short), encoding="utf-8")
         (out / f"{r['slug']}.json").write_text(json.dumps({k: v for k, v in r.items() if k != "topic_rows"}, ensure_ascii=False), encoding="utf-8")
     (out / "index.html").write_text(env.get_template("index.html.j2").render(nav=nav_full), encoding="utf-8")
     shutil.copy(HERE / "static" / "report.css", out / "report.css")

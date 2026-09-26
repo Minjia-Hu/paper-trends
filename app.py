@@ -15,6 +15,8 @@ from paper_trends.fetch import coverage_table, fetch_conference
 from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
+from paper_trends.report.build import build_report
+from paper_trends.report.render import render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import compute_nmf, compute_openalex
@@ -70,6 +72,14 @@ FETCH_YEARS = (2016, 2026)
 
 st.set_page_config(page_title="paper-trends", page_icon="📈", layout="wide")
 alt.theme.register("paper_trends", enable=True)(viz.altair_theme)
+st.markdown(
+    """<style>
+    #MainMenu, header[data-testid="stHeader"] { visibility: hidden; height: 0; }
+    .block-container { padding-top: 1.2rem; max-width: 1200px; }
+    section[data-testid="stSidebar"] h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+    </style>""",
+    unsafe_allow_html=True,
+)
 
 # OpenAlex credentials: environment first, then Streamlit secrets (hosted demo).
 for _var in ("OPENALEX_MAILTO", "OPENALEX_API_KEY"):
@@ -154,6 +164,13 @@ def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, 
     if method == "nmf":
         return compute_nmf(recs, n_topics=n_topics, stopwords=load_stopwords(extra_stop.split()))
     return compute_openalex(recs, level="subfield" if method.endswith("subfield") else "topic")
+
+
+@st.cache_data(show_spinner="Writing the report…")
+def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str) -> str:
+    recs = load_records(path, mtime)
+    r = build_report(recs, name=name, slug=slug, years=years, stopwords=load_stopwords(extra_stop.split()))
+    return render_page(r, embedded=True)
 
 
 @st.cache_data(show_spinner="Ranking…")
@@ -271,6 +288,7 @@ with st.sidebar:
         low = cov[(cov["year"] >= years[0]) & (cov["year"] <= years[1]) & (cov["coverage"] < 0.5)]["year"].tolist()
         if low:
             st.warning(f"Abstracts mostly missing for {low}; text analyses under-count those years.")
+        mode = st.radio("View", ["Report", "Explore"], horizontal=True, help="Report: the written page. Explore: interactive tables, term drill-down, comparisons.")
         extra_stop = st.text_area("Extra stopwords", placeholder="one per line", height=68)
         st.caption("Words to ignore in keyword and topic analyses, e.g. your field's boilerplate.")
 
@@ -287,6 +305,10 @@ if not records:
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime
 recs = filter_years(records, years)
 cov_y = frames.coverage_frame(recs)
+
+if mode == "Report":
+    st.iframe(cached_report_html(path, mtime, years, query, slug, extra_stop), height="content")
+    st.stop()
 
 st.title(query)
 c1, c2, c3, c4 = st.columns(4)

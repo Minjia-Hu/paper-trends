@@ -94,6 +94,14 @@ docs/               # README screenshots
 tests/              # pytest, incl. a streamlit.testing AppTest smoke test of app.py
 ```
 
+**Streamlit app = shell around the report.** The default "Report" view embeds the page
+produced by `report.render.render_page(..., embedded=True)` with `st.iframe(html,
+height="content")` (Streamlit measures the srcdoc height; `components.v1.html` is
+deprecated and did not auto-size). CSS is inlined and the masthead dropped in embedded
+mode. "Explore" is the older tabbed dashboard, kept for drill-down (papers behind a term,
+comparisons). Keep the two visually aligned via `.streamlit/config.toml` (paper
+background, red primary).
+
 **Streamlit app conventions**: all heavy work goes through `st.cache_data` keyed on
 (corpus path, mtime, params); fetches are serialized with a `threading.Lock` held in
 `st.cache_resource`. Charts follow the dataviz rules: categorical colours from

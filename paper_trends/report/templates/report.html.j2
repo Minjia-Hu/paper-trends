@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ r.name }} · paper-trends</title>
 <meta name="description" content="How {{ r.name }} changed {{ r.year_range[0] }}–{{ r.year_range[1] }}: rising and fading topics, new vocabulary, who publishes. Built from OpenAlex.">
-<link rel="stylesheet" href="report.css">
+{% if inline_css %}<style>{{ inline_css }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
 <script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
 </head>
 <body>
-<nav class="masthead"><div class="row">
+{% if not embedded %}<nav class="masthead"><div class="row">
   <a class="brand" href="index.html">paper-trends</a>
   <div class="venues">
   {% for group, items in nav %}
@@ -19,9 +19,9 @@
     {% for slug, short in items %}<a href="{{ slug }}.html" class="{{ 'current' if slug == r.slug else '' }}">{{ short }}</a>{% endfor %}
   {% endfor %}
   </div>
-</div></nav>
+</div></nav>{% endif %}
 
-<main class="page">
+<main class="page{{ ' embedded' if embedded else '' }}">
 <header class="title">
   <div class="kicker">Publication trends · {{ r.year_range[0] }}–{{ r.year_range[1] }}</div>
   <h1>{{ r.name }}</h1>
@@ -128,7 +128,7 @@
 <script>
 const specs = {{ specs_json }};
 const opts = { actions: false, renderer: "svg" };
-for (const [id, spec] of Object.entries(specs)) { vegaEmbed("#" + id, spec, opts); }
+const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts));
 </script>
 </body>
 </html>
