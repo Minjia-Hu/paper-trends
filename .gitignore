@@ -1,0 +1,21 @@
+# secrets
+.env
+
+# data
+data/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+build/
+
+# editors / OS
+.DS_Store
+.vscode/
+.idea/
+
+# streamlit
+.streamlit/secrets.toml

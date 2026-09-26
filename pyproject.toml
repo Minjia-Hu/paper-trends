@@ -1,0 +1,42 @@
+[project]
+name = "paper-trends"
+version = "0.1.0"
+description = "Fetch and analyze publication trends for any academic conference via OpenAlex"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Minjia Hu" }]
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.32",
+    "python-dotenv>=1.0",
+    "scikit-learn>=1.9.1",
+    "streamlit>=1.64.0",
+    "pandas>=3.0.6",
+    "altair>=6.3.0",
+]
+
+[project.scripts]
+paper-trends = "paper_trends.cli:main"
+
+[tool.uv]
+# The project is run in place (`uv run python -m paper_trends ...`) rather than
+# installed into the venv, so it does not depend on .pth files. Some macOS setups
+# mark .pth files "hidden" and Python >= 3.12.12 silently skips hidden .pth files.
+package = false
+
+[build-system]
+requires = ["uv_build>=0.10.7,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.uv.build-backend]
+module-root = ""
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
