@@ -94,19 +94,19 @@ docs/               # README screenshots
 tests/              # pytest, incl. a streamlit.testing AppTest smoke test of app.py
 ```
 
-**Streamlit app = shell around the report.** The default "Report" view embeds the page
-produced by `report.render.render_page(..., embedded=True)` with `st.iframe(html,
-height="content")` (Streamlit measures the srcdoc height; `components.v1.html` is
-deprecated and did not auto-size). CSS is inlined and the masthead dropped in embedded
-mode. "Explore" is the older tabbed dashboard, kept for drill-down (papers behind a term,
-comparisons). Keep the two visually aligned via `.streamlit/config.toml` (paper
-background, red primary). Navigation: the masthead (conference links, brand = home) is
-rendered by Streamlit *outside* the iframe (`masthead()` + `.pt-masthead` CSS) because
-`st.iframe` is sandboxed without `allow-top-navigation`, so links inside the page cannot
-change the app's query string. No `?conference=` → the embedded index page (home). The
-sidebar starts collapsed and only holds controls; hide Streamlit chrome via
-`stToolbarActions`/`stMainMenu`/`stAppDeployButton`, never `stToolbar` itself — the
-expand-sidebar button lives inside it.
+**Streamlit app = shell around the report, no sidebar.** Layout top to bottom: masthead
+(brand = home, grouped conference links; Streamlit-rendered HTML because the report iframe
+is sandboxed without top navigation), a search row (`st.text_input` for any OpenAlex
+conference + an **Options** popover holding DOI prefix, extra stopwords and refresh), then
+for a selected conference a controls row (period pills, Report/Explore radio) and either
+the embedded report (`st.iframe(render_page(..., embedded=True), height="content")`) or the
+tabbed Explore dashboard. Selection lives in the URL: `?conference=<preset slug>` or
+`?q=<custom name>&prefix=...`; nothing selected = the native home page (`home_page()`).
+Do not call `st.rerun()` right after changing `st.query_params` — the URL update is lost;
+set the params and continue the run. Hide Streamlit chrome via `stToolbarActions`,
+`stMainMenu`, `stAppDeployButton` and make the header `pointer-events: none`, otherwise
+the transparent toolbar swallows clicks on the masthead. `components.v1.html` is
+deprecated and did not auto-size; `st.iframe` measures srcdoc content itself.
 
 **Streamlit app conventions**: all heavy work goes through `st.cache_data` keyed on
 (corpus path, mtime, params); fetches are serialized with a `threading.Lock` held in

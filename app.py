@@ -76,13 +76,9 @@ st.markdown(
     """<style>
     @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
     #MainMenu, [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
-    [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapseButton"] button { color: #5C5C5C; }
     header[data-testid="stHeader"] { background: transparent; height: 2.6rem; pointer-events: none; }
     [data-testid="stToolbar"] { pointer-events: none; }
-    [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapseButton"] { pointer-events: auto; }
     .block-container { padding-top: 0.2rem; padding-bottom: 0; max-width: 1240px; }
-    section[data-testid="stSidebar"] { border-right: 1px solid #E6E3DC; }
-    section[data-testid="stSidebar"] h3 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 1.35rem; letter-spacing: -0.01em; margin-bottom: 0; }
     iframe[title="st.iframe"] { display: block; }
     /* masthead rendered by Streamlit (outside the iframe, so links can change the query string) */
     .pt-masthead { display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
@@ -92,6 +88,15 @@ st.markdown(
     .pt-masthead a { color: inherit; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
     .pt-masthead a:hover { color: #E3120B; }
     .pt-masthead a.current { color: #E3120B; border-bottom-color: #E3120B; }
+    [data-testid="stExpandSidebarButton"] { display: none !important; }
+    .st-key-controls_search { padding: 10px 24px 0; }
+    .st-key-controls_row { padding: 6px 24px 0; }
+    .st-key-controls_search [data-testid="stTextInput"] input { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 14px; }
+    .st-key-controls_search [data-baseweb="input"], .st-key-controls_search [data-baseweb="base-input"] { background: #FFFFFF; border-color: #E6E3DC; }
+    .st-key-controls_search [data-testid="stPopover"] button { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; background: #FFFFFF; border-color: #E6E3DC; }
+    .st-key-controls_row [data-testid="stPills"] button, .st-key-controls_row [data-testid="stRadio"] label { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; }
+    .st-key-controls_row [data-testid="stPills"] button { background: #FFFFFF; border-color: #E6E3DC; }
+    .pt-note { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; padding: 4px 24px 0; }
     /* home page, rendered by Streamlit so its links can change the query string */
     .pt-home { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #1B1B1B; padding: 8px 24px 40px; max-width: 1120px; }
     .pt-home .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin: 12px 0 14px; }
@@ -123,15 +128,15 @@ def home_page(available: dict[str, dict]) -> str:
             parts.append(f'<li><a href="?conference={slug_}" target="_self"><em>{short}</em> — {name}</a><span class="n">{n:,} papers</span></li>')
         parts.append("</ul>")
     parts.append(
-        "<h2>Your own conference</h2><p>Open <b>Settings</b> (the arrow at the top left), choose “Custom…”, type the conference name as OpenAlex "
-        "spells it and, if you know it, its DOI prefix, then fetch. A page like the ones above appears in a minute or two; the data stays cached on this machine. "
-        "Switch Settings → View to <b>Explore</b> for tables, the papers behind any term, and cross-conference comparison.</p></div>"
+        "<h2>Your own conference</h2><p>Type any conference name in the search box above, as OpenAlex spells it, and press Enter; if the name "
+        "does not match an OpenAlex source, add its DOI prefix under Options. Fetching takes a minute or two for most venues, and the data stays "
+        "cached on this machine. On a conference page, switch the view to <b>Explore</b> for tables, the papers behind any term, and cross-conference comparison.</p></div>"
     )
     return "".join(parts)
 
 
 def masthead(available: dict[str, dict], current: str) -> str:
-    parts = ['<nav class="pt-masthead"><a class="brand" href="./" target="_self">paper-trends</a><div class="venues">']
+    parts = ['<nav class="pt-masthead"><a class="brand" href="?" target="_self">paper-trends</a><div class="venues">']
     for group, items in nav_for(available):
         parts.append(f'<span class="group">{group}</span>')
         for slug_, short, _, _ in items:
@@ -325,62 +330,82 @@ def as_pct(df: pd.DataFrame, cols) -> pd.DataFrame:
 
 # ---- sidebar -----------------------------------------------------------------------
 
-with st.sidebar:
-    st.markdown("### Settings")
-    st.caption("Navigate between conferences in the page header; this panel holds the controls.")
-    # ?conference=<slug> selects a preset (the masthead links set it); nothing selected = home page
-    wanted = st.query_params.get("conference", "")
-    options = ["Home", *PRESETS, "Custom…"]
-    default_idx = next((i + 1 for i, k in enumerate(PRESETS) if PRESETS[k]["slug"] == wanted), 0)
-    choice = st.selectbox("Conference", options, index=default_idx)
-    if choice == "Home":
-        query = slug = ""
-        doi_prefixes = []
-        if wanted:
-            del st.query_params["conference"]
-    elif choice == "Custom…":
-        query = st.text_input("Conference name (as OpenAlex spells it)", placeholder="Custom Integrated Circuits Conference")
-        doi_prefix = st.text_input("DOI prefix(es), optional, space-separated", placeholder="10.1109/cicc")
-        doi_prefixes = doi_prefix.split()
-        slug = "".join(ch for ch in query.lower().replace(" ", "-") if ch.isalnum() or ch == "-")[:40]
-    else:
-        preset = PRESETS[choice]
-        query, doi_prefixes, slug = preset["query"], preset["doi_prefixes"], preset["slug"]
-        if slug != wanted:
-            st.query_params["conference"] = slug
-
-    records = records_for(slug) if slug else None
-    if slug and records is None:
-        st.caption("No local data for this conference yet.")
-        if st.button("Fetch from OpenAlex", type="primary", disabled=not query):
-            run_fetch(query, doi_prefixes, slug)
-    elif records:
-        all_years = sorted({r["publication_year"] for r in records if r.get("publication_year")})
-        st.caption(f"{len(records):,} papers · {all_years[0]}–{all_years[-1]} · cached locally")
-        if st.button("Refresh from OpenAlex"):
-            run_fetch(query, doi_prefixes, slug)
-
-    if records:
-        cov = frames.coverage_frame(records)
-        good = cov[cov["coverage"] >= 0.5]["year"].tolist()
-        default = (max(good[0], good[-1] - 9), good[-1]) if good else (all_years[0], all_years[-1])
-        years = st.slider("Years", all_years[0], all_years[-1], default)
-        low = cov[(cov["year"] >= years[0]) & (cov["year"] <= years[1]) & (cov["coverage"] < 0.5)]["year"].tolist()
-        if low:
-            st.warning(f"Abstracts mostly missing for {low}; text analyses under-count those years.")
-        mode = st.radio("View", ["Report", "Explore"], horizontal=True, help="Report: the written page. Explore: interactive tables, term drill-down, comparisons.")
-        extra_stop = st.text_area("Extra stopwords", placeholder="one per line", height=68)
-        st.caption("Words to ignore in keyword and topic analyses, e.g. your field's boilerplate.")
-
-# ---- main ---------------------------------------------------------------------------
-
+# ---- selection: ?conference=<preset slug> | ?q=<custom name>[&prefix=...] | nothing = home ---------
+wanted = st.query_params.get("conference", "")
+custom_q = st.query_params.get("q", "")
+custom_prefix = st.query_params.get("prefix", "")
 available = available_corpora()
-st.markdown(masthead(available, slug), unsafe_allow_html=True)
+
+masthead_slot = st.empty()  # filled after the search row is resolved, so a new search un-highlights the old venue
+
+# search row: any conference in OpenAlex
+with st.container(key="controls_search"):
+    sc1, sc2 = st.columns([5, 1])
+    typed = sc1.text_input("Search", value=custom_q, placeholder="Any conference in OpenAlex, as it spells the name — e.g. Design Automation Conference",
+                           label_visibility="collapsed", key="search")
+    if typed.strip() and typed.strip() != custom_q:
+        # a new search replaces whatever was selected; update the URL in this run (no st.rerun —
+        # a rerun issued right after changing query params can drop the URL update)
+        st.query_params.clear()
+        st.query_params["q"] = typed.strip()
+        custom_q, wanted, custom_prefix = typed.strip(), "", ""
+    with sc2.popover("Options", width="stretch"):
+        st.caption("Advanced")
+        doi_prefix_in = st.text_input("DOI prefix(es) for a custom conference, space-separated", value=custom_prefix, placeholder="10.1109/dac")
+        if doi_prefix_in.strip() != custom_prefix:
+            st.query_params["prefix"] = doi_prefix_in.strip()
+        extra_stop = st.text_area("Extra stopwords", placeholder="one per line", height=68, help="Words to ignore in keyword and topic analyses, e.g. your field's boilerplate.")
+        opt_refresh = st.button("Refresh data from OpenAlex")
+
+masthead_slot.markdown(masthead(available, wanted), unsafe_allow_html=True)
+preset = next((v for v in PRESETS.values() if v["slug"] == wanted), None)
+if preset:
+    query, doi_prefixes, slug = preset["query"], preset["doi_prefixes"], preset["slug"]
+elif custom_q:
+    query = custom_q
+    doi_prefixes = (doi_prefix_in or custom_prefix).split()
+    slug = "".join(ch for ch in query.lower().replace(" ", "-") if ch.isalnum() or ch == "-")[:40]
+else:
+    query = slug = ""
+    doi_prefixes = []
+
+records = records_for(slug) if slug else None
+
+if opt_refresh and slug:
+    run_fetch(query, doi_prefixes, slug)
+
 if not records:
-    if slug:  # a conference was chosen but has no data yet: say so on the page, not just in the drawer
-        st.markdown(f"#### No local data for “{query or slug}” yet\nOpen Settings (top left) and press **Fetch from OpenAlex**.")
+    if slug:
+        st.markdown(f'<div class="pt-note"><b>{query}</b> is not on this machine yet.</div>', unsafe_allow_html=True)
+        b1, b2 = st.columns([1, 5])
+        if b1.button("Fetch from OpenAlex", type="primary"):
+            run_fetch(query, doi_prefixes, slug)
+        b2.caption("Takes one to fifteen minutes depending on the venue's size. If the name does not match an OpenAlex source, add the DOI prefix under Options.")
     st.markdown(home_page(available), unsafe_allow_html=True)
     st.stop()
+
+# ---- controls row: period, view -------------------------------------------------------
+all_years = sorted({r["publication_year"] for r in records if r.get("publication_year")})
+cov = frames.coverage_frame(records)
+good = cov[cov["coverage"] >= 0.5]["year"].tolist() or all_years
+last_good = good[-1]
+periods = {
+    f"Last 10 years ({max(good[0], last_good - 9)}–{last_good})": (max(good[0], last_good - 9), last_good),
+    f"Last 5 years ({max(good[0], last_good - 4)}–{last_good})": (max(good[0], last_good - 4), last_good),
+    f"All ({all_years[0]}–{all_years[-1]})": (all_years[0], all_years[-1]),
+    "Custom…": None,
+}
+with st.container(key="controls_row"):
+    c1, c2 = st.columns([4, 1.4])
+    period = c1.pills("Period", list(periods), default=list(periods)[0], label_visibility="collapsed", key="period")
+    mode = c2.radio("View", ["Report", "Explore"], horizontal=True, label_visibility="collapsed", key="view")
+    if period == "Custom…":
+        years = c1.slider("Years", all_years[0], all_years[-1], (all_years[0], all_years[-1]), label_visibility="collapsed")
+    else:
+        years = periods[period or list(periods)[0]]
+    low = cov[(cov["year"] >= years[0]) & (cov["year"] <= years[1]) & (cov["coverage"] < 0.5)]["year"].tolist()
+    if low:
+        st.caption(f"Abstracts are mostly missing for {low}; text analyses under-count those years.")
 
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime
 recs = filter_years(records, years)

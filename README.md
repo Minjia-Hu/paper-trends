@@ -57,11 +57,12 @@ HTML + CSS with Vega-Lite charts, so they can be hosted anywhere static.
 uv run streamlit run app.py
 ```
 
-Pick a preset in the sidebar or type any conference name, fetch it once, and the report
-page appears: the same editorial layout as the static pages, rebuilt live for the chosen
-year range. Switch the sidebar to **Explore** for the interactive view — tables, a term
-drill-down to the underlying papers, and cross-conference comparison. Fetched data is
-cached under `data/`.
+Pick a conference from the header, or type any conference name into the search box and
+fetch it once; the report page appears in the same editorial layout as the static pages,
+rebuilt live for the chosen period. Switch the view to **Explore** for the interactive
+side — tables, a term drill-down to the underlying papers, and cross-conference
+comparison. Fetched data is cached under `data/`; a DOI prefix for a custom venue and
+extra stopwords live under **Options**.
 
 Presets (2016 onwards): **packaging** — ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE;
 **devices & circuits** — IEDM, ISSCC, VLSI Symposium, IMW; **other fields** — CVPR,

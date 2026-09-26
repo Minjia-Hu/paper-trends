@@ -38,7 +38,7 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
     at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
     at.run()
     assert not at.exception, at.exception
-    assert len(at.tabs) == 0 and not at.radio  # home page: an embedded index, no per-conference controls
+    assert len(at.tabs) == 0 and not at.radio  # home page: no per-conference controls
     at.query_params["conference"] = "ectc"
     at.run()
     assert not at.exception, at.exception
