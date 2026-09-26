@@ -61,7 +61,7 @@ Pick a preset in the sidebar or type any conference name, fetch it once, then ex
 keyword trends, topic evolution and institution / country rankings with a year-range
 filter. Fetched data is cached under `data/`.
 
-Presets (2016 onwards): **packaging** — ECTC, EPTC, ITherm, IRPS, EuroSimE;
+Presets (2016 onwards): **packaging** — ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE;
 **devices & circuits** — IEDM, ISSCC, VLSI Symposium, IMW; **other fields** — CVPR,
 Interspeech. Each one is a conference name plus the DOI prefix(es) its papers carry, so
 anything indexed by OpenAlex can be added the same way.

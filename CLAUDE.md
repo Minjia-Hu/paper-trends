@@ -118,7 +118,7 @@ a spare port and screenshot tabs with Playwright (system `python3` has it with C
 Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
-**Presets** live in `app.py:PRESETS` (packaging: ECTC, EPTC, ITherm, IRPS, EuroSimE;
+**Presets** live in `app.py:PRESETS` (packaging: ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE;
 devices/circuits: IEDM, ISSCC, VLSI Symposium, IMW; other fields: CVPR, Interspeech —
 the generality showcase), each with its DOI prefix list. VLSI
 Symposium needs ten prefixes because IEEE (10.1109) and JSAP (10.23919) alternate as

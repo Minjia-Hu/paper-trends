@@ -28,6 +28,9 @@ PRESETS = {
     "Packaging · EPTC — Electronics Packaging Technology Conference": {
         "query": "Electronics Packaging Technology Conference", "doi_prefixes": ["10.1109/eptc"], "slug": "eptc",
     },
+    "Packaging · ICEPT — International Conference on Electronic Packaging Technology": {
+        "query": "International Conference on Electronic Packaging Technology", "doi_prefixes": ["10.1109/icept"], "slug": "icept",
+    },
     "Packaging · ITherm — Thermal and Thermomechanical Phenomena in Electronic Systems": {
         "query": "Thermal and Thermomechanical Phenomena in Electronic Systems", "doi_prefixes": ["10.1109/itherm"], "slug": "itherm",
     },

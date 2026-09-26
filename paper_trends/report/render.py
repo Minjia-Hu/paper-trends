@@ -16,13 +16,14 @@ from .build import build_report
 
 HERE = Path(__file__).parent
 GROUPS = [
-    ("Packaging", ["ectc", "eptc", "itherm", "irps", "eurosime"]),
+    ("Packaging", ["ectc", "eptc", "icept", "itherm", "irps", "eurosime"]),
     ("Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
     ("Other fields", ["cvpr", "interspeech"]),
 ]
 FULL = {
     "ectc": "Electronic Components and Technology Conference",
     "eptc": "Electronics Packaging Technology Conference",
+    "icept": "International Conference on Electronic Packaging Technology",
     "itherm": "ITherm: Thermal and Thermomechanical Phenomena in Electronic Systems",
     "irps": "International Reliability Physics Symposium",
     "eurosime": "EuroSimE: Thermal, Mechanical and Multi-Physics Simulation in Microelectronics",
@@ -33,7 +34,7 @@ FULL = {
     "cvpr": "Conference on Computer Vision and Pattern Recognition",
     "interspeech": "Interspeech",
 }
-SHORT = {"ectc": "ECTC", "eptc": "EPTC", "itherm": "ITherm", "irps": "IRPS", "eurosime": "EuroSimE", "iedm": "IEDM",
+SHORT = {"ectc": "ECTC", "eptc": "EPTC", "icept": "ICEPT", "itherm": "ITherm", "irps": "IRPS", "eurosime": "EuroSimE", "iedm": "IEDM",
          "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech"}
 
 
