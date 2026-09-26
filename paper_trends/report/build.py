@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 from ..keywords import KeywordTrends, compute_trends, hyphen_forms, restore_hyphens
@@ -28,8 +30,27 @@ COUNTRY = {
 }
 
 
+_ISO = json.loads((Path(__file__).parent / "static" / "iso3166.json").read_text(encoding="utf-8"))
+
+
 def country_name(code: str) -> str:
-    return COUNTRY.get(code, code)
+    return COUNTRY.get(code) or _ISO.get(code, {}).get("name", code)
+
+
+def country_id(code: str) -> int | None:
+    """ISO 3166-1 numeric id, the key used by the world-110m topojson."""
+    return _ISO.get(code, {}).get("id")
+
+
+def country_map_rows(country_ranking, n_papers: int) -> list[dict[str, Any]]:
+    rows = []
+    for code in country_ranking.by_year:
+        cid = country_id(code)
+        if cid is None:
+            continue
+        n = country_ranking.total(code)
+        rows.append({"id": cid, "name": country_name(code), "papers": n, "share": n / n_papers if n_papers else 0.0})
+    return rows
 
 
 def _pct(x: float) -> str:
@@ -176,6 +197,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
              "early": inst_mov[k][0], "late": inst_mov[k][1], "delta": inst_mov[k][2]}
             for k in inst_top
         ],
+        "country_map": country_map_rows(country, len(recs)),
         "countries": [
             {"name": country_name(country.names[k]), "papers": country.total(k), "early": country_mov[k][0], "late": country_mov[k][1], "delta": country_mov[k][2]}
             for k in country_top

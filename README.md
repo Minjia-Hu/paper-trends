@@ -159,7 +159,9 @@ uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by author
 ```
 
 Papers and summed citations per entity, a per-year breakdown, and which institutions or
-countries are gaining or losing share. A paper counts once per institution (full counting).
+countries are gaining or losing share. The report page and the app also draw a world map
+of the share of papers by country (single-hue, square-root scale so the leading country
+does not wash out the rest). A paper counts once per institution (full counting).
 `--roll-up` credits top-level parents from OpenAlex's institution lineage (A*STAR rather
 than its IME institute, Chinese Academy of Sciences rather than each institute), which is
 what the app shows by default; occasionally that merges too much (ETH Zurich and EPFL share

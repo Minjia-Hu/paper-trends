@@ -178,6 +178,38 @@ def ranked_bars(rows: list[dict], value: str = "papers", highlight: int = 3) -> 
     return spec
 
 
+WORLD_TOPOJSON = "https://cdn.jsdelivr.net/npm/vega-datasets@2.11.0/data/world-110m.json"
+
+
+def world_map(rows: list[dict], height: int = 360) -> dict[str, Any]:
+    """Choropleth of the share of papers with at least one author in each country
+    (single-hue sequential scale, square-root so the leader does not wash out the rest)."""
+    vmax = max((r["share"] for r in rows), default=0.1)
+    topo = {"url": WORLD_TOPOJSON, "format": {"type": "topojson", "feature": "countries"}}
+    spec = _base(height, {"left": 0, "right": 0, "top": 0, "bottom": 0})
+    spec["projection"] = {"type": "equalEarth"}
+    spec["config"] = {**CONFIG, "legend": {"disable": False, "labelColor": MUTED, "titleColor": MUTED, "labelFontSize": 11, "titleFontSize": 11, "titleFontWeight": "normal", "gradientThickness": 8, "gradientLength": 180}}
+    spec["layer"] = [
+        {"data": topo, "transform": [{"filter": "datum.id != 10"}], "mark": {"type": "geoshape", "fill": "#EFECE5", "stroke": "#FCFBF8", "strokeWidth": 0.6}},
+        {
+            "data": topo,
+            "transform": [
+                {"filter": "datum.id != 10"},
+                {"lookup": "id", "from": {"data": {"values": rows}, "key": "id", "fields": ["name", "papers", "share"]}},
+                {"filter": "isValid(datum.papers) && datum.papers > 0"},
+            ],
+            "mark": {"type": "geoshape", "stroke": "#FCFBF8", "strokeWidth": 0.6},
+            "encoding": {
+                "color": {"field": "share", "type": "quantitative", "scale": {"type": "sqrt", "domain": [0, vmax], "range": ["#F6D6D4", RED]},
+                          "legend": {"title": "share of papers", "orient": "bottom-left", "direction": "horizontal", "format": ".0%",
+                                     "values": [0, round(vmax / 4, 2), round(vmax, 2)]}},
+                "tooltip": [{"field": "name", "title": "country"}, {"field": "papers"}, {"field": "share", "format": ".1%"}],
+            },
+        },
+    ]
+    return spec
+
+
 def emerging_heatmap(rows: list[dict], years: list[int]) -> dict[str, Any]:
     """term × year cells shaded by share, first appearance marked."""
     data = []

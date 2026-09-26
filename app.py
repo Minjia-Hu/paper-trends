@@ -16,7 +16,7 @@ from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
-from paper_trends.report.build import build_report, country_name, coverage_note, growth_sentence
+from paper_trends.report.build import build_report, country_map_rows, country_name, coverage_note, growth_sentence
 from paper_trends.report.render import FULL, SHORT, nav_for, render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
@@ -602,6 +602,8 @@ if section == "overview":
         vl(charts.trend_line(rows_y), key="ov-papers")
     rk_c = cached_ranking(path, mtime, years, "country")
     top_c = rk_c.top(12)
+    figure_head("Where the papers come from", f"Share of papers with at least one author in the country, {years[0]}–{years[1]}; countries without a paper are left blank")
+    vl(charts.world_map(country_map_rows(rk_c, len(recs))), key="ov-map")
     a2, b2 = st.columns(2)
     with a2:
         figure_head("Papers by country", "A paper counts once per country; the arrow is the change in share between the two halves of the period")

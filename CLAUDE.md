@@ -218,6 +218,11 @@ abstracts for only ~40 % (2023+ ~20 %): use `--text title` there. Venues without
 (NeurIPS, ICML, CHI) are patchy in OpenAlex — NeurIPS' source covers 2016–2021 only —
 so they are not good showcases; say so rather than fetching them.
 
+**World map** (`charts.world_map`): choropleth of share of papers by country, joined to
+the vega-datasets world-110m topojson (CDN) by ISO 3166-1 numeric id from
+`report/static/iso3166.json` (generated once with pycountry; not a runtime dependency).
+Antarctica (id 10) is dropped; city-states are too small to see — say so rather than hack.
+
 **Report design (the public face; Streamlit is the local tool).** Editorial data-journalism
 style after Our World in Data / The Economist, agreed with Minjia on 2026-09-26: warm
 paper background `#FCFBF8`, ink `#1B1B1B`, one accent red `#E3120B` for the focus series

@@ -55,3 +55,17 @@ def test_coverage_note():
 
     assert coverage_note({2016: 100, 2017: 100}, {2016: 99, 2017: 100}) == ""
     assert coverage_note({2016: 100, 2020: 100}, {2016: 99, 2020: 91}) == ", lowest 91% in 2020"
+
+
+def test_country_map_rows_and_spec():
+    import json
+    from paper_trends.rank import compute_ranking
+    from paper_trends.report.build import country_id, country_map_rows
+    from paper_trends.report.charts import world_map
+
+    assert country_id("US") == 840 and country_id("TW") == 158 and country_id("XX") is None
+    rk = compute_ranking(_corpus(), "country")
+    rows = country_map_rows(rk, 80)
+    assert {r["name"] for r in rows} == {"United States", "South Korea", "Japan", "Taiwan"}
+    assert abs(sum(r["share"] for r in rows) - 1.0) < 1e-9
+    json.dumps(world_map(rows))
