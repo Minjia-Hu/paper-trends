@@ -79,3 +79,28 @@ def test_resolve_roots_looks_up_missing_parents():
     assert insts[0]["root_name"] == "Chinese Academy of Sciences" and insts[0]["root_country"] == "CN"
     assert insts[1]["root_name"] == "Standalone Lab"  # already known, no lookup needed
     assert client.calls == ["ids.openalex:I19820366"]
+
+
+def test_resolve_venue_acronym_and_name():
+    from paper_trends.fetch import resolve_venue, strip_decoration
+
+    assert strip_decoration("2020 57th ACM/IEEE Design Automation Conference (DAC)", light=True) == "Design Automation Conference"
+    assert strip_decoration("2021 IEEE International Symposium on Circuits and Systems (ISCAS)", light=True) == "International Symposium on Circuits and Systems"
+
+    class Fake:
+        def count_by_year(self, f):
+            if "doi_starts_with:10.1109/dac" in f: return {2020: 300, 2021: 300}
+            if "primary_location.source.id" in f: return {2020: 100}
+            return {}
+        def get(self, path, params):
+            if "doi_starts_with:10.1109/dac" in params["filter"]:
+                return {"results": [{"doi": f"https://doi.org/10.1109/DAC18072.2020.{i}", "primary_location": {"raw_source_name": "2020 57th ACM/IEEE Design Automation Conference (DAC)"}} for i in range(10)]}
+            return {"results": [{"doi": f"https://doi.org/10.1109/CICC.2022.{i}"} for i in range(10)]}
+        def search_sources(self, q):
+            return [{"id": "https://openalex.org/S1", "display_name": "2022 IEEE Custom Integrated Circuits Conference (CICC)", "works_count": 104}]
+
+    r = resolve_venue(Fake(), "DAC")
+    assert r["how"] == "acronym" and r["name"] == "Design Automation Conference" and r["doi_prefixes"] == ["10.1109/dac"] and not r["ambiguous"]
+    r = resolve_venue(Fake(), "Custom Integrated Circuits Conference")
+    assert r["how"] == "name" and r["doi_prefixes"] == ["10.1109/cicc"] and r["slug"] == "cicc" and r["source_ids"] == ["https://openalex.org/S1"]
+    assert resolve_venue(Fake(), "") is None

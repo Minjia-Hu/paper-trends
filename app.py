@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from paper_trends import compare, frames, viz
-from paper_trends.fetch import coverage_table, fetch_conference
+from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
@@ -246,6 +246,14 @@ def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, 
     return compute_openalex(recs, level="subfield" if method.endswith("subfield") else "topic")
 
 
+@st.cache_data(show_spinner="Looking the conference up in OpenAlex…", ttl=3600)
+def cached_resolve(text: str) -> dict | None:
+    try:
+        return resolve_venue(OpenAlex(), text)
+    except OpenAlexError as e:
+        return {"error": str(e)}
+
+
 @st.cache_data(show_spinner="Writing the report…")
 def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str) -> str:
     recs = load_records(path, mtime)
@@ -347,8 +355,13 @@ with st.container(key="controls_search"):
         # a new search replaces whatever was selected; update the URL in this run (no st.rerun —
         # a rerun issued right after changing query params can drop the URL update)
         st.query_params.clear()
-        st.query_params["q"] = typed.strip()
-        custom_q, wanted, custom_prefix = typed.strip(), "", ""
+        shortcut = next((v["slug"] for k, v in PRESETS.items() if typed.strip().lower() in {v["slug"], k.split(" — ")[0].split("· ")[-1].lower(), v["query"].lower()}), None)
+        if shortcut:
+            st.query_params["conference"] = shortcut
+            wanted, custom_q, custom_prefix = shortcut, "", ""
+        else:
+            st.query_params["q"] = typed.strip()
+            custom_q, wanted, custom_prefix = typed.strip(), "", ""
     with sc2.popover("Options", width="stretch"):
         st.caption("Advanced")
         doi_prefix_in = st.text_input("DOI prefix(es) for a custom conference, space-separated", value=custom_prefix, placeholder="10.1109/dac")
@@ -362,9 +375,13 @@ preset = next((v for v in PRESETS.values() if v["slug"] == wanted), None)
 if preset:
     query, doi_prefixes, slug = preset["query"], preset["doi_prefixes"], preset["slug"]
 elif custom_q:
-    query = custom_q
-    doi_prefixes = (doi_prefix_in or custom_prefix).split()
-    slug = "".join(ch for ch in query.lower().replace(" ", "-") if ch.isalnum() or ch == "-")[:40]
+    resolved = cached_resolve(custom_q) or {}
+    if "error" in resolved:
+        st.markdown(f'<div class="pt-note">{resolved["error"]}</div>', unsafe_allow_html=True)
+        resolved = {}
+    query = resolved.get("name") or custom_q
+    doi_prefixes = (doi_prefix_in or custom_prefix).split() or resolved.get("doi_prefixes", [])
+    slug = resolved.get("slug") or "".join(ch for ch in custom_q.lower().replace(" ", "-") if ch.isalnum() or ch == "-")[:40]
 else:
     query = slug = ""
     doi_prefixes = []
@@ -375,12 +392,24 @@ if opt_refresh and slug:
     run_fetch(query, doi_prefixes, slug)
 
 if not records:
-    if slug:
-        st.markdown(f'<div class="pt-note"><b>{query}</b> is not on this machine yet.</div>', unsafe_allow_html=True)
+    if slug and custom_q and not resolved:
+        st.markdown(f'<div class="pt-note">Nothing in OpenAlex matches <b>{custom_q}</b>. Try the full name as OpenAlex spells it, or add the venue\'s DOI prefix under Options and fetch anyway.</div>', unsafe_allow_html=True)
+        if doi_prefixes and st.button("Fetch by DOI prefix", type="primary"):
+            run_fetch(query, doi_prefixes, slug)
+    elif slug:
+        found = ""
+        if custom_q and resolved:
+            found = (f"Found <b>{resolved['name']}</b> — about {resolved['n_papers']:,} papers since 2016"
+                     + (f", DOI prefix {' '.join(resolved['doi_prefixes'])}" if resolved.get("doi_prefixes") else "") + ".")
+            if resolved.get("ambiguous"):
+                found += " <b>Caution:</b> this DOI prefix is shared by several venues: " + "; ".join(f"{n} ({sh:.0%})" for n, sh in resolved["candidates"]) + "."
+        else:
+            found = f"<b>{query}</b> is not on this machine yet."
+        st.markdown(f'<div class="pt-note">{found}</div>', unsafe_allow_html=True)
         b1, b2 = st.columns([1, 5])
         if b1.button("Fetch from OpenAlex", type="primary"):
             run_fetch(query, doi_prefixes, slug)
-        b2.caption("Takes one to fifteen minutes depending on the venue's size. If the name does not match an OpenAlex source, add the DOI prefix under Options.")
+        b2.caption("Takes one to fifteen minutes depending on the venue's size; the data is then cached on this machine.")
     st.markdown(home_page(available), unsafe_allow_html=True)
     st.stop()
 

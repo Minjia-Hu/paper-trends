@@ -57,9 +57,11 @@ HTML + CSS with Vega-Lite charts, so they can be hosted anywhere static.
 uv run streamlit run app.py
 ```
 
-Pick a conference from the header, or type any conference name into the search box and
-fetch it once; the report page appears in the same editorial layout as the static pages,
-rebuilt live for the chosen period. Switch the view to **Explore** for the interactive
+Pick a conference from the header, or type an acronym or name into the search box —
+“DAC”, “ISCAS”, “Custom Integrated Circuits Conference” — and the app resolves it against
+OpenAlex (name, DOI prefix, paper count, and a warning when a prefix is shared by several
+venues) before you fetch. The report page then appears in the same editorial layout as
+the static pages, rebuilt live for the chosen period. Switch the view to **Explore** for the interactive
 side — tables, a term drill-down to the underlying papers, and cross-conference
 comparison. Fetched data is cached under `data/`; a DOI prefix for a custom venue and
 extra stopwords live under **Options**.
@@ -186,6 +188,20 @@ power delivery             +1.6%      +0.7%      +0.8%
 
 The app has a **Compare** tab that plots the same terms across any fetched conferences,
 and the Keywords tab lists the papers behind any term.
+
+### Resolve an acronym
+
+```bash
+uv run python -m paper_trends resolve DAC
+# name:         Design Automation Conference
+# doi prefixes: 10.1109/dac
+# papers:       ~1,497 (2016-2025)
+```
+
+Acronyms are tried as IEEE-style DOI prefixes and the name is read off the matching
+papers; full names are matched against OpenAlex sources and a prefix is inferred. Prefixes
+shared by several venues (`10.1109/iccad` is both Computer-Aided Design and Control,
+Automation and Diagnosis) are flagged.
 
 ### Another venue
 

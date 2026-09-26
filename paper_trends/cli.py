@@ -6,6 +6,7 @@ import sys
 
 COMMANDS = {
     "fetch": "paper_trends.fetch",
+    "resolve": "paper_trends.resolve",
     "keywords": "paper_trends.keywords",
     "rank": "paper_trends.rank",
     "topics": "paper_trends.topics",

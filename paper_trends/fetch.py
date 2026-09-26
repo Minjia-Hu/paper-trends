@@ -66,10 +66,18 @@ _DECOR_TAIL = re.compile(
 )
 
 
-def _core_name(display_name: str) -> str:
+_DECOR_LEAD_LIGHT = re.compile(r"^(?:proceedings of (?:the )?|proceedings\W+|\d{4}\s*|\d+(?:st|nd|rd|th)\s*|(?:ieee|acm|ieee/cvf|cvf|ieee/acm|acm/ieee|usenix|siam)\W+)+", re.I)
+
+
+def strip_decoration(display_name: str, light: bool = False) -> str:
+    """Conference name without year/ordinal/publisher prefixes and trailing "(ACR)". `light`
+    keeps words like "International" (for display); the default also drops them (for matching)."""
     name = _DECOR_TAIL.sub("", display_name.strip())
-    name = _DECOR_LEAD.sub("", name)
-    return _norm(name)
+    return (_DECOR_LEAD_LIGHT if light else _DECOR_LEAD).sub("", name).strip()
+
+
+def _core_name(display_name: str) -> str:
+    return _norm(strip_decoration(display_name))
 
 
 def resolve_sources(client: OpenAlex, query: str) -> list[dict[str, Any]]:
@@ -139,6 +147,72 @@ def slim_authorships(authorships: list[dict[str, Any]] | None) -> list[dict[str,
             }
         )
     return out
+
+
+def _prefix_of(doi: str | None) -> str | None:
+    m = re.match(r"https://doi\.org/(10\.\d+/[a-z][a-z\-]*)", (doi or "").lower())
+    return m.group(1) if m else None
+
+
+def resolve_venue(client: OpenAlex, text: str, years: tuple[int, int] = (2016, 2025)) -> dict[str, Any] | None:
+    """Turn what a person typed — an acronym ("DAC") or a name — into something fetchable.
+
+    Acronyms are tried as IEEE-style DOI prefixes (10.1109/dac, 10.23919/dac) and the
+    conference name is read off a sample of the matching papers. Names are matched
+    against OpenAlex sources, and a DOI prefix is inferred from a sample of their papers.
+    Returns None when nothing plausible is found."""
+    text = text.strip()
+    if not text:
+        return None
+    yf = f",publication_year:{years[0]}-{years[1]}"
+    is_acronym = " " not in text and len(text) <= 12
+
+    if is_acronym:
+        for reg in ("10.1109", "10.23919"):
+            pfx = f"{reg}/{text.lower()}"
+            total = sum(client.count_by_year(f"doi_starts_with:{pfx}{yf}").values())
+            if total < 50:
+                continue
+            page = client.get("works", {"filter": f"doi_starts_with:{pfx}{yf}", "select": "doi,primary_location", "per-page": 60, "sample": 60, "seed": 7})
+            names: Counter[str] = Counter()
+            ok = 0
+            for w in page.get("results", []):
+                if not doi_has_prefix(w.get("doi"), pfx):
+                    continue
+                ok += 1
+                loc = w.get("primary_location") or {}
+                raw = (loc.get("source") or {}).get("display_name") or loc.get("raw_source_name") or ""
+                if raw:
+                    names[strip_decoration(raw, light=True)] += 1
+            if not ok or not names:
+                continue
+            top, n_top = names.most_common(1)[0]
+            share = n_top / sum(names.values())
+            return {
+                "name": top, "doi_prefixes": [pfx], "source_ids": [], "slug": text.lower(),
+                "n_papers": round(total * ok / max(len(page.get("results", [])), 1)),
+                "candidates": [(n, c / sum(names.values())) for n, c in names.most_common(3)],
+                "ambiguous": share < 0.6, "how": "acronym",
+            }
+        # fall through: maybe it is a one-word name ("Interspeech")
+
+    sources = resolve_sources(client, text)
+    if not sources:
+        return None
+    ids = [s_["id"].rsplit("/", 1)[-1] for s_ in sources[:OR_LIMIT]]
+    total = sum(client.count_by_year(f"primary_location.source.id:{'|'.join(ids)}{yf}").values())
+    page = client.get("works", {"filter": f"primary_location.source.id:{'|'.join(ids)}{yf}", "select": "doi", "per-page": 60, "sample": 60, "seed": 7})
+    prefixes: Counter[str] = Counter(p for p in (_prefix_of(w.get("doi")) for w in page.get("results", [])) if p)
+    doi_prefixes: list[str] = []
+    if prefixes:
+        pfx, n = prefixes.most_common(1)[0]
+        if n / max(len(page.get("results", [])), 1) >= 0.6:
+            doi_prefixes = [pfx]
+            total = max(total, sum(client.count_by_year(f"doi_starts_with:{pfx}{yf}").values()))
+    name = strip_decoration(max(sources, key=lambda s_: s_.get("works_count", 0))["display_name"], light=True)
+    slug = (doi_prefixes[0].split("/")[1] if doi_prefixes else re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-"))[:40]
+    return {"name": name, "doi_prefixes": doi_prefixes, "source_ids": [s_["id"] for s_ in sources], "slug": slug,
+            "n_papers": total, "candidates": [(name, 1.0)], "ambiguous": False, "how": "name"}
 
 
 def resolve_roots(client: OpenAlex, records: list[dict[str, Any]], log=print) -> None:

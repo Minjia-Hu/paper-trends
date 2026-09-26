@@ -129,6 +129,14 @@ a spare port and screenshot tabs with Playwright (system `python3` has it with C
    — otherwise `10.1109/isca` returns 5k ISCAS papers and `10.1109/imw` returns IMWS-AMP.
 3. Union the results, de-duplicated by work id.
 
+`resolve_venue` (CLI `resolve`, app search box) turns an acronym or name into
+{name, doi_prefixes, source_ids, slug, n_papers, ambiguous}: acronyms are probed as
+`10.1109/<acr>` and `10.23919/<acr>` (≥ 50 papers 2016–2025) and the name is the most
+common decoration-stripped source name in a 60-paper sample; names go through
+`resolve_sources` with a prefix inferred from sampled DOIs (≥ 60 % agreement). Non-IEEE
+acronyms (NeurIPS) resolve to nothing — say so instead of guessing. The app maps typed
+preset acronyms/slugs straight to `?conference=`.
+
 Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
