@@ -49,6 +49,10 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
     assert not at.exception, at.exception
     assert len(at.tabs) == 0 and not at.title  # sections are links, header is HTML
     assert any("Rising" in m.value for m in at.markdown)
+    for section in ("overview", "topics", "rankings", "compare", "data"):  # every section must render
+        at.query_params["section"] = section
+        at.run()
+        assert not at.exception, (section, at.exception)
 
 
 def test_query_param_selects_preset(tmp_path, monkeypatch):

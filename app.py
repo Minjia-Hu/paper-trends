@@ -17,7 +17,7 @@ from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report
-from paper_trends.report.render import FULL, nav_for, render_page
+from paper_trends.report.render import FULL, SHORT, nav_for, render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import compute_nmf, compute_openalex
@@ -643,7 +643,7 @@ if section == "compare":
     default_terms = [t for t, *_ in kt_here.rising(4, min_total=10)]
     cmp_terms = st.multiselect("Terms", kt_here.top_terms(300), default=default_terms, key="cmp_terms")
     if others and cmp_terms:
-        trends = {choice.split(" — ")[0].split("· ")[-1]: kt_here}
+        trends = {SHORT.get(slug, query): kt_here}
         for k in others:
             cp = corpus_path(local[k]["slug"])
             trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, "title+abstract", (2, 3), extra_stop)
