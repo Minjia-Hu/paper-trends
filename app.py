@@ -139,6 +139,25 @@ st.markdown(
     .pt-sm .term { font-family: Newsreader, Georgia, serif; font-size: 17px; font-weight: 500; line-height: 1.2; margin: 0 0 2px; color: #1B1B1B; }
     .pt-sm .move { font-size: 12.5px; color: #5C5C5C; margin: 0; }
     [data-testid="stVegaLiteChart"] { margin-top: -6px; }
+    /* tables in the report's style */
+    .pt-table-wrap { overflow-x: auto; margin: 4px 0 6px; }
+    .pt-table { border-collapse: collapse; width: 100%; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; font-variant-numeric: tabular-nums; color: #1B1B1B; }
+    .pt-table th { text-align: left; font-weight: 500; color: #5C5C5C; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 12px 6px 0; border-bottom: 1px solid #1B1B1B; white-space: nowrap; }
+    .pt-table td { padding: 7px 12px 7px 0; border-bottom: 1px solid #E6E3DC; vertical-align: top; }
+    .pt-table th.num, .pt-table td.num { text-align: right; }
+    .pt-table td a { color: #1B1B1B; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
+    .pt-table td a:hover { border-bottom-color: #E3120B; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; background: #F3F1EC; padding: 1px 6px; border-radius: 2px; }
+    /* selects, chips, sliders: quiet (Streamlit >= 1.6x uses react-aria widgets, hence data-rac) */
+    .block-container [data-testid="stSelectbox"] > div[data-rac] > div, .block-container [data-testid="stMultiSelect"] > div[data-rac] > div,
+    .block-container [data-testid="stSelectbox"] [role="combobox"], .block-container [data-testid="stMultiSelect"] [role="combobox"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; box-shadow: none !important; }
+    .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] { background-color: #F3F1EC !important; color: #1B1B1B !important; border-radius: 2px !important; border: 1px solid #E6E3DC; }
+    .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] span, .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] button { color: #1B1B1B !important; }
+    .block-container [data-testid="stSliderThumbValue"] p { color: #1B1B1B !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 12px !important; }
+    .block-container [data-testid="stSliderTickBar"] p { color: #8A877F !important; font-size: 11px !important; }
+    .st-key-dl_corpus button, .st-key-dl_keywords button, .st-key-dl_institutions button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; width: 100%; }
+    .st-key-dl_corpus button:hover, .st-key-dl_keywords button:hover, .st-key-dl_institutions button:hover { border-color: #1B1B1B !important; }
+    .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
     /* resolution card */
     .pt-found { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
     .pt-found .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 4px; }
@@ -352,6 +371,41 @@ def ranking_rows(rk, keys: list[str], value: str = "papers") -> list[dict]:
     return rows
 
 
+def html_table(df: pd.DataFrame, pct: list[str] | None = None, links: list[str] | None = None, max_rows: int | None = None, signed: list[str] | None = None) -> None:
+    """A table in the report's style (hairline rows, small-caps header, tabular figures).
+    `pct` columns hold fractions and print as percentages; `signed` ones get a +/- sign;
+    `links` columns hold URLs; numeric columns right-align."""
+    import html as _html
+
+    pct, links, signed = set(pct or []), set(links or []), set(signed or [])
+    plain = {c for c in df.columns if any(w in str(c).lower() for w in ("year", "seen"))} | {c for c in df.columns if str(c).isdigit()}  # years: no thousands separator
+    shown = df if max_rows is None else df.head(max_rows)
+    numeric = {c for c in df.columns if c in pct or pd.api.types.is_numeric_dtype(df[c])}
+    head = "".join(f'<th class="{"num" if c in numeric else ""}">{_html.escape(str(c))}</th>' for c in df.columns)
+    rows = []
+    for _, r in shown.iterrows():
+        cells = []
+        for c in df.columns:
+            v = r[c]
+            if c in pct:
+                txt = ("" if pd.isna(v) else (f"{v:+.1%}" if c in signed else f"{v:.1%}"))
+            elif c in links and isinstance(v, str) and v:
+                txt = f'<a href="{_html.escape(v)}" target="_blank" rel="noopener">{_html.escape(v.replace("https://doi.org/", ""))}</a>'
+            elif isinstance(v, float):
+                txt = "" if pd.isna(v) else (f"{v:.0f}" if c in plain else f"{v:,.0f}")
+            elif isinstance(v, (int,)) or (hasattr(v, "item") and not isinstance(v, str)):
+                try:
+                    txt = f"{int(v)}" if c in plain else f"{int(v):,}"
+                except (TypeError, ValueError):
+                    txt = _html.escape(str(v))
+            else:
+                txt = _html.escape("" if v is None else str(v))
+            cells.append(f'<td class="{"num" if c in numeric else ""}">{txt}</td>')
+        rows.append("<tr>" + "".join(cells) + "</tr>")
+    more = f'<p class="pt-source">Showing {len(shown):,} of {len(df):,} rows.</p>' if max_rows is not None and len(df) > max_rows else ""
+    st.markdown(f'<div class="pt-table-wrap"><table class="pt-table"><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>{more}', unsafe_allow_html=True)
+
+
 def pct_cols(df: pd.DataFrame, cols) -> dict:
     return {c: st.column_config.NumberColumn(format="%.1f%%") for c in cols}
 
@@ -555,7 +609,7 @@ if section == "overview":
         source_line()
     with b2:
         figure_head("By year")
-        st.dataframe(frames.ranking_table(rk_c, top_c), hide_index=True, width="stretch")
+        html_table(frames.ranking_table(rk_c, top_c).assign(country=lambda d: d["country"].map(country_name)))
 
 if section == "keywords":
     o1, o2, o3 = st.columns([1, 1, 2])
@@ -573,15 +627,14 @@ if section == "keywords":
         source_line()
     r, f = st.columns(2)
     r.markdown('<h2 class=\"pt-h2\">' + "Rising" + '</h2>', unsafe_allow_html=True)
-    r.dataframe(as_pct(frames.movers_table(rising), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
+    with r:
+        html_table(frames.movers_table(rising), pct=["early", "late", "delta"], signed=["delta"])
     f.markdown('<h2 class=\"pt-h2\">' + "Falling" + '</h2>', unsafe_allow_html=True)
-    f.dataframe(as_pct(frames.movers_table(falling), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
+    with f:
+        html_table(frames.movers_table(falling), pct=["early", "late", "delta"], signed=["delta"])
     h2("Emerging")
     emerging = kt.emerging(15, min_total=10)
-    st.dataframe(
-        as_pct(pd.DataFrame(emerging, columns=["term", "first seen", "early", "late"]), ["early", "late"]),
-        hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late"]),
-    )
+    html_table(pd.DataFrame(emerging, columns=["term", "first seen", "early", "late"]), pct=["early", "late"])
     note("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
     h2("Papers mentioning a term")
     pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
@@ -589,13 +642,10 @@ if section == "keywords":
     if pick:
         hits = cached_papers_with(path, mtime, years, pick, text_mode)
         note(f"{len(hits)} papers, newest and most cited first.")
-        st.dataframe(
-            pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits[:300]]),
-            hide_index=True, width="stretch", height=320, column_config={"doi": st.column_config.LinkColumn("doi")},
-        )
+        html_table(pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits]), links=["doi"], max_rows=60)
     h2("Top terms by year")
     top = kt.top_terms(40)
-    st.dataframe(as_pct(frames.keyword_table(kt, top), [str(y) for y in kt.years]), hide_index=True, width="stretch", column_config=pct_cols(None, [str(y) for y in kt.years]))
+    html_table(frames.keyword_table(kt, top), pct=[str(y) for y in kt.years])
     note("Early/late compare the pooled share of papers in the first vs. second half of the year range. Terms that almost always occur inside a longer phrase are folded into it.")
 
 if section == "topics":
@@ -609,8 +659,7 @@ if section == "topics":
     vl(charts.streamgraph(topic_rows, [t.label for t in ordered], tt.years), key="topics-stream")
     source_line()
     ttab = frames.topic_table(tt)
-    st.dataframe(as_pct(ttab, ["early", "late", "delta"]), hide_index=True, width="stretch",
-                 column_config={**pct_cols(None, ["early", "late", "delta"]), "terms": st.column_config.TextColumn(width="large"), "example": st.column_config.TextColumn(width="large")})
+    html_table(ttab, pct=["early", "late", "delta"], signed=["delta"])
     if method == "nmf":
         note("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
 
@@ -630,12 +679,14 @@ if section == "rankings":
         rows_r = [{**r, "name": country_name(r["name"])} for r in rows_r]
     vl(charts.ranked_bars(rows_r, value=sort_by), key=f"rank-{entity}-{sort_by}")
     source_line()
-    st.dataframe(table, hide_index=True, width="stretch")
+    html_table(table.assign(**({entity: table[entity].map(country_name)} if entity == "country" else {})))
     r, f = st.columns(2)
     r.markdown('<h2 class=\"pt-h2\">' + "Gaining share" + '</h2>', unsafe_allow_html=True)
-    r.dataframe(as_pct(frames.ranking_movers(rk, rk.movers(10, 10, rising=True)), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
+    with r:
+        html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=True)), pct=["early", "late", "delta"], signed=["delta"])
     f.markdown('<h2 class=\"pt-h2\">' + "Losing share" + '</h2>', unsafe_allow_html=True)
-    f.dataframe(as_pct(frames.ranking_movers(rk, rk.movers(10, 10, rising=False)), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
+    with f:
+        html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=False)), pct=["early", "late", "delta"], signed=["delta"])
     note("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
 
 if section == "compare":
@@ -662,31 +713,33 @@ if section == "compare":
         wide = df.pivot_table(index=["term", "conference"], columns="year", values="share").reset_index()
         wide.columns = [str(c) for c in wide.columns]
         ycols = [c for c in wide.columns if c.isdigit()]
-        st.dataframe(as_pct(wide, ycols), hide_index=True, width="stretch", column_config=pct_cols(None, ycols))
+        html_table(wide, pct=ycols)
         common = compare.shared_risers(trends, k=12)
         if common:
             h2("Rising everywhere")
-            st.dataframe(as_pct(pd.DataFrame([{"term": t, **{n: d for n, d in ds.items()}} for t, ds in common]), names), hide_index=True, width="stretch", column_config=pct_cols(None, names))
+            html_table(pd.DataFrame([{"term": t, **{n: d for n, d in ds.items()}} for t, ds in common]), pct=names, signed=names)
             note("Terms whose share rose in every selected conference, ranked by their smallest gain.")
     elif not others:
         st.info("Fetch another preset conference to enable comparison.")
 
 if section == "data":
     size_mb = corpus_path(slug).stat().st_size / 1e6
-    st.markdown(f"Corpus: `{corpus_path(slug)}` ({size_mb:.0f} MB) — one JSON record per paper (title, abstract, authorships, citations, OpenAlex topics).")
+    note(f'Corpus <span class="mono">{corpus_path(slug)}</span> ({size_mb:.0f} MB) — one JSON record per paper: title, abstract, authorships, citations, OpenAlex topics.')
     # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
-    st.download_button("Download corpus (JSONL)", lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl")
-    st.download_button(
-        "Download keyword table (CSV)",
+    d1, d2, d3, _ = st.columns([1, 1, 1, 2])
+    d1.download_button("Corpus (JSONL)", lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
+    d2.download_button(
+        "Keyword table (CSV)",
         lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract", (1, 3), extra_stop)),
-        file_name=f"{slug}_keywords.csv", mime="text/csv",
+        file_name=f"{slug}_keywords.csv", mime="text/csv", key="dl_keywords",
     )
-    st.download_button(
-        "Download institution ranking (CSV)",
+    d3.download_button(
+        "Institution ranking (CSV)",
         lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution")),
-        file_name=f"{slug}_institutions.csv", mime="text/csv",
+        file_name=f"{slug}_institutions.csv", mime="text/csv", key="dl_institutions",
     )
     listing = pd.DataFrame(
         [{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in recs]
     ).sort_values(["year", "citations"], ascending=[False, False])
-    st.dataframe(listing, hide_index=True, width="stretch", height=400, column_config={"doi": st.column_config.LinkColumn("doi")})
+    figure_head("All papers in the period", "Newest and most cited first; sortable, scrollable")
+    st.dataframe(listing, hide_index=True, width="stretch", height=420, column_config={"doi": st.column_config.LinkColumn("doi")})

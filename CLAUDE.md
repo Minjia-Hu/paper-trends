@@ -117,6 +117,14 @@ set the params and continue the run. Hide Streamlit chrome via `stToolbarActions
 the transparent toolbar swallows clicks on the masthead. `components.v1.html` is
 deprecated and did not auto-size; `st.iframe` measures srcdoc content itself.
 
+**Widget styling**: small tables are rendered by `html_table()` (`.pt-table`, the report's
+table anatomy); `st.dataframe` only for the long paper listing. Streamlit ≥ 1.6x builds
+widgets with react-aria (`data-rac`, `data-tag`, `stMultiSelectTagsContainer`), not
+baseweb, so CSS hooks are those attributes. `.streamlit/config.toml` sets
+`primaryColor` to ink (#1B1B1B) so sliders, toggles and focus rings stay quiet; red is
+reserved for our own HTML (current links, kicker, focus series). Verify styling changes
+with a Playwright screenshot — many selectors silently fail to match.
+
 **Streamlit app conventions**: all heavy work goes through `st.cache_data` keyed on
 (corpus path, mtime, params); fetches are serialized with a `threading.Lock` held in
 `st.cache_resource`. Charts follow the dataviz rules: categorical colours from
