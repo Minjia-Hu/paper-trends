@@ -154,8 +154,8 @@ def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, 
 
 
 @st.cache_data(show_spinner="Ranking…")
-def cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str):
-    return compute_ranking(filter_years(load_records(path, mtime), years), entity)
+def cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str, roll_up: bool = False):
+    return compute_ranking(filter_years(load_records(path, mtime), years), entity, roll_up=roll_up)
 
 
 # ---- charts ------------------------------------------------------------------------
@@ -355,11 +355,13 @@ with tab_topics:
         st.caption("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
 
 with tab_rank:
-    o1, o2, o3 = st.columns(3)
+    o1, o2, o3, o4 = st.columns([1, 1, 1, 1])
     entity = o1.selectbox("Rank", ENTITIES, format_func=str.title)
     sort_by = o2.selectbox("Sort by", ["papers", "citations"])
     top_n = o3.slider("Show top", 10, 50, 20)
-    rk = cached_ranking(path, mtime, years, entity)
+    roll_up = o4.toggle("Roll up to parent institutions", value=True, disabled=entity != "institution",
+                        help="Credit the top-level parent from OpenAlex's lineage: A*STAR instead of IME, Chinese Academy of Sciences instead of its institutes.")
+    rk = cached_ranking(path, mtime, years, entity, roll_up and entity == "institution")
     keys = rk.top(top_n, by=sort_by)
     table = frames.ranking_table(rk, keys)
     st.altair_chart(hbar_chart(table[[entity, sort_by]], entity, sort_by, f"Top {entity}s by {sort_by}"), width="stretch")

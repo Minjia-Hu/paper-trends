@@ -132,7 +132,9 @@ leaked in.
 
 **Record schema** (`to_record`): `id, doi, title, publication_year, abstract` (plain text
 rebuilt from `abstract_inverted_index`), `authorships` (slimmed: author id/name/position,
-institutions id/name/country, raw affiliation strings), `cited_by_count`, `type`,
+institutions id/name/country plus `root_id`/`root_name`/`root_country` = the top of
+OpenAlex's lineage, resolved after the fetch by `resolve_roots`; raw affiliation
+strings), `cited_by_count`, `type`,
 `source_id`, `source_name` (falls back to `raw_source_name`), `topics` (OpenAlex topic
 labels with subfield/field), `oa_keywords`.
 
@@ -184,10 +186,14 @@ so they are not good showcases; say so rather than fetching them.
   machine, 127.0.0.1:1082, which `requests` picks up from macOS system settings); the
   client retries both with backoff.
 - OpenAlex institution disambiguation is imperfect: the same lab can appear under two ids
-  ("Institute of Microelectronics" is both A*STAR IME and CAS IME), parents and children
-  both get credit (A*STAR and IME), and a few affiliations are mis-resolved. Treat the
-  institution ranking as indicative; `rank.py` falls back to raw affiliation strings only
-  when OpenAlex resolved nothing.
+  ("Institute of Microelectronics" is both A*STAR IME and CAS IME) and a few affiliations
+  are mis-resolved. `rank --roll-up` (the app's default for institutions) credits the
+  lineage root instead, which merges parents and children (A*STAR + IME, CAS + its
+  institutes, Samsung's subsidiaries); corpora fetched before lineage was stored fall back
+  to the affiliated institution. Roll-up can over-merge where OpenAlex's root is an
+  umbrella body: ETH Zurich and EPFL both roll into "Board of the Swiss Federal Institutes
+  of Technology". Leave that as is (it is what the data says) and let users toggle. `rank.py` uses raw affiliation strings only when OpenAlex
+  resolved nothing.
 - CS venues put "Code is available at https://github.com/..." in abstracts; `tokenize`
   strips URLs and the stopword list has that boilerplate (available, code, github, page).
 - OpenAlex mis-resolves some affiliations to look-alike entities (CVPR: "Shanghai AI

@@ -140,8 +140,11 @@ uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by author
 
 Papers and summed citations per entity, a per-year breakdown, and which institutions or
 countries are gaining or losing share. A paper counts once per institution (full counting).
-Institution names and ids come from OpenAlex's affiliation matching, which is good but not
-perfect; treat close ranks as ties.
+`--roll-up` credits top-level parents from OpenAlex's institution lineage (A*STAR rather
+than its IME institute, Chinese Academy of Sciences rather than each institute), which is
+what the app shows by default; occasionally that merges too much (ETH Zurich and EPFL share
+an umbrella board), so the app has a toggle. Institution ids come from OpenAlex's affiliation matching,
+which is good but not perfect; treat close ranks as ties.
 
 ### Compare conferences
 

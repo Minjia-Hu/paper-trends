@@ -56,9 +56,12 @@ def _pooled(rk: Ranking, key: str, years: list[int]) -> float:
     return hits / n if n else 0.0
 
 
-def entities_of(rec: Record, entity: str) -> dict[str, str]:
+def entities_of(rec: Record, entity: str, roll_up: bool = False) -> dict[str, str]:
     """Distinct entities (key -> name) credited on one paper. A paper counts once per entity
-    even if several co-authors share it (full counting)."""
+    even if several co-authors share it (full counting). With `roll_up`, institutions are
+    replaced by their top-level parent from OpenAlex's lineage (IME -> A*STAR, an institute
+    -> Chinese Academy of Sciences); corpora fetched without lineage fall back to the
+    institution itself."""
     found: dict[str, str] = {}
     for a in rec.get("authorships") or []:
         if entity == "author":
@@ -70,9 +73,12 @@ def entities_of(rec: Record, entity: str) -> dict[str, str]:
         if entity == "institution":
             if insts:
                 for inst in insts:
-                    key = inst.get("id") or inst.get("name")
+                    if roll_up and inst.get("root_id") and inst.get("root_name"):
+                        key, name = inst["root_id"], inst["root_name"]
+                    else:
+                        key, name = inst.get("id") or inst.get("name"), inst.get("name")
                     if key:
-                        found[key] = inst.get("name") or key
+                        found[key] = name or key
             else:
                 # no resolved institution: fall back to the raw affiliation string
                 for raw in a.get("raw_affiliations") or []:
@@ -84,7 +90,7 @@ def entities_of(rec: Record, entity: str) -> dict[str, str]:
     return found
 
 
-def compute_ranking(records: list[Record], entity: str) -> Ranking:
+def compute_ranking(records: list[Record], entity: str, roll_up: bool = False) -> Ranking:
     if entity not in ENTITIES:
         raise ValueError(f"entity must be one of {ENTITIES}")
     papers: Counter[int] = Counter()
@@ -96,7 +102,7 @@ def compute_ranking(records: list[Record], entity: str) -> Ranking:
         if not y:
             continue
         papers[y] += 1
-        for key, name in entities_of(r, entity).items():
+        for key, name in entities_of(r, entity, roll_up).items():
             names[key] = name
             by_year[key][y] += 1
             cites[key] += r.get("cited_by_count") or 0
@@ -153,14 +159,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--sort", choices=["papers", "citations"], default="papers")
     p.add_argument("--movers", type=int, default=10, help="rising/falling entities to show (0 to hide)")
     p.add_argument("--min-total", type=int, default=10, help="min papers for an entity to be a mover")
+    p.add_argument("--roll-up", action="store_true", help="credit top-level parent institutions (A*STAR instead of IME)")
     p.add_argument("--csv", type=Path)
     args = p.parse_args(argv)
 
     records = filter_years(read_jsonl(args.jsonl), parse_years(args.years))
-    rk = compute_ranking(records, args.by)
+    rk = compute_ranking(records, args.by, roll_up=args.roll_up)
     keys = rk.top(args.top, by=args.sort)
     n_credited = sum(1 for r in records if entities_of(r, args.by))
-    print(f"{len(records)} papers, {rk.years[0]}-{rk.years[-1]}; {n_credited} have {args.by} data; full counting\n")
+    mode = "parents rolled up" if args.roll_up else "as affiliated"
+    print(f"{len(records)} papers, {rk.years[0]}-{rk.years[-1]}; {n_credited} have {args.by} data; full counting, {mode}\n")
     print(render_table(rk, keys))
     if args.movers:
         print()

@@ -42,3 +42,21 @@ def test_ranking_totals_and_citations():
 def test_raw_affiliation_fallback():
     rec = _paper(2020, 0, ("eve", None, None))
     assert list(entities_of(rec, "institution").values()) == ["Unknown Lab"]
+
+
+def test_roll_up_uses_lineage_root():
+    rec = {
+        "publication_year": 2020, "cited_by_count": 1,
+        "authorships": [
+            {"author_id": "A1", "author_name": "a", "institutions": [
+                {"id": "I/IME", "name": "Institute of Microelectronics", "country": "SG", "root_id": "I/ASTAR", "root_name": "A*STAR", "root_country": "SG"}]},
+            {"author_id": "A2", "author_name": "b", "institutions": [
+                {"id": "I/ASTAR", "name": "A*STAR", "country": "SG", "root_id": "I/ASTAR", "root_name": "A*STAR", "root_country": "SG"}]},
+            {"author_id": "A3", "author_name": "c", "institutions": [
+                {"id": "I/OLD", "name": "Old corpus entry without lineage", "country": "US"}]},
+        ],
+    }
+    assert set(entities_of(rec, "institution").values()) == {"Institute of Microelectronics", "A*STAR", "Old corpus entry without lineage"}
+    assert set(entities_of(rec, "institution", roll_up=True).values()) == {"A*STAR", "Old corpus entry without lineage"}
+    rk = compute_ranking([rec], "institution", roll_up=True)
+    assert rk.total("I/ASTAR") == 1

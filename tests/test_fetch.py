@@ -58,3 +58,24 @@ def test_source_matching_prefers_exact_core_name():
     # no exact match -> fall back to substring matches
     hits = resolve_sources(FakeClient(), "Machine Learning and Applications")
     assert [h["id"] for h in hits] == ["S3"]
+
+
+def test_resolve_roots_looks_up_missing_parents():
+    from paper_trends.fetch import resolve_roots
+
+    class FakeClient:
+        calls = []
+        def get(self, path, params):
+            self.calls.append(params["filter"])
+            return {"results": [{"id": "https://openalex.org/I19820366", "display_name": "Chinese Academy of Sciences", "country_code": "CN"}]}
+
+    recs = [{"authorships": [{"institutions": [
+        {"id": "https://openalex.org/I4210165038", "name": "University of Chinese Academy of Sciences", "country": "CN", "root_id": "https://openalex.org/I19820366"},
+        {"id": "https://openalex.org/I1", "name": "Standalone Lab", "country": "US", "root_id": "https://openalex.org/I1"},
+    ]}]}]
+    client = FakeClient()
+    resolve_roots(client, recs, log=lambda m: None)
+    insts = recs[0]["authorships"][0]["institutions"]
+    assert insts[0]["root_name"] == "Chinese Academy of Sciences" and insts[0]["root_country"] == "CN"
+    assert insts[1]["root_name"] == "Standalone Lab"  # already known, no lookup needed
+    assert client.calls == ["ids.openalex:I19820366"]

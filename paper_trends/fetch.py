@@ -130,6 +130,8 @@ def slim_authorships(authorships: list[dict[str, Any]] | None) -> list[dict[str,
                         "id": inst.get("id"),
                         "name": inst.get("display_name"),
                         "country": inst.get("country_code"),
+                        # OpenAlex lineage: [top-level parent, ..., this institution]
+                        "root_id": (inst.get("lineage") or [inst.get("id")])[0],
                     }
                     for inst in a.get("institutions") or []
                 ],
@@ -137,6 +139,31 @@ def slim_authorships(authorships: list[dict[str, Any]] | None) -> list[dict[str,
             }
         )
     return out
+
+
+def resolve_roots(client: OpenAlex, records: list[dict[str, Any]], log=print) -> None:
+    """Fill `root_name` / `root_country` on every institution entry. Names of parents that
+    never appear as a direct affiliation are looked up in batches of 50."""
+    known: dict[str, tuple[str, str | None]] = {}
+    for r in records:
+        for a in r.get("authorships") or []:
+            for inst in a.get("institutions") or []:
+                if inst.get("id") and inst.get("name"):
+                    known[inst["id"]] = (inst["name"], inst.get("country"))
+    missing = sorted({inst["root_id"] for r in records for a in r.get("authorships") or [] for inst in a.get("institutions") or [] if inst.get("root_id") and inst["root_id"] not in known})
+    if missing:
+        log(f"[institutions] resolving {len(missing)} parent institutions")
+    for i in range(0, len(missing), OR_LIMIT):
+        ids = "|".join(m.rsplit("/", 1)[-1] for m in missing[i : i + OR_LIMIT])
+        page = client.get("institutions", {"filter": f"ids.openalex:{ids}", "select": "id,display_name,country_code", "per-page": OR_LIMIT})
+        for inst in page.get("results", []):
+            known[inst["id"]] = (inst["display_name"], inst.get("country_code"))
+    for r in records:
+        for a in r.get("authorships") or []:
+            for inst in a.get("institutions") or []:
+                root = inst.get("root_id") or inst.get("id")
+                name, country = known.get(root, (inst.get("name"), inst.get("country")))
+                inst["root_name"], inst["root_country"] = name, country
 
 
 def to_record(work: dict[str, Any]) -> dict[str, Any]:
@@ -211,6 +238,7 @@ def fetch_conference(
         log(f"[works] +{len(seen) - n_before:>5} new  (filter: {f[:90]}{'...' if len(f) > 90 else ''})")
     records = sorted(seen.values(), key=lambda r: (r["publication_year"] or 0, r["id"]))
     log(f"[works] {len(records)} unique works total; {skipped} front-matter items skipped; {other_venue} other-venue DOIs ignored")
+    resolve_roots(client, records, log=log)
     return records
 
 
