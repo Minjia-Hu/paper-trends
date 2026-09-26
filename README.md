@@ -100,8 +100,13 @@ high performance computing    2.2%    6.4%   +4.2%      flip chip               
 cu cu                         1.9%    5.8%   +3.9%      wafer level packaging         6.3%    3.9%   -2.4%
 ```
 
+It also lists **emerging** terms — near-absent in the first half of the range, at least
+1 % of papers in the second half — which surfaces new vocabulary rather than already-common
+words: for ECTC that is co-packaged optics, chiplet integration, CPO, 6G, bridge die.
+
 Options: `--ngram 1-3` (default), `--text title` to ignore abstracts, `--top N`, `--movers N`,
-`--min-total N`, `--stopwords file` for domain-specific noise words, `--keep-subphrases`.
+`--emerging N`, `--min-total N`, `--stopwords file` for domain-specific noise words,
+`--keep-subphrases`.
 
 ### Topic evolution
 
@@ -158,7 +163,8 @@ machine learning           +1.8%      +0.8%      +2.0%
 power delivery             +1.6%      +0.7%      +0.8%
 ```
 
-The app has a **Compare** tab that plots the same terms across any fetched conferences.
+The app has a **Compare** tab that plots the same terms across any fetched conferences,
+and the Keywords tab lists the papers behind any term.
 
 ### Another venue
 

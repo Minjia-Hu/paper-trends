@@ -23,6 +23,7 @@ STOPWORDS: frozenset[str] = frozenset(
     however therefore thus moreover furthermore respectively well due able
     achieve achieved achieves obtained obtain compared comparison order
     developed discussed measured fabricated applied enabling extensive extensively
+    insight insights leverage leverages leveraging leveraged
     available publicly code codes github https http www url urls com org page pages
     um mm nm cm ghz mhz khz hz db mw kw ma mv wt vol sec min hr
     first two three one

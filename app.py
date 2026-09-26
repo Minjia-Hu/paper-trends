@@ -12,7 +12,7 @@ import streamlit as st
 
 from paper_trends import compare, frames, viz
 from paper_trends.fetch import coverage_table, fetch_conference
-from paper_trends.keywords import compute_trends
+from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
@@ -138,6 +138,11 @@ def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, 
     recs = filter_years(load_records(path, mtime), years)
     stop = load_stopwords(extra_stop.split())
     return compute_trends(recs, text=text, n_min=ngram[0], n_max=ngram[1], stopwords=stop)
+
+
+@st.cache_data(show_spinner="Searching papers…")
+def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str):
+    return papers_with(filter_years(load_records(path, mtime), years), term, text)
 
 
 @st.cache_data(show_spinner="Fitting topic model…")
@@ -315,6 +320,23 @@ with tab_kw:
     r.dataframe(as_pct(frames.movers_table(rising), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
     f.subheader("Falling")
     f.dataframe(as_pct(frames.movers_table(falling), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
+    st.subheader("Emerging")
+    emerging = kt.emerging(15, min_total=10)
+    st.dataframe(
+        as_pct(pd.DataFrame(emerging, columns=["term", "first seen", "early", "late"]), ["early", "late"]),
+        hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late"]),
+    )
+    st.caption("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
+    st.subheader("Papers mentioning a term")
+    pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
+    pick = st.selectbox("Term", pick_options, key="kw_pick") if pick_options else None
+    if pick:
+        hits = cached_papers_with(path, mtime, years, pick, text_mode)
+        st.caption(f"{len(hits)} papers, newest and most cited first.")
+        st.dataframe(
+            pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits[:300]]),
+            hide_index=True, width="stretch", height=320, column_config={"doi": st.column_config.LinkColumn("doi")},
+        )
     st.subheader("Top terms by year")
     top = kt.top_terms(40)
     st.dataframe(as_pct(frames.keyword_table(kt, top), [str(y) for y in kt.years]), hide_index=True, width="stretch", column_config=pct_cols(None, [str(y) for y in kt.years]))

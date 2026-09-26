@@ -57,6 +57,23 @@ class KeywordTrends:
     def falling(self, k: int, min_total: int = 10) -> list[tuple[str, float, float, float]]:
         return self._by_momentum(k, min_total, reverse=False)
 
+    def emerging(
+        self, k: int, min_total: int = 10, max_early: float = 0.002, min_late: float = 0.01
+    ) -> list[tuple[str, int, float, float]]:
+        """Terms that were (almost) absent in the early half and are established now:
+        (term, first year seen, early share, late share), ranked by late share.
+        Unlike `rising`, this is not dominated by already-common words."""
+        rows = []
+        for t in self.candidates():
+            if self.total(t) < min_total:
+                continue
+            e, l, _ = self.momentum(t)
+            if e <= max_early and l >= min_late:
+                first = min(y for y, n in self.doc_freq[t].items() if n)
+                rows.append((t, first, e, l))
+        rows.sort(key=lambda r: (-r[3], r[0]))
+        return rows[:k]
+
     def _by_momentum(self, k: int, min_total: int, reverse: bool):
         rows = []
         for t in self.candidates():
@@ -95,6 +112,21 @@ def _pooled_share(kt: KeywordTrends, term: str, years: list[int]) -> float:
     n = sum(kt.papers_per_year.get(y, 0) for y in years)
     hits = sum(kt.doc_freq[term].get(y, 0) for y in years)
     return hits / n if n else 0.0
+
+
+def papers_with(records: list[Record], term: str, text: str = "title+abstract") -> list[Record]:
+    """Papers whose title/abstract contains `term` as a whole phrase (same tokenization as
+    the counts, so the result matches the document frequency)."""
+    from .text import tokenize
+
+    needle = " " + " ".join(tokenize(term)) + " "
+    hits = []
+    for r in records:
+        hay = " " + " ".join(tokenize(build_text(r, text))) + " "
+        if needle in hay:
+            hits.append(r)
+    hits.sort(key=lambda r: (-(r.get("publication_year") or 0), -(r.get("cited_by_count") or 0)))
+    return hits
 
 
 def build_text(rec: Record, mode: str) -> str:
@@ -151,6 +183,14 @@ def render_top_table(kt: KeywordTrends, terms: list[str], as_share: bool = True)
     return "\n".join(lines)
 
 
+def render_emerging(rows: list[tuple[str, int, float, float]], title: str) -> str:
+    w = max((len(r[0]) for r in rows), default=10)
+    lines = [title, f"{'term':<{w}} {'first':>6} {'early':>7} {'late':>7}", "-" * (w + 23)]
+    for t, first, e, l in rows:
+        lines.append(f"{t:<{w}} {first:>6} {e:>7.1%} {l:>7.1%}")
+    return "\n".join(lines)
+
+
 def render_momentum(rows: list[tuple[str, float, float, float]], title: str) -> str:
     w = max((len(r[0]) for r in rows), default=10)
     lines = [title, f"{'term':<{w}} {'early':>7} {'late':>7} {'delta':>7}", "-" * (w + 24)]
@@ -182,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ngram", default="1-3", help="n-gram range, default 1-3")
     p.add_argument("--top", type=int, default=30, help="how many top terms to show")
     p.add_argument("--movers", type=int, default=15, help="how many rising/falling terms to show")
+    p.add_argument("--emerging", type=int, default=15, help="how many emerging terms (absent early, established late) to show")
     p.add_argument("--min-total", type=int, default=10, help="min papers a term must appear in to be a mover")
     p.add_argument("--stopwords", type=Path, help="extra stopwords file, one term per line")
     p.add_argument("--counts", action="store_true", help="show raw paper counts instead of share")
@@ -211,6 +252,9 @@ def main(argv: list[str] | None = None) -> int:
     print(render_momentum(kt.rising(args.movers, args.min_total), f"RISING (share of papers, early vs late half)"))
     print()
     print(render_momentum(kt.falling(args.movers, args.min_total), f"FALLING (share of papers, early vs late half)"))
+    if args.emerging:
+        print()
+        print(render_emerging(kt.emerging(args.emerging, args.min_total), "EMERGING (near-absent in the early half, >= 1% of papers in the late half)"))
     if args.csv:
         write_csv(kt, top, args.csv)
         print(f"\n[csv] wrote {args.csv}", file=sys.stderr)

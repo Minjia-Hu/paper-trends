@@ -46,3 +46,18 @@ def test_subphrases_collapse_into_longer_terms():
     assert "bonding" in kept               # 100/400 < 0.8 -> stands on its own
     assert "intelligence ai" not in kept   # 28/30 >= 0.8 -> absorbed by the 3-gram
     assert "artificial intelligence ai" in kept and "ai" in kept
+
+
+def test_emerging_and_papers_with():
+    from paper_trends.keywords import papers_with
+
+    recs = [_rec(2016, "solder joints")] * 5 + [_rec(2017, "solder joints")] * 5
+    recs += [_rec(2020, "chiplet integration")] * 3 + [_rec(2021, "chiplet integration"), _rec(2021, "solder joints")]
+    kt = compute_trends(recs, text="title", n_min=1, n_max=2, min_total=1)
+    em = kt.emerging(5, min_total=1)
+    assert [t for t, *_ in em][:1] == ["chiplet integration"] or [t for t, *_ in em][:1] == ["chiplet"]
+    assert all(first == 2020 for _, first, _, _ in em)
+    assert "solder joints" not in [t for t, *_ in em]  # common early -> not emerging
+    hits = papers_with(recs, "Chiplet Integration", text="title")
+    assert len(hits) == 4 and hits[0]["publication_year"] == 2021
+    assert papers_with(recs, "integration chiplet", text="title") == []  # phrase order matters
