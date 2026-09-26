@@ -102,7 +102,11 @@ for a selected conference a controls row of plain text links (period, Report/Exp
 Options — all `?param=` links, no widgets: Streamlit widgets cannot be restyled enough to
 match the page) and either
 the embedded report (`st.iframe(render_page(..., embedded=True), height="content")`) or the
-tabbed Explore dashboard. Selection lives in the URL: `?conference=<preset slug>` or
+Explore view — the interactive side (papers behind a term, comparisons, tables) restyled to
+the report's voice: HTML header (`.pt-head`), sections as `?section=` links instead of tabs
+(only the chosen section is computed), `h2()`/`note()` helpers for headings and captions,
+and the Altair theme in `viz.py` built from the report tokens (grey bars with the top three
+in red, dashed grid, IBM Plex Sans). Selection lives in the URL: `?conference=<preset slug>` or
 `?q=<custom name>&prefix=...`, plus `period=10|5|all|custom`, `view=explore`, `options=1`;
 nothing selected = the native home page (`home_page()`). The only widgets are the search
 box, the custom-period slider and the Options form (stopwords persist in
