@@ -114,14 +114,14 @@
 
 <footer class="about" id="about">
   <h2>About the data</h2>
-  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrase shares are document frequencies: the fraction of that year's papers mentioning a phrase at least once in the title or abstract. “Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
+  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrase shares are document frequencies: the fraction of that year's papers mentioning a phrase at least once in the title or abstract. “Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
   <p>Topics come from non-negative matrix factorisation of TF-IDF vectors with a fixed seed, so they are reproducible; labels are the topic's top terms. Institution names and parent relationships are OpenAlex's, which are good but not perfect.</p>
   <details><summary>Coverage by year</summary>
     <table><thead><tr><th>Year</th><th class="num">Papers</th><th class="num">With abstract</th></tr></thead><tbody>
     {% for row in r.papers_per_year %}<tr><td>{{ row.year }}</td><td class="num">{{ row.papers }}</td><td class="num">{{ "%.0f"|format(row.abstracts / row.papers * 100) }}%</td></tr>{% endfor %}
     </tbody></table>
   </details>
-  <p style="margin-top: 20px">Generated {{ r.generated }} by <a href="https://github.com/Minjia-Hu/paper-trends">paper-trends</a>.</p>
+  <p style="margin-top: 20px">Generated {{ r.generated }} by <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a>.</p>
 </footer>
 </main>
 

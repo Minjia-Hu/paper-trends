@@ -16,7 +16,7 @@ from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report
-from paper_trends.report.render import FULL, SHORT, nav_for, render_index, render_page
+from paper_trends.report.render import FULL, nav_for, render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import compute_nmf, compute_openalex
@@ -77,7 +77,9 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
     #MainMenu, [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
     [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapseButton"] button { color: #5C5C5C; }
-    header[data-testid="stHeader"] { background: transparent; height: 2.6rem; }
+    header[data-testid="stHeader"] { background: transparent; height: 2.6rem; pointer-events: none; }
+    [data-testid="stToolbar"] { pointer-events: none; }
+    [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapseButton"] { pointer-events: auto; }
     .block-container { padding-top: 0.2rem; padding-bottom: 0; max-width: 1240px; }
     section[data-testid="stSidebar"] { border-right: 1px solid #E6E3DC; }
     section[data-testid="stSidebar"] h3 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 1.35rem; letter-spacing: -0.01em; margin-bottom: 0; }
@@ -90,9 +92,42 @@ st.markdown(
     .pt-masthead a { color: inherit; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
     .pt-masthead a:hover { color: #E3120B; }
     .pt-masthead a.current { color: #E3120B; border-bottom-color: #E3120B; }
+    /* home page, rendered by Streamlit so its links can change the query string */
+    .pt-home { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #1B1B1B; padding: 8px 24px 40px; max-width: 1120px; }
+    .pt-home .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin: 12px 0 14px; }
+    .pt-home h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; }
+    .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 28px; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
+    .pt-home h2 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
+    .pt-home ul { list-style: none; margin: 0; padding: 0; max-width: 58ch; font-family: Newsreader, Georgia, serif; font-size: 22px; line-height: 1.45; }
+    .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
+    .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
+    .pt-home li a { color: #1B1B1B; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
+    .pt-home li a:hover { border-bottom-color: #E3120B; }
+    .pt-home li a em { font-style: normal; color: #E3120B; font-weight: 600; }
+    .pt-home li .n { color: #8A877F; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 14px; margin-left: 8px; }
+    .pt-home p { font-size: 16px; color: #5C5C5C; max-width: 66ch; }
     </style>""",
     unsafe_allow_html=True,
 )
+
+
+def home_page(available: dict[str, dict]) -> str:
+    parts = [
+        '<div class="pt-home"><div class="kicker">Publication trends for academic conferences</div>',
+        "<h1>What a field talks about, year by year</h1>",
+        '<p class="lede">Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes. Pick a conference.</p>',
+    ]
+    for group, items in nav_for(available):
+        parts.append(f"<h2>{group}</h2><ul>")
+        for slug_, short, name, n in items:
+            parts.append(f'<li><a href="?conference={slug_}" target="_self"><em>{short}</em> — {name}</a><span class="n">{n:,} papers</span></li>')
+        parts.append("</ul>")
+    parts.append(
+        "<h2>Your own conference</h2><p>Open <b>Settings</b> (the arrow at the top left), choose “Custom…”, type the conference name as OpenAlex "
+        "spells it and, if you know it, its DOI prefix, then fetch. A page like the ones above appears in a minute or two; the data stays cached on this machine. "
+        "Switch Settings → View to <b>Explore</b> for tables, the papers behind any term, and cross-conference comparison.</p></div>"
+    )
+    return "".join(parts)
 
 
 def masthead(available: dict[str, dict], current: str) -> str:
@@ -145,11 +180,6 @@ def available_corpora() -> dict[str, dict]:
         if cp.exists():
             out[cfg["slug"]] = {"name": cfg["query"] if cfg["slug"] not in FULL else FULL[cfg["slug"]], "n_papers": corpus_size(str(cp), cp.stat().st_mtime)}
     return out
-
-
-@st.cache_data(show_spinner=False)
-def cached_index_html(signature: tuple) -> str:
-    return render_index(nav_for({k: dict(v) for k, v in signature}), embedded=True, app_links=True)
 
 
 def records_for(slug: str) -> list[dict] | None:
@@ -349,7 +379,7 @@ st.markdown(masthead(available, slug), unsafe_allow_html=True)
 if not records:
     if slug:  # a conference was chosen but has no data yet: say so on the page, not just in the drawer
         st.markdown(f"#### No local data for “{query or slug}” yet\nOpen Settings (top left) and press **Fetch from OpenAlex**.")
-    st.iframe(cached_index_html(tuple(sorted((k, tuple(sorted(v.items()))) for k, v in available.items()))), height="content")
+    st.markdown(home_page(available), unsafe_allow_html=True)
     st.stop()
 
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime
