@@ -74,13 +74,14 @@ def trend_line(rows: list[dict], value: str = "papers", fmt: str = ",d", height:
     vmax = max(r[value] for r in rows)
     spec = _base(height, {"left": 20, "right": 24, "top": 14, "bottom": 4})
     spec["data"] = {"values": rows}
-    x = {"field": "year", "type": "quantitative", "axis": {"format": "d", "title": None, "values": [first, last]}, "scale": {"domain": [first, last], "nice": False}}
-    # no y axis: the first and last values are written on the line itself (sparkline style)
-    y = {"field": value, "type": "quantitative", "axis": None, "scale": {"domain": [0, vmax * 1.3]}}
+    x = {"field": "year", "type": "quantitative", "axis": {"format": "d", "title": None, "values": years, "domain": True, "domainColor": GRID}, "scale": {"domain": [first - 0.3, last + 0.3], "nice": False}}
+    # no y axis: the first and last values are written on the line; a dot marks every year
+    y = {"field": value, "type": "quantitative", "axis": None, "scale": {"domain": [0, vmax * 1.25]}}
     ends = {"filter": f"datum.year == {first} || datum.year == {last}"}
     spec["layer"] = [
-        {"mark": {"type": "line", "color": color, "strokeWidth": 2.2, "interpolate": "monotone"}, "encoding": {"x": x, "y": y}},
-        {"mark": {"type": "point", "filled": True, "color": color, "size": 55}, "transform": [ends], "encoding": {"x": x, "y": y}},
+        {"mark": {"type": "line", "color": color, "strokeWidth": 2, "interpolate": "monotone"}, "encoding": {"x": x, "y": y}},
+        {"mark": {"type": "point", "filled": True, "color": color, "size": 28}, "encoding": {"x": x, "y": y}},
+        {"mark": {"type": "point", "filled": True, "color": color, "size": 60}, "transform": [ends], "encoding": {"x": x, "y": y}},
         {"mark": {"type": "text", "dy": -12, "color": color, "fontWeight": 600, "fontSize": 12}, "transform": [ends],
          "encoding": {"x": x, "y": y, "text": {"field": value, "format": fmt}}},
         {"mark": {"type": "rule", "color": "transparent", "strokeWidth": 14}, "encoding": {"x": x, "tooltip": [{"field": "year"}, {"field": value, "format": fmt}]}},

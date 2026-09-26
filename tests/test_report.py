@@ -25,7 +25,7 @@ def _corpus():
 
 
 def test_growth_sentence():
-    assert growth_sentence({2016: 100, 2017: 100, 2018: 100, 2019: 100}) == "output has been flat"
+    assert growth_sentence({2016: 100, 2017: 100, 2018: 100, 2019: 100}) == "output has been flat, between 100 and 100 papers a year"
     assert "growing" in growth_sentence({2016: 100, 2017: 110, 2018: 130, 2019: 150})
 
 

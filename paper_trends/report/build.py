@@ -75,10 +75,11 @@ def growth_sentence(papers: dict[int, int]) -> str:
     last = sum(papers[y] for y in ys[-2:]) / 2
     n = ys[-1] - ys[0] - 1
     rate = (last / first) ** (1 / n) - 1 if first and n > 0 else 0.0
+    lo, hi = min(papers.values()), max(papers.values())
     if abs(rate) < 0.01:
-        return "output has been flat"
+        return f"output has been flat, between {lo:,} and {hi:,} papers a year"
     verb = "growing" if rate > 0 else "shrinking"
-    return f"output {verb} about {abs(rate):.0%} a year"
+    return f"output {verb} about {abs(rate):.0%} a year, from {papers[ys[0]]:,} to {papers[ys[-1]]:,} papers"
 
 
 def build_report(records: list[Record], *, name: str, slug: str, years: tuple[int, int] | None = None,
