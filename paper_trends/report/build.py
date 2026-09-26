@@ -20,6 +20,11 @@ COUNTRY = {
     "DK": "Denmark", "PL": "Poland", "IE": "Ireland", "NO": "Norway", "CZ": "Czechia", "BR": "Brazil", "RU": "Russia", "MY": "Malaysia",
     "TH": "Thailand", "PT": "Portugal", "GR": "Greece", "TR": "Türkiye", "SA": "Saudi Arabia", "AE": "United Arab Emirates", "MX": "Mexico",
     "VN": "Vietnam", "ID": "Indonesia", "PH": "Philippines", "EG": "Egypt", "ZA": "South Africa", "AR": "Argentina", "HU": "Hungary",
+    "PK": "Pakistan", "IR": "Iran", "BD": "Bangladesh", "LK": "Sri Lanka", "NG": "Nigeria", "KE": "Kenya", "CL": "Chile", "CO": "Colombia",
+    "PE": "Peru", "RO": "Romania", "UA": "Ukraine", "BG": "Bulgaria", "SK": "Slovakia", "SI": "Slovenia", "HR": "Croatia", "RS": "Serbia",
+    "LT": "Lithuania", "LV": "Latvia", "EE": "Estonia", "LU": "Luxembourg", "IS": "Iceland", "NZ": "New Zealand", "QA": "Qatar",
+    "KW": "Kuwait", "JO": "Jordan", "MA": "Morocco", "TN": "Tunisia", "DZ": "Algeria", "ET": "Ethiopia", "GH": "Ghana", "MO": "Macao",
+    "KZ": "Kazakhstan", "UZ": "Uzbekistan", "NP": "Nepal", "CY": "Cyprus", "MT": "Malta", "IQ": "Iraq", "LB": "Lebanon", "OM": "Oman",
 }
 
 
