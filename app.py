@@ -91,11 +91,27 @@ st.markdown(
     [data-testid="stExpandSidebarButton"] { display: none !important; }
     .st-key-controls_search { padding: 10px 24px 0; }
     .st-key-controls_row { padding: 6px 24px 0; }
-    .st-key-controls_search [data-testid="stTextInput"] input { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 14px; }
-    .st-key-controls_search [data-baseweb="input"], .st-key-controls_search [data-baseweb="base-input"] { background: #FFFFFF; border-color: #E6E3DC; }
-    .st-key-controls_search [data-testid="stPopover"] button { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; background: #FFFFFF; border-color: #E6E3DC; }
-    .st-key-controls_row [data-testid="stPills"] button, .st-key-controls_row [data-testid="stRadio"] label { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; }
-    .st-key-controls_row [data-testid="stPills"] button { background: #FFFFFF; border-color: #E6E3DC; }
+    /* search box: white, hairline border, red underline on focus */
+    .st-key-controls_search div[data-baseweb="input"], .st-key-controls_search div[data-baseweb="input"] > div, .st-key-controls_search div[data-baseweb="base-input"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; }
+    .st-key-controls_search div[data-baseweb="input"]:focus-within { border-color: #1B1B1B !important; box-shadow: none !important; }
+    .st-key-controls_search input { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
+    /* buttons: ink, square corners, quiet */
+    .st-key-controls_search [data-testid="stPopover"] button, .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; box-shadow: none !important; }
+    .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { background: #1B1B1B !important; color: #FFFFFF !important; border-color: #1B1B1B !important; padding: 6px 18px !important; letter-spacing: 0.02em; }
+    .st-key-fetch_btn button:hover, .st-key-fetch_prefix_btn button:hover { background: #E3120B !important; border-color: #E3120B !important; }
+    .st-key-controls_search [data-testid="stPopover"] button:hover { border-color: #1B1B1B !important; }
+    /* period pills and view radio */
+    .st-key-controls_row [data-testid="stPills"] button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; background: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 999px !important; color: #5C5C5C !important; }
+    .st-key-controls_row [data-testid="stPills"] button[aria-checked="true"], .st-key-controls_row [data-testid="stPills"] button[data-selected="true"] { color: #E3120B !important; border-color: #E3120B !important; }
+    .st-key-controls_row [data-testid="stRadio"] label { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; }
+    /* resolution card */
+    .pt-found { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
+    .pt-found .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 4px; }
+    .pt-found .name { font-family: Newsreader, Georgia, serif; font-size: 26px; font-weight: 500; line-height: 1.15; color: #1B1B1B; letter-spacing: -0.01em; }
+    .pt-found .meta { color: #5C5C5C; font-size: 14px; margin-top: 6px; }
+    .pt-found .warn { color: #1B1B1B; font-size: 14px; margin-top: 8px; }
+    .pt-found .warn b { color: #E3120B; }
+    .st-key-fetch_row { padding: 10px 24px 4px 45px; }
     .pt-note { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; padding: 4px 24px 0; }
     /* home page, rendered by Streamlit so its links can change the query string */
     .pt-home { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #1B1B1B; padding: 8px 24px 40px; max-width: 1120px; }
@@ -393,23 +409,27 @@ if opt_refresh and slug:
 
 if not records:
     if slug and custom_q and not resolved:
-        st.markdown(f'<div class="pt-note">Nothing in OpenAlex matches <b>{custom_q}</b>. Try the full name as OpenAlex spells it, or add the venue\'s DOI prefix under Options and fetch anyway.</div>', unsafe_allow_html=True)
-        if doi_prefixes and st.button("Fetch by DOI prefix", type="primary"):
-            run_fetch(query, doi_prefixes, slug)
+        st.markdown(f'<div class="pt-found"><div class="kicker">Not found</div><div class="name">{custom_q}</div>'
+                    f'<div class="meta">Nothing in OpenAlex matches this. Try the full name as OpenAlex spells it, or add the venue\'s DOI prefix under Options and fetch anyway.</div></div>', unsafe_allow_html=True)
+        if doi_prefixes:
+            with st.container(key="fetch_row"):
+                if st.button("Fetch by DOI prefix", key="fetch_prefix_btn"):
+                    run_fetch(query, doi_prefixes, slug)
     elif slug:
-        found = ""
         if custom_q and resolved:
-            found = (f"Found <b>{resolved['name']}</b> — about {resolved['n_papers']:,} papers since 2016"
-                     + (f", DOI prefix {' '.join(resolved['doi_prefixes'])}" if resolved.get("doi_prefixes") else "") + ".")
+            meta = f"About {resolved['n_papers']:,} papers since 2016" + (f" · DOI prefix {' '.join(resolved['doi_prefixes'])}" if resolved.get("doi_prefixes") else "") + " · not on this machine yet"
+            warn = ""
             if resolved.get("ambiguous"):
-                found += " <b>Caution:</b> this DOI prefix is shared by several venues: " + "; ".join(f"{n} ({sh:.0%})" for n, sh in resolved["candidates"]) + "."
+                warn = '<div class="warn"><b>Shared prefix.</b> This DOI prefix is used by several venues: ' + "; ".join(f"{n} ({sh:.0%})" for n, sh in resolved["candidates"]) + ". The fetch will include all of them.</div>"
+            card = f'<div class="pt-found"><div class="kicker">Found in OpenAlex</div><div class="name">{resolved["name"]}</div><div class="meta">{meta}</div>{warn}</div>'
         else:
-            found = f"<b>{query}</b> is not on this machine yet."
-        st.markdown(f'<div class="pt-note">{found}</div>', unsafe_allow_html=True)
-        b1, b2 = st.columns([1, 5])
-        if b1.button("Fetch from OpenAlex", type="primary"):
-            run_fetch(query, doi_prefixes, slug)
-        b2.caption("Takes one to fifteen minutes depending on the venue's size; the data is then cached on this machine.")
+            card = f'<div class="pt-found"><div class="kicker">Not fetched yet</div><div class="name">{query}</div><div class="meta">Not on this machine yet.</div></div>'
+        st.markdown(card, unsafe_allow_html=True)
+        with st.container(key="fetch_row"):
+            b1, b2 = st.columns([1, 4])
+            if b1.button("Fetch from OpenAlex", key="fetch_btn"):
+                run_fetch(query, doi_prefixes, slug)
+            b2.markdown('<div style="font-family: IBM Plex Sans, system-ui, sans-serif; color: #8A877F; font-size: 13px; padding-top: 8px">One to fifteen minutes depending on the venue\'s size; the data is then cached on this machine.</div>', unsafe_allow_html=True)
     st.markdown(home_page(available), unsafe_allow_html=True)
     st.stop()
 
