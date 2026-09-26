@@ -39,7 +39,7 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
     at.run()
     assert not at.exception, at.exception
     assert at.title[0].value.startswith("Electronic Components")
-    assert len(at.tabs) == 5
+    assert len(at.tabs) == 6
     assert any("Rising" in h.value for h in at.subheader)
 
 

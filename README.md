@@ -113,6 +113,68 @@ Fits an NMF topic model on titles + abstracts (reproducible, no external models)
 each paper to its dominant topic and shows the topic mix per year with example papers:
 
 ```
+topic                                  papers    16    17    18    19    20    21    22    23    24    25   delta
+hybrid bonding / wafer / cu cu            517   10%    9%    7%   10%   12%   14%   16%   19%   26%   18%   +9.1%
+model / reliability / stress              505   17%   16%   17%   13%   13%   14%   13%   13%   11%   11%   -3.0%
+fan / wafer level / fowlp                 394    9%   16%   15%   14%   13%   11%   10%    9%    7%    5%   -4.7%
+dielectric / glass / layer                392   11%    9%   12%   10%   10%   11%   11%    9%   10%   14%   +0.7%
+heat / cooling / temperature              371    9%   10%    9%   11%    8%   11%   12%   11%    7%   14%   +1.5%
+power / design / interposer               360   11%    7%    6%   10%    8%   10%   10%   10%   11%   16%   +2.9%
+sn / joint / solder joints                346   13%   10%    9%   13%   12%    8%    6%    7%    9%    7%   -4.0%
+```
+
+`--method openalex` uses OpenAlex's own topic labels instead (coarser, but no fitting).
+
+### Institution, author and country rankings
+
+```bash
+uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by institution --top 20
+uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by country
+uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by author --sort citations
+```
+
+Papers and summed citations per entity, a per-year breakdown, and which institutions or
+countries are gaining or losing share. A paper counts once per institution (full counting).
+Institution names and ids come from OpenAlex's affiliation matching, which is good but not
+perfect; treat close ranks as ties.
+
+### Compare conferences
+
+```bash
+uv run python -m paper_trends compare data/ectc.jsonl data/iedm.jsonl data/isscc.jsonl --years 2016-2025 --ngram 2-3
+uv run python -m paper_trends compare data/ectc.jsonl data/iedm.jsonl --term "hybrid bonding" --term chiplet
+```
+
+Without `--term` it lists phrases rising in *every* corpus. Packaging (ECTC), devices
+(IEDM) and circuits (ISSCC) agree on what is new:
+
+```
+term                        ectc       iedm      isscc
+artificial intelligence    +3.2%      +1.6%      +1.9%
+high performance           +4.2%      +3.5%      +1.4%
+high density               +2.4%      +3.8%      +1.0%
+energy efficiency          +0.8%      +3.0%      +3.0%
+machine learning           +1.8%      +0.8%      +2.0%
+power delivery             +1.6%      +0.7%      +0.8%
+```
+
+The app has a **Compare** tab that plots the same terms across any fetched conferences.
+
+### Another venue
+
+```bash
+uv run python -m paper_trends fetch "International Solid-State Circuits Conference" \
+    --years 2016-2026 --name isscc
+```
+
+Check the `[sources]` lines printed first to confirm only the intended venue matched.
+
+### Not just semiconductors
+
+The same pipeline on **CVPR 2016–2025** (16.9k papers, workshops excluded, 99.8 % with
+abstracts) recovers the field's history without any vision-specific configuration:
+
+```
 topic                                    papers    16    17    18    19    20    21    22    23    24    25   delta
 generation / diffusion models / text       1936    0%    3%    5%    5%    6%    8%    6%   10%   21%   23%  +10.0%
 visual / text / vision language            2029    6%    8%    7%    6%    6%    6%    8%   12%   18%   23%   +8.1%
@@ -163,6 +225,29 @@ merged and de-duplicated. The prefix must be followed by the conference number a
 dot, so `10.1109/isca` does not pull in ISCAS papers, and a venue whose prefix changed over
 the years (VLSI Symposium has used ten) takes several `--doi-prefix` flags.
 
+## How it works
+
+1. **Resolve the venue.** OpenAlex `sources` are searched by name and kept only when
+   the name, stripped of year/publisher decoration, equals the query. IEEE-style DOI
+   prefixes (`10.1109/ectc`) are used as a second route, with a boundary check so
+   `isca` never matches `iscas`. Front matter (title pages, session overviews,
+   committees, "not made available for publication") is dropped.
+2. **Count, don't weigh.** Every statistic is the share of that year's papers: a term's
+   document frequency, a topic's dominant-paper count, an institution's papers (a paper
+   counts once per institution). Shares make years and venues of different size
+   comparable and are easy to sanity-check against the corpus.
+3. **Rising / falling** = pooled share in the second half of the year range minus the
+   first half, with a minimum-paper threshold. Terms that almost always occur inside a
+   longer phrase are folded into it.
+4. **Topics** are NMF on TF-IDF of titles + abstracts with a fixed seed; labels are the
+   top terms, phrases preferred. OpenAlex's own topic labels are available as an
+   alternative but are too coarse for a single-field venue.
+
+Limitations worth knowing: abstracts for the latest year arrive months after the
+conference; OpenAlex institution matching occasionally maps a lab to a look-alike
+entity; venues without DOIs are sparsely indexed; and the stopword list is generic, so
+pass your field's boilerplate with `--stopwords` or the sidebar box.
+
 ## Roadmap
 
 - [x] `fetch`: pull all works of a conference into JSONL with coverage report
@@ -170,6 +255,7 @@ the years (VLSI Symposium has used ten) takes several `--doi-prefix` flags.
 - [x] `topics`: topic evolution over time (NMF or OpenAlex labels)
 - [x] `rank`: institution / author / country rankings with citations
 - [x] Streamlit app
+- [x] Compare terms across conferences (CLI + app tab)
 - [ ] Hosted demo with pre-fetched presets
 - [ ] Static HTML report
 

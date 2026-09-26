@@ -46,6 +46,7 @@ uv run python -m paper_trends fetch "Electronic Components and Technology Confer
 uv run python -m paper_trends keywords data/ectc.jsonl --years 2016-2025 --ngram 2-3 --csv data/ectc_keywords.csv
 uv run python -m paper_trends topics   data/ectc.jsonl --years 2016-2025 --n-topics 10 --csv data/ectc_topics.csv
 uv run python -m paper_trends rank     data/ectc.jsonl --years 2016-2025 --by institution   # or author / country
+uv run python -m paper_trends compare  data/ectc.jsonl data/iedm.jsonl --years 2016-2025 --term chiplet
 
 uv run streamlit run app.py               # interactive UI (same analysis functions)
 uv run python -m paper_trends fetch --help
@@ -79,9 +80,11 @@ paper_trends/
   keywords.py  # KeywordTrends: per-year document frequency, rising/falling terms
   topics.py    # TopicTrends: NMF on TF-IDF (default) or OpenAlex topic labels, per-year share
   rank.py      # Ranking: institutions / authors / countries, papers + citations per year
+  compare.py   # same terms across several corpora; "shared risers"
   frames.py    # analysis results -> tidy pandas DataFrames (charts/tables)
   viz.py       # chart palette (CVD-validated, fixed slot order) + Altair theme
-app.py         # Streamlit UI: sidebar presets/fetch, tabs Overview/Keywords/Topics/Rankings/Data
+app.py         # Streamlit UI: sidebar presets/fetch, tabs Overview/Keywords/Topics/Rankings/Compare/Data
+.github/workflows/ci.yml  # pytest on push/PR (tests are fully offline: OpenAlex is mocked)
 .streamlit/config.toml  # theme; secrets.toml (git-ignored) may hold OPENALEX_MAILTO when hosted
 data/<name>.jsonl   # one work per line (git-ignored)
 docs/               # README screenshots

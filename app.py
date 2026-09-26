@@ -10,7 +10,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from paper_trends import frames, viz
+from paper_trends import compare, frames, viz
 from paper_trends.fetch import coverage_table, fetch_conference
 from paper_trends.keywords import compute_trends
 from paper_trends.openalex import OpenAlex, OpenAlexError
@@ -287,7 +287,7 @@ c2.metric("Years", f"{years[0]}–{years[1]}")
 c3.metric("With abstract", f"{cov_y['abstracts'].sum() / max(len(recs), 1):.0%}")
 c4.metric("Institutions", f"{len(cached_ranking(path, mtime, years, 'institution').by_year):,}")
 
-tab_overview, tab_kw, tab_topics, tab_rank, tab_data = st.tabs(["Overview", "Keywords", "Topics", "Rankings", "Data"])
+tab_overview, tab_kw, tab_topics, tab_rank, tab_compare, tab_data = st.tabs(["Overview", "Keywords", "Topics", "Rankings", "Compare", "Data"])
 
 with tab_overview:
     a, b = st.columns(2)
@@ -348,6 +348,47 @@ with tab_rank:
     f.subheader("Losing share")
     f.dataframe(as_pct(frames.ranking_movers(rk, rk.movers(10, 10, rising=False)), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
     st.caption("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
+
+with tab_compare:
+    st.caption("Same terms, other conferences. Only conferences already fetched on this server are listed.")
+    local = {k: v for k, v in PRESETS.items() if v["slug"] != slug and corpus_path(v["slug"]).exists()}
+    others = st.multiselect("Compare with", list(local), default=list(local)[:2], format_func=lambda k: k.split(" — ")[0])
+    kt_here = cached_keywords(path, mtime, years, "title+abstract", (2, 3), extra_stop)
+    default_terms = [t for t, *_ in kt_here.rising(4, min_total=10)]
+    cmp_terms = st.multiselect("Terms", kt_here.top_terms(300), default=default_terms, key="cmp_terms")
+    if others and cmp_terms:
+        trends = {choice.split(" — ")[0].split("· ")[-1]: kt_here}
+        for k in others:
+            cp = corpus_path(local[k]["slug"])
+            trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, "title+abstract", (2, 3), extra_stop)
+        df = pd.DataFrame(compare.term_shares(trends, cmp_terms))
+        names = list(trends)
+        domain, rng = viz.series_colors(names)
+        chart = (
+            alt.Chart(df)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("year:O", title=None),
+                y=alt.Y("share:Q", title="share of papers", axis=alt.Axis(format="%")),
+                color=alt.Color("conference:N", scale=alt.Scale(domain=domain, range=rng), legend=alt.Legend(title=None, orient="bottom")),
+                tooltip=[alt.Tooltip("conference:N"), alt.Tooltip("term:N"), alt.Tooltip("year:O"), alt.Tooltip("papers:Q"), alt.Tooltip("share:Q", format=".1%")],
+            )
+            .properties(height=220, width=430)
+            .facet(facet=alt.Facet("term:N", title=None, header=alt.Header(labelFontSize=13, labelFontWeight="bold")), columns=2)
+            .resolve_scale(y="independent")
+        )
+        st.altair_chart(chart, width="stretch")
+        wide = df.pivot_table(index=["term", "conference"], columns="year", values="share").reset_index()
+        wide.columns = [str(c) for c in wide.columns]
+        ycols = [c for c in wide.columns if c.isdigit()]
+        st.dataframe(as_pct(wide, ycols), hide_index=True, width="stretch", column_config=pct_cols(None, ycols))
+        common = compare.shared_risers(trends, k=12)
+        if common:
+            st.subheader("Rising everywhere")
+            st.dataframe(as_pct(pd.DataFrame([{"term": t, **{n: d for n, d in ds.items()}} for t, ds in common]), names), hide_index=True, width="stretch", column_config=pct_cols(None, names))
+            st.caption("Terms whose share rose in every selected conference, ranked by their smallest gain.")
+    elif not others:
+        st.info("Fetch another preset conference to enable comparison.")
 
 with tab_data:
     size_mb = corpus_path(slug).stat().st_size / 1e6
