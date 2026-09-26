@@ -41,3 +41,13 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
     assert at.title[0].value.startswith("Electronic Components")
     assert len(at.tabs) == 5
     assert any("Rising" in h.value for h in at.subheader)
+
+
+def test_query_param_selects_preset(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_corpus(tmp_path / "data" / "imw.jsonl")
+    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
+    at.query_params["conference"] = "imw"
+    at.run()
+    assert not at.exception, at.exception
+    assert at.title[0].value == "International Memory Workshop"

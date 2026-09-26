@@ -55,6 +55,13 @@ PRESETS = {
     "Devices · IMW — International Memory Workshop": {
         "query": "International Memory Workshop", "doi_prefixes": ["10.1109/imw"], "slug": "imw",
     },
+    # ---- other fields: the tool is not semiconductor-specific ---------------------------
+    "Other fields · CVPR — Conference on Computer Vision and Pattern Recognition": {
+        "query": "Conference on Computer Vision and Pattern Recognition", "doi_prefixes": ["10.1109/cvpr"], "slug": "cvpr",
+    },
+    "Other fields · Interspeech — Conference of the International Speech Communication Association": {
+        "query": "Interspeech", "doi_prefixes": ["10.21437/interspeech"], "slug": "interspeech",
+    },
 }
 FETCH_YEARS = (2016, 2026)
 
@@ -221,7 +228,13 @@ def as_pct(df: pd.DataFrame, cols) -> pd.DataFrame:
 with st.sidebar:
     st.title("paper-trends")
     st.caption("Publication trends for any conference, from OpenAlex.")
-    choice = st.selectbox("Conference", [*PRESETS, "Custom…"])
+    # ?conference=<slug> pre-selects a preset, so links to a specific conference can be shared
+    wanted = st.query_params.get("conference", "")
+    options = [*PRESETS, "Custom…"]
+    default_idx = next((i for i, k in enumerate(PRESETS) if PRESETS[k]["slug"] == wanted), 0)
+    choice = st.selectbox("Conference", options, index=default_idx)
+    if choice != "Custom…" and PRESETS[choice]["slug"] != wanted:
+        st.query_params["conference"] = PRESETS[choice]["slug"]
     if choice == "Custom…":
         query = st.text_input("Conference name (as OpenAlex spells it)", placeholder="Custom Integrated Circuits Conference")
         doi_prefix = st.text_input("DOI prefix(es), optional, space-separated", placeholder="10.1109/cicc")
@@ -337,9 +350,21 @@ with tab_rank:
     st.caption("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
 
 with tab_data:
-    st.markdown(f"Corpus: `{corpus_path(slug)}` — one JSON record per paper (title, abstract, authorships, citations, OpenAlex topics).")
-    st.download_button("Download corpus (JSONL)", corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl")
-    kt = cached_keywords(path, mtime, years, "title+abstract", (1, 3), extra_stop)
-    st.download_button("Download keyword table (CSV)", frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False), file_name=f"{slug}_keywords.csv", mime="text/csv")
-    st.download_button("Download institution ranking (CSV)", frames.ranking_table(*(lambda r: (r, r.top(200)))(cached_ranking(path, mtime, years, "institution"))).to_csv(index=False), file_name=f"{slug}_institutions.csv", mime="text/csv")
-    st.dataframe(pd.DataFrame(recs)[["publication_year", "title", "cited_by_count", "doi"]].sort_values(["publication_year", "cited_by_count"], ascending=[False, False]), hide_index=True, width="stretch", height=400)
+    size_mb = corpus_path(slug).stat().st_size / 1e6
+    st.markdown(f"Corpus: `{corpus_path(slug)}` ({size_mb:.0f} MB) — one JSON record per paper (title, abstract, authorships, citations, OpenAlex topics).")
+    # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
+    st.download_button("Download corpus (JSONL)", lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl")
+    st.download_button(
+        "Download keyword table (CSV)",
+        lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract", (1, 3), extra_stop)),
+        file_name=f"{slug}_keywords.csv", mime="text/csv",
+    )
+    st.download_button(
+        "Download institution ranking (CSV)",
+        lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution")),
+        file_name=f"{slug}_institutions.csv", mime="text/csv",
+    )
+    listing = pd.DataFrame(
+        [{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in recs]
+    ).sort_values(["year", "citations"], ascending=[False, False])
+    st.dataframe(listing, hide_index=True, width="stretch", height=400, column_config={"doi": st.column_config.LinkColumn("doi")})

@@ -33,3 +33,28 @@ def test_doi_prefix_boundary():
     assert not doi_has_prefix(None, "10.1109/ectc")
     filters = build_filters([], ["10.1109/vlsit", "10.23919/vlsic"], (2016, 2025))
     assert [pfx for _, pfx in filters] == ["10.1109/vlsit", "10.23919/vlsic"]
+
+
+def test_source_matching_prefers_exact_core_name():
+    from paper_trends.fetch import _core_name, resolve_sources
+
+    assert _core_name("2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)") == _core_name("Conference on Computer Vision and Pattern Recognition")
+    assert _core_name("Proceedings of the 38th International Conference on Machine Learning") == _core_name("International Conference on Machine Learning")
+    assert _core_name("2002 IEEE International Solid-State Circuits Conference. Digest of Technical Papers (Cat. No.02CH37315)") == _core_name("International Solid-State Circuits Conference")
+    assert _core_name("Conference on Computer Vision and Pattern Recognition Workshops") != _core_name("Conference on Computer Vision and Pattern Recognition")
+    assert _core_name("2021 3rd International Conference on Machine Learning, Big Data and Business Intelligence (MLBDBI)") != _core_name("International Conference on Machine Learning")
+    assert _core_name("Proceedings of the 2018 Conference on Foo, Proceedings") == _core_name("Conference on Foo")
+
+    class FakeClient:
+        def search_sources(self, q):
+            return [
+                {"id": "S1", "display_name": "2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)"},
+                {"id": "S2", "display_name": "2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)"},
+                {"id": "S3", "display_name": "IEEE International Conference on Machine Learning and Applications"},
+            ]
+
+    hits = resolve_sources(FakeClient(), "Conference on Computer Vision and Pattern Recognition")
+    assert [h["id"] for h in hits] == ["S1"]
+    # no exact match -> fall back to substring matches
+    hits = resolve_sources(FakeClient(), "Machine Learning and Applications")
+    assert [h["id"] for h in hits] == ["S3"]

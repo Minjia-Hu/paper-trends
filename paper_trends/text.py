@@ -22,7 +22,8 @@ STOPWORDS: frozenset[str] = frozenset(
     based using use used uses utilizing utilized novel new different various several
     however therefore thus moreover furthermore respectively well due able
     achieve achieved achieves obtained obtain compared comparison order
-    developed discussed measured fabricated applied enabling
+    developed discussed measured fabricated applied enabling extensive extensively
+    available publicly code codes github https http www url urls com org page pages
     um mm nm cm ghz mhz khz hz db mw kw ma mv wt vol sec min hr
     first two three one
     """.split()
@@ -55,12 +56,16 @@ _FIG_REF_RE = re.compile(
 )
 
 
+_URL_RE = re.compile(r"(?:https?://|www\.)\S+|\b\S+\.(?:com|org|io|net|edu)(?:/\S*)?", re.I)
+
+
 def tokenize(text: str | None) -> list[str]:
     """Lower-case word tokens; hyphens split, internal dots kept (e.g. '2.5d')."""
     if not text:
         return []
     if "\\" in text or "$" in text:
         text = clean_latex(text)
+    text = _URL_RE.sub(" ", text)
     text = _FIG_REF_RE.sub(" ", text)
     return _TOKEN_RE.findall(text.lower().translate(_DASHES))
 

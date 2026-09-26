@@ -47,9 +47,9 @@ keyword trends, topic evolution and institution / country rankings with a year-r
 filter. Fetched data is cached under `data/`.
 
 Presets (2016 onwards): **packaging** — ECTC, EPTC, ITherm, IRPS, EuroSimE;
-**devices & circuits** — IEDM, ISSCC, VLSI Symposium, IMW. Each one is a conference
-name plus the DOI prefix(es) its papers carry, so anything indexed by OpenAlex can be
-added the same way.
+**devices & circuits** — IEDM, ISSCC, VLSI Symposium, IMW; **other fields** — CVPR,
+Interspeech. Each one is a conference name plus the DOI prefix(es) its papers carry, so
+anything indexed by OpenAlex can be added the same way.
 
 ![Topic evolution](docs/screenshot-topics.png)
 
@@ -113,39 +113,36 @@ Fits an NMF topic model on titles + abstracts (reproducible, no external models)
 each paper to its dominant topic and shows the topic mix per year with example papers:
 
 ```
-topic                                  papers    16    17    18    19    20    21    22    23    24    25   delta
-hybrid bonding / wafer / cu cu            517   10%    9%    7%   10%   12%   14%   16%   19%   26%   18%   +9.1%
-model / reliability / stress              505   17%   16%   17%   13%   13%   14%   13%   13%   11%   11%   -3.0%
-fan / wafer level / fowlp                 394    9%   16%   15%   14%   13%   11%   10%    9%    7%    5%   -4.7%
-dielectric / glass / layer                392   11%    9%   12%   10%   10%   11%   11%    9%   10%   14%   +0.7%
-heat / cooling / temperature              371    9%   10%    9%   11%    8%   11%   12%   11%    7%   14%   +1.5%
-power / design / interposer               360   11%    7%    6%   10%    8%   10%   10%   10%   11%   16%   +2.9%
-sn / joint / solder joints                346   13%   10%    9%   13%   12%    8%    6%    7%    9%    7%   -4.0%
+topic                                    papers    16    17    18    19    20    21    22    23    24    25   delta
+generation / diffusion models / text       1936    0%    3%    5%    5%    6%    8%    6%   10%   21%   23%  +10.0%
+visual / text / vision language            2029    6%    8%    7%    6%    6%    6%    8%   12%   18%   23%   +8.1%
+video / temporal / videos                  1523   13%   12%   11%   10%    9%    9%   11%    9%    7%    7%   -2.0%
+object detection / objects / detectors     1503   14%   10%    9%   10%   11%   12%   11%    9%    7%    5%   -2.5%
+deep / network / neural networks           3466   33%   34%   31%   32%   29%   24%   21%   18%   11%   10%  -15.7%
 ```
 
-`--method openalex` uses OpenAlex's own topic labels instead (coarser, but no fitting).
+Rising phrases: language models, diffusion models, vision language, self supervised,
+downstream tasks. Falling: convolutional neural networks, end to end, generative
+adversarial. Country share: China 33 % → 47 %, United States 44 % → 33 %.
 
-### Institution, author and country rankings
+![CVPR topic evolution](docs/screenshot-cvpr-topics.png)
 
-```bash
-uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by institution --top 20
-uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by country
-uv run python -m paper_trends rank data/ectc.jsonl --years 2016-2025 --by author --sort citations
-```
+**Interspeech 2016–2025** (9.7k papers, non-IEEE publisher, titles only because OpenAlex
+lacks most of its abstracts): self supervised, zero shot, large language and text to
+speech rise; neural networks, recurrent neural and acoustic models fall.
 
-Papers and summed citations per entity, a per-year breakdown, and which institutions or
-countries are gaining or losing share. A paper counts once per institution (full counting).
-Institution names and ids come from OpenAlex's affiliation matching, which is good but not
-perfect; treat close ranks as ties.
+### Data coverage, honestly
 
-### Another venue
+OpenAlex is excellent for IEEE-style venues whose DOIs carry the acronym (ECTC, ISSCC,
+IEDM, CVPR, ICRA, ...): every paper, ~97 % with abstracts. It is weaker elsewhere:
 
-```bash
-uv run python -m paper_trends fetch "International Solid-State Circuits Conference" \
-    --years 2016-2026 --name isscc
-```
+- **Interspeech** (`10.21437/interspeech`): all papers, but abstracts for only ~40 % —
+  use `--text title`, titles alone still give clean trends.
+- **NeurIPS, ICML, CHI**: no DOIs on most papers and patchy source records (NeurIPS
+  stops in 2021), so they are not well served by OpenAlex yet.
+- The most recent year usually lacks abstracts for a few months after the conference.
 
-Check the `[sources]` lines printed first to confirm only the intended venue matched.
+`fetch` prints a per-year coverage table so you can judge before analysing.
 
 ### Options
 

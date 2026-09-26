@@ -33,3 +33,9 @@ def test_figure_references_are_dropped():
     toks = tokenize("as shown in Fig. 17.9.1 (top left), the latency drops; see Table 2 and bottom-right panel")
     assert "fig" not in toks and "top" not in toks and "left" not in toks and "table" not in toks
     assert "latency" in toks
+
+
+def test_urls_are_dropped():
+    toks = tokenize("Code is available at https://github.com/foo/bar and project page www.foo.io/page. Diffusion models.")
+    assert "github" not in toks and "https" not in toks and "foo" not in toks and "io" not in toks
+    assert "diffusion" in toks and "models" in toks

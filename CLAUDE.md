@@ -98,9 +98,11 @@ a spare port and screenshot tabs with Playwright (system `python3` has it with C
 
 **Resolution strategy in `fetch.py`** — this is the non-obvious part:
 
-1. Search OpenAlex `sources` by display name; keep only sources whose normalized name
-   contains the normalized query (avoids near-miss venues such as "Solid-State and
-   Integrated Circuits Technology" matching ISSCC).
+1. Search OpenAlex `sources` by display name. Prefer sources whose *core name* equals
+   the query — `_core_name` strips year/ordinal/publisher prefixes ("2022 IEEE/CVF",
+   "Proceedings of the 38th") and trailing "(CVPR)"/"Digest of Technical Papers" — so
+   CVPR does not absorb "CVPR Workshops" and ICML does not absorb "Machine Learning and
+   Applications". Only if nothing matches exactly fall back to substring containment.
 2. Optionally add `doi_starts_with:<prefix>` filters (`--doi-prefix`, repeatable). OpenAlex
    matches these against lower-cased DOIs, so prefixes are lower-cased (`10.1109/ectc`).
    Each hit must then pass `doi_has_prefix`: prefix + optional conference number + "."
@@ -111,7 +113,8 @@ Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
 **Presets** live in `app.py:PRESETS` (packaging: ECTC, EPTC, ITherm, IRPS, EuroSimE;
-devices/circuits: IEDM, ISSCC, VLSI Symposium, IMW), each with its DOI prefix list. VLSI
+devices/circuits: IEDM, ISSCC, VLSI Symposium, IMW; other fields: CVPR, Interspeech —
+the generality showcase), each with its DOI prefix list. VLSI
 Symposium needs ten prefixes because IEEE (10.1109) and JSAP (10.23919) alternate as
 publisher and the acronym changed (vlsit/vlsic → vlsitechnology/vlsicircuits →
 vlsitechnologyandcir). Venues that alternate IEEE/ACM DOIs by year (DAC, ICCAD) or whose
@@ -162,6 +165,12 @@ late half of the year range. Two filters shape the output and are easy to misrea
 Unigram rankings are dominated by generic words (process, performance, thermal); phrase
 level views (`--ngram 2-3`) and the rising/falling lists are where the signal is.
 
+**Coverage differs a lot by venue.** IEEE venues with acronym DOIs (ECTC, ISSCC, CVPR,
+ICRA…) are complete. Interspeech (ISCA, `10.21437/interspeech`) has every paper but
+abstracts for only ~40 % (2023+ ~20 %): use `--text title` there. Venues without DOIs
+(NeurIPS, ICML, CHI) are patchy in OpenAlex — NeurIPS' source covers 2016–2021 only —
+so they are not good showcases; say so rather than fetching them.
+
 ## Known data caveats (ECTC run, 2026-09)
 
 - ~4.1k works for 2016–2026, ~97–98 % abstract coverage per year, **except 2026 (~3 %)**:
@@ -176,5 +185,12 @@ level views (`--ngram 2-3`) and the rising/falling lists are where the signal is
   both get credit (A*STAR and IME), and a few affiliations are mis-resolved. Treat the
   institution ranking as indicative; `rank.py` falls back to raw affiliation strings only
   when OpenAlex resolved nothing.
+- CS venues put "Code is available at https://github.com/..." in abstracts; `tokenize`
+  strips URLs and the stopword list has that boilerplate (available, code, github, page).
+- OpenAlex mis-resolves some affiliations to look-alike entities (CVPR: "Shanghai AI
+  Laboratory" also shows up as "ShangHai JiAi Genetics & IVF Institute"). Rankings are
+  indicative; do not "fix" individual names in code.
+- Scale: CVPR (17k papers, 76 MB JSONL) takes ~8 s and ~0.8 GB for keywords or topics
+  on the CLI; the app caches each analysis per (corpus, years, params).
 - ~5 % of ECTC abstracts contain inline LaTeX (`5$\mu \mathrm{m}$`); `text.clean_latex`
   strips it. If new junk tokens (`mathrm`, `boldsymbol`, ...) show up in rankings, extend it.

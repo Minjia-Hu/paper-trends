@@ -50,11 +50,44 @@ def _norm(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+# Decoration OpenAlex source names carry around the conference name proper:
+# "2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)"
+_DECOR_LEAD = re.compile(
+    r"^(?:proceedings of (?:the )?|proceedings\W+|\d{4}\s*|\d+(?:st|nd|rd|th)\s*|"
+    r"(?:ieee|acm|ieee/cvf|cvf|ieee/acm|acm/ieee|usenix|siam|international|annual)\W+)+",
+    re.I,
+)
+_DECOR_TAIL = re.compile(
+    r"(?:\s*[\(\[][^\)\]]*[\)\]]"  # "(CVPR)", "[Cat. No...]"
+    r"|\s*[-–:.,]\s*(?:digest|technical digest|proceedings|conference proceedings|part\b|vol\b)[^\(\[]*"
+    r"|\s*[-–:]\s*\d{4}\b.*"  # " - 2019 ..."
+    r")+\s*$",
+    re.I,
+)
+
+
+def _core_name(display_name: str) -> str:
+    name = _DECOR_TAIL.sub("", display_name.strip())
+    name = _DECOR_LEAD.sub("", name)
+    return _norm(name)
+
+
 def resolve_sources(client: OpenAlex, query: str) -> list[dict[str, Any]]:
-    """Sources whose name contains every word of `query` (punctuation/case-insensitive)."""
+    """Sources for a conference name.
+
+    Prefer sources whose name, stripped of year/ordinal/publisher decoration and trailing
+    parentheticals, *equals* the query — so "Conference on Computer Vision and Pattern
+    Recognition" does not pull in "... Pattern Recognition Workshops (CVPRW)". If nothing
+    matches exactly, fall back to sources whose name merely contains the query.
+    """
     key = _norm(query)
-    hits = [s for s in client.search_sources(query) if key in _norm(s["display_name"])]
-    return sorted(hits, key=lambda s: s["display_name"])
+    key_core = _core_name(query)
+    candidates = client.search_sources(query)
+    exact = [s for s in candidates if _core_name(s["display_name"]) == key_core]
+    if exact:
+        return sorted(exact, key=lambda s: s["display_name"])
+    loose = [s for s in candidates if key in _norm(s["display_name"])]
+    return sorted(loose, key=lambda s: s["display_name"])
 
 
 def build_filters(
