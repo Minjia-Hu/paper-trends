@@ -6,13 +6,16 @@ fold the rest into "Other". Validated for colour-vision deficiency on a light su
 
 from __future__ import annotations
 
-CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
-OTHER = "#9a9a96"
+# Same tokens as the report pages (paper_trends/report/charts.py): one red focus colour,
+# a short categorical run for multi-series views, grey for context.
+CATEGORICAL = ["#E3120B", "#1F4E79", "#E8A33D", "#3C8D7A", "#8C6BB1", "#C4607A", "#6B7A8F", "#A0522D"]
+OTHER = "#CFCCC4"
 PRIMARY = CATEGORICAL[0]
-SEQUENTIAL = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
-TEXT = "#0b0b0b"
-TEXT_MUTED = "#52514e"
-GRID = "#e6e5e1"
+SEQUENTIAL = ["#F3F1EC", "#F6C4C1", "#EE8F8A", "#E3120B", "#B30E09", "#7D0A06", "#4A0604"]
+TEXT = "#1B1B1B"
+TEXT_MUTED = "#5C5C5C"
+GRID = "#ECE9E2"
+FONT = "IBM Plex Sans, system-ui, sans-serif"
 MAX_SERIES = 8
 
 
@@ -36,22 +39,25 @@ def altair_theme() -> dict:
         "config": {
             "background": "transparent",
             "view": {"stroke": None},
-            "font": "Inter, system-ui, sans-serif",
+            "font": FONT,
+            "title": {"font": "Newsreader, Georgia, serif", "fontSize": 17, "fontWeight": 500, "anchor": "start", "color": TEXT, "offset": 14},
             "axis": {
+                "domain": False,
+                "ticks": False,
                 "labelColor": TEXT_MUTED,
                 "titleColor": TEXT_MUTED,
                 "gridColor": GRID,
-                "domainColor": GRID,
-                "tickColor": GRID,
-                "labelFontSize": 11,
-                "titleFontSize": 11,
+                "gridDash": [2, 3],
+                "labelFontSize": 12,
+                "titleFontSize": 12,
                 "titleFontWeight": "normal",
+                "labelPadding": 6,
             },
-            "axisX": {"labelAngle": 0},
-            "legend": {"labelColor": TEXT, "titleColor": TEXT_MUTED, "labelFontSize": 11, "symbolSize": 80},
-            "line": {"strokeWidth": 2},
-            "point": {"size": 64, "filled": True},
-            "bar": {"cornerRadiusEnd": 4},
+            "axisX": {"labelAngle": 0, "grid": False},
+            "legend": {"labelColor": TEXT, "titleColor": TEXT_MUTED, "labelFontSize": 12, "symbolSize": 70, "symbolType": "circle"},
+            "line": {"strokeWidth": 2.2, "interpolate": "monotone"},
+            "point": {"size": 50, "filled": True},
+            "bar": {"cornerRadiusEnd": 2},
             "range": {"category": CATEGORICAL},
         }
     }

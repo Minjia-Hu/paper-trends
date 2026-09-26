@@ -44,11 +44,11 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch):
     assert not at.exception, at.exception
     assert len(at.tabs) == 0 and not at.radio  # Report view: an embedded page, controls are links
     at.query_params["view"] = "explore"
+    at.query_params["section"] = "keywords"
     at.run()
     assert not at.exception, at.exception
-    assert at.title[0].value.startswith("Electronic Components")
-    assert len(at.tabs) == 6
-    assert any("Rising" in h.value for h in at.subheader)
+    assert len(at.tabs) == 0 and not at.title  # sections are links, header is HTML
+    assert any("Rising" in m.value for m in at.markdown)
 
 
 def test_query_param_selects_preset(tmp_path, monkeypatch):
@@ -60,4 +60,5 @@ def test_query_param_selects_preset(tmp_path, monkeypatch):
     assert not at.exception, at.exception
     at.query_params["view"] = "explore"
     at.run()
-    assert at.title[0].value == "International Memory Workshop"
+    assert not at.exception, at.exception
+    assert any("International Memory Workshop" in m.value for m in at.markdown)

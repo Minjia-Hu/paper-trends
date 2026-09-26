@@ -115,6 +115,22 @@ st.markdown(
     .st-key-options_form div[data-baseweb="input"], .st-key-options_form div[data-baseweb="input"] > div, .st-key-options_form div[data-baseweb="base-input"], .st-key-options_form div[data-baseweb="textarea"], .st-key-options_form textarea { background-color: #FCFBF8 !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14px !important; }
     .st-key-refresh_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; }
     .st-key-refresh_btn button:hover { border-color: #1B1B1B !important; }
+    /* explore view header, in the report's voice */
+    .pt-head { font-family: "IBM Plex Sans", system-ui, sans-serif; padding: 34px 24px 0; }
+    .pt-head .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 14px; }
+    .pt-head h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; padding: 0; }
+    .pt-head .meta { color: #5C5C5C; font-size: 14.5px; display: flex; gap: 22px; flex-wrap: wrap; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
+    .pt-head .meta b { color: #1B1B1B; font-weight: 600; }
+    .pt-sections { padding-top: 16px !important; padding-bottom: 8px; }
+    .pt-h2 { font-family: Newsreader, Georgia, serif !important; font-weight: 500 !important; font-size: 26px !important; letter-spacing: -0.01em; margin: 26px 0 4px !important; padding: 0 !important; color: #1B1B1B; }
+    .pt-lede { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; max-width: 72ch; margin: 0 0 12px; }
+    .block-container [data-testid="stMarkdownContainer"] p { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    /* explore widgets: quiet */
+    .block-container label p, .block-container label { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 12.5px !important; color: #5C5C5C !important; }
+    .block-container div[data-baseweb="select"] > div, .block-container div[data-baseweb="input"] > div, .block-container div[data-baseweb="textarea"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14px !important; }
+    .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
+    .block-container [data-testid="stToggle"] label p { font-size: 13px !important; }
+    .block-container [data-testid="stSlider"] { padding-top: 4px; }
     /* resolution card */
     .pt-found { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
     .pt-found .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 4px; }
@@ -329,7 +345,7 @@ def stacked_area_chart(df: pd.DataFrame, title: str) -> alt.Chart:
 def bar_chart(df: pd.DataFrame, x: str, y: str, title: str, fmt: str | None = None) -> alt.Chart:
     return (
         alt.Chart(df)
-        .mark_bar(color=viz.PRIMARY)
+        .mark_bar(color="#B8B5AE")
         .encode(
             x=alt.X(f"{x}:O", title=None),
             y=alt.Y(f"{y}:Q", title=y, axis=alt.Axis(format=fmt) if fmt else alt.Axis()),
@@ -339,13 +355,16 @@ def bar_chart(df: pd.DataFrame, x: str, y: str, title: str, fmt: str | None = No
     )
 
 
-def hbar_chart(df: pd.DataFrame, label: str, value: str, title: str) -> alt.Chart:
+def hbar_chart(df: pd.DataFrame, label: str, value: str, title: str, highlight: int = 3) -> alt.Chart:
+    """Grey bars, the top `highlight` in red — the report's convention."""
+    df = df.assign(_hi=[i < highlight for i in range(len(df))])
     return (
         alt.Chart(df)
-        .mark_bar(color=viz.PRIMARY)
+        .mark_bar(height=14)
         .encode(
             y=alt.Y(f"{label}:N", sort="-x", title=None, axis=alt.Axis(labelLimit=280, labelOverlap=False)),
-            x=alt.X(f"{value}:Q", title=value),
+            x=alt.X(f"{value}:Q", title=value, axis=alt.Axis(grid=True)),
+            color=alt.Color("_hi:N", scale=alt.Scale(domain=[True, False], range=[viz.PRIMARY, "#B8B5AE"]), legend=None),
             tooltip=[alt.Tooltip(f"{label}:N"), alt.Tooltip(f"{value}:Q")],
         )
         .properties(height=max(200, 26 * len(df) + 20), title=title)
@@ -515,16 +534,29 @@ if mode == "Report":
     st.iframe(cached_report_html(path, mtime, years, query, slug, extra_stop), height="content")
     st.stop()
 
-st.title(query)
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Papers", f"{len(recs):,}")
-c2.metric("Years", f"{years[0]}–{years[1]}")
-c3.metric("With abstract", f"{cov_y['abstracts'].sum() / max(len(recs), 1):.0%}")
-c4.metric("Institutions", f"{len(cached_ranking(path, mtime, years, 'institution').by_year):,}")
+section = st.query_params.get("section", "overview")
+SECTIONS = [("overview", "Overview"), ("keywords", "Keywords"), ("topics", "Topics"), ("rankings", "Rankings"), ("compare", "Compare"), ("data", "Data")]
+if section not in dict(SECTIONS):
+    section = "overview"
+n_inst = len(cached_ranking(path, mtime, years, "institution").by_year)
+st.markdown(
+    f'<div class="pt-head"><div class="kicker">Explore · {years[0]}–{years[1]}</div><h1>{query}</h1>'
+    f'<div class="meta"><span><b>{len(recs):,}</b> papers</span><span><b>{years[1] - years[0] + 1}</b> editions</span>'
+    f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b> with abstracts</span><span><b>{n_inst:,}</b> institutions</span></div></div>'
+    + '<div class="pt-controls pt-sections">' + links_row([(lbl, link(section=None if k == "overview" else k), k == section) for k, lbl in SECTIONS]) + "</div>",
+    unsafe_allow_html=True,
+)
 
-tab_overview, tab_kw, tab_topics, tab_rank, tab_compare, tab_data = st.tabs(["Overview", "Keywords", "Topics", "Rankings", "Compare", "Data"])
 
-with tab_overview:
+def h2(text: str, lede: str | None = None) -> None:
+    st.markdown(f'<h2 class="pt-h2">{text}</h2>' + (f'<p class="pt-lede">{lede}</p>' if lede else ""), unsafe_allow_html=True)
+
+
+def note(text: str) -> None:
+    st.markdown(f'<p class="pt-lede">{text}</p>', unsafe_allow_html=True)
+
+
+if section == "overview":
     a, b = st.columns(2)
     a.altair_chart(bar_chart(cov_y, "year", "papers", "Papers per year"), width="stretch")
     b.altair_chart(bar_chart(cov_y, "year", "coverage", "Abstract coverage", fmt="%"), width="stretch")
@@ -533,7 +565,7 @@ with tab_overview:
     a.altair_chart(hbar_chart(frames.ranking_table(rk_c, top_c)[["country", "papers"]], "country", "papers", "Papers by country (full counting)"), width="stretch")
     b.dataframe(frames.ranking_table(rk_c, top_c), hide_index=True, width="stretch")
 
-with tab_kw:
+if section == "keywords":
     o1, o2, o3 = st.columns([1, 1, 2])
     ngram = o1.selectbox("N-grams", ["1–3", "2–3", "1"], index=1)
     text_mode = o2.selectbox("Text", ["title+abstract", "title"])
@@ -546,33 +578,33 @@ with tab_kw:
     if terms:
         st.altair_chart(share_line_chart(frames.keyword_series(kt, terms), "term", "Share of papers mentioning the term"), width="stretch")
     r, f = st.columns(2)
-    r.subheader("Rising")
+    r.markdown('<h2 class=\"pt-h2\">' + "Rising" + '</h2>', unsafe_allow_html=True)
     r.dataframe(as_pct(frames.movers_table(rising), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
-    f.subheader("Falling")
+    f.markdown('<h2 class=\"pt-h2\">' + "Falling" + '</h2>', unsafe_allow_html=True)
     f.dataframe(as_pct(frames.movers_table(falling), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
-    st.subheader("Emerging")
+    h2("Emerging")
     emerging = kt.emerging(15, min_total=10)
     st.dataframe(
         as_pct(pd.DataFrame(emerging, columns=["term", "first seen", "early", "late"]), ["early", "late"]),
         hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late"]),
     )
-    st.caption("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
-    st.subheader("Papers mentioning a term")
+    note("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
+    h2("Papers mentioning a term")
     pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
     pick = st.selectbox("Term", pick_options, key="kw_pick") if pick_options else None
     if pick:
         hits = cached_papers_with(path, mtime, years, pick, text_mode)
-        st.caption(f"{len(hits)} papers, newest and most cited first.")
+        note(f"{len(hits)} papers, newest and most cited first.")
         st.dataframe(
             pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits[:300]]),
             hide_index=True, width="stretch", height=320, column_config={"doi": st.column_config.LinkColumn("doi")},
         )
-    st.subheader("Top terms by year")
+    h2("Top terms by year")
     top = kt.top_terms(40)
     st.dataframe(as_pct(frames.keyword_table(kt, top), [str(y) for y in kt.years]), hide_index=True, width="stretch", column_config=pct_cols(None, [str(y) for y in kt.years]))
-    st.caption("Early/late compare the pooled share of papers in the first vs. second half of the year range. Terms that almost always occur inside a longer phrase are folded into it.")
+    note("Early/late compare the pooled share of papers in the first vs. second half of the year range. Terms that almost always occur inside a longer phrase are folded into it.")
 
-with tab_topics:
+if section == "topics":
     o1, o2 = st.columns([1, 1])
     method = o1.selectbox("Method", ["nmf", "openalex", "openalex-subfield"], format_func=lambda m: {"nmf": "NMF on titles + abstracts", "openalex": "OpenAlex topic labels", "openalex-subfield": "OpenAlex subfields"}[m])
     n_topics = o2.slider("Topics (NMF)", 6, 20, 10, disabled=method != "nmf")
@@ -582,9 +614,9 @@ with tab_topics:
     st.dataframe(as_pct(ttab, ["early", "late", "delta"]), hide_index=True, width="stretch",
                  column_config={**pct_cols(None, ["early", "late", "delta"]), "terms": st.column_config.TextColumn(width="large"), "example": st.column_config.TextColumn(width="large")})
     if method == "nmf":
-        st.caption("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
+        note("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
 
-with tab_rank:
+if section == "rankings":
     o1, o2, o3, o4 = st.columns([1, 1, 1, 1])
     entity = o1.selectbox("Rank", ENTITIES, format_func=str.title)
     sort_by = o2.selectbox("Sort by", ["papers", "citations"])
@@ -597,14 +629,14 @@ with tab_rank:
     st.altair_chart(hbar_chart(table[[entity, sort_by]], entity, sort_by, f"Top {entity}s by {sort_by}"), width="stretch")
     st.dataframe(table, hide_index=True, width="stretch")
     r, f = st.columns(2)
-    r.subheader("Gaining share")
+    r.markdown('<h2 class=\"pt-h2\">' + "Gaining share" + '</h2>', unsafe_allow_html=True)
     r.dataframe(as_pct(frames.ranking_movers(rk, rk.movers(10, 10, rising=True)), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
-    f.subheader("Losing share")
+    f.markdown('<h2 class=\"pt-h2\">' + "Losing share" + '</h2>', unsafe_allow_html=True)
     f.dataframe(as_pct(frames.ranking_movers(rk, rk.movers(10, 10, rising=False)), ["early", "late", "delta"]), hide_index=True, width="stretch", column_config=pct_cols(None, ["early", "late", "delta"]))
-    st.caption("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
+    note("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
 
-with tab_compare:
-    st.caption("Same terms, other conferences. Only conferences already fetched on this server are listed.")
+if section == "compare":
+    note("Same terms, other conferences. Only conferences already fetched on this server are listed.")
     local = {k: v for k, v in PRESETS.items() if v["slug"] != slug and corpus_path(v["slug"]).exists()}
     others = st.multiselect("Compare with", list(local), default=list(local)[:2], format_func=lambda k: k.split(" — ")[0])
     kt_here = cached_keywords(path, mtime, years, "title+abstract", (2, 3), extra_stop)
@@ -638,13 +670,13 @@ with tab_compare:
         st.dataframe(as_pct(wide, ycols), hide_index=True, width="stretch", column_config=pct_cols(None, ycols))
         common = compare.shared_risers(trends, k=12)
         if common:
-            st.subheader("Rising everywhere")
+            h2("Rising everywhere")
             st.dataframe(as_pct(pd.DataFrame([{"term": t, **{n: d for n, d in ds.items()}} for t, ds in common]), names), hide_index=True, width="stretch", column_config=pct_cols(None, names))
-            st.caption("Terms whose share rose in every selected conference, ranked by their smallest gain.")
+            note("Terms whose share rose in every selected conference, ranked by their smallest gain.")
     elif not others:
         st.info("Fetch another preset conference to enable comparison.")
 
-with tab_data:
+if section == "data":
     size_mb = corpus_path(slug).stat().st_size / 1e6
     st.markdown(f"Corpus: `{corpus_path(slug)}` ({size_mb:.0f} MB) — one JSON record per paper (title, abstract, authorships, citations, OpenAlex topics).")
     # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
