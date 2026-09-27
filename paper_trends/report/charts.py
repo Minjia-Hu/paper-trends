@@ -78,12 +78,21 @@ def trend_line(rows: list[dict], value: str = "papers", fmt: str = ",d", height:
     # no y axis: the first and last values are written on the line; a dot marks every year
     y = {"field": value, "type": "quantitative", "axis": None, "scale": {"domain": [0, vmax * 1.25]}}
     ends = {"filter": f"datum.year == {first} || datum.year == {last}"}
-    spec["layer"] = [
+    # the extremes, when they are not the end points, get a lighter label too (peak above, trough below)
+    hi = max(rows, key=lambda r: r[value]); lo = min(rows, key=lambda r: r[value])
+    extremes = [r for r in (hi, lo) if r["year"] not in (first, last)]
+    layers = [
         {"mark": {"type": "line", "color": color, "strokeWidth": 2, "interpolate": "monotone"}, "encoding": {"x": x, "y": y}},
         {"mark": {"type": "point", "filled": True, "color": color, "size": 28}, "encoding": {"x": x, "y": y}},
         {"mark": {"type": "point", "filled": True, "color": color, "size": 60}, "transform": [ends], "encoding": {"x": x, "y": y}},
         {"mark": {"type": "text", "dy": -12, "color": color, "fontWeight": 600, "fontSize": 12}, "transform": [ends],
          "encoding": {"x": x, "y": y, "text": {"field": value, "format": fmt}}},
+    ]
+    for r in extremes:
+        above = r is hi
+        layers.append({"data": {"values": [r]}, "mark": {"type": "text", "dy": -12 if above else 14, "color": MUTED, "fontSize": 11.5},
+                       "encoding": {"x": x, "y": y, "text": {"field": value, "format": fmt}}})
+    spec["layer"] = layers + [
         {"mark": {"type": "rule", "color": "transparent", "strokeWidth": 14}, "encoding": {"x": x, "tooltip": [{"field": "year"}, {"field": value, "format": fmt}]}},
     ]
     return spec
