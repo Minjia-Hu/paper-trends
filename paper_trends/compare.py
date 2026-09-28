@@ -12,7 +12,12 @@ from .text import STOPWORDS
 
 
 def trends_for(corpora: dict[str, list[Record]], **kwargs) -> dict[str, KeywordTrends]:
-    return {name: compute_trends(recs, **kwargs) for name, recs in corpora.items()}
+    """Trends per corpus. Phrases common to many fields are kept here (unlike in a single
+    conference's rankings): what venues share is exactly what a comparison is after."""
+    from .background import field_of
+
+    kwargs.setdefault("keep_common", True)
+    return {name: compute_trends(recs, field=field_of(name), **kwargs) for name, recs in corpora.items()}
 
 
 def term_shares(trends: dict[str, KeywordTrends], terms: list[str]) -> list[dict]:

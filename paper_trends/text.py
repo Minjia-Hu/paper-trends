@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Iterable, Iterator
 
@@ -84,6 +85,73 @@ def ngrams(tokens: list[str], n_min: int, n_max: int, stopwords: frozenset[str] 
             if all(_is_number(t) for t in gram):
                 continue
             yield " ".join(gram)
+
+
+# ---- what role does a phrase play in a paper? ------------------------------------------
+# A phrase in the title, used more than once, or used beyond the opening of the abstract is
+# what the paper is *about*. A phrase that appears once, in the opening, is usually
+# motivation ("With the growth of artificial intelligence ..."). Measured on ECTC 2016-2025:
+# 72 % of abstract-only mentions of "artificial intelligence" are in the first sentence and
+# never repeated, against 9 % for "finite element".
+OPENING_FRACTION = 0.2  # the opening is the first sentence or this share of the abstract, whichever is longer
+TOPICAL_ROLES = frozenset({"title", "repeated", "body"})
+_SENT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _gram_positions(tokens: list[str], n_min: int, n_max: int, stopwords: frozenset[str]) -> dict[str, list[int]]:
+    out: dict[str, list[int]] = {}
+    for n in range(n_min, n_max + 1):
+        for i in range(len(tokens) - n + 1):
+            gram = tokens[i : i + n]
+            if gram[0] in stopwords or gram[-1] in stopwords:
+                continue
+            if any(len(t) < 2 for t in gram) or all(_is_number(t) for t in gram):
+                continue
+            out.setdefault(" ".join(gram), []).append(i)
+    return out
+
+
+def _opening_length(abstract: str, n_tokens: int) -> int:
+    """Tokens that make up the opening. When the first "sentence" is most of the abstract
+    (a one-sentence abstract, or text without sentence punctuation) its length says nothing,
+    so only the fixed fraction is used."""
+    fraction = math.ceil(OPENING_FRACTION * n_tokens)
+    first = len(tokenize(_SENT_RE.split(abstract.strip(), maxsplit=1)[0]))
+    return max(first, fraction) if first <= 0.4 * n_tokens else fraction
+
+
+def term_mentions(title: str | None, abstract: str | None, n_min: int = 1, n_max: int = 3,
+                  stopwords: frozenset[str] = STOPWORDS) -> dict[str, str]:
+    """Every n-gram of a paper with its role: "title", "repeated", "body" or "opening"."""
+    roles = {g: "title" for g in _gram_positions(tokenize(title), n_min, n_max, stopwords)}
+    toks = tokenize(abstract)
+    if toks:
+        opening = _opening_length(abstract or "", len(toks))
+        for g, pos in _gram_positions(toks, n_min, n_max, stopwords).items():
+            if g not in roles:
+                roles[g] = "repeated" if len(pos) >= 2 else ("body" if pos[0] >= opening else "opening")
+    return roles
+
+
+def mention_role(title: str | None, abstract: str | None, term: str) -> str | None:
+    """Role of one phrase in one paper, or None when it does not occur."""
+    want = tokenize(term)
+    n = len(want)
+    if not n:
+        return None
+
+    def positions(tokens: list[str]) -> list[int]:
+        return [i for i in range(len(tokens) - n + 1) if tokens[i : i + n] == want]
+
+    if positions(tokenize(title)):
+        return "title"
+    toks = tokenize(abstract)
+    pos = positions(toks)
+    if not pos:
+        return None
+    if len(pos) >= 2:
+        return "repeated"
+    return "body" if pos[0] >= _opening_length(abstract or "", len(toks)) else "opening"
 
 
 def _is_number(tok: str) -> bool:

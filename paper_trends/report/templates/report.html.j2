@@ -44,7 +44,7 @@
 
 <section id="rising">
   <h2>What is rising</h2>
-  <p class="lede">Share of papers whose {{ "title" if r.text_mode == "title" else "title or abstract" }} mentions the phrase{{ " (titles only: OpenAlex lacks most abstracts for this venue)" if r.text_mode == "title" else "" }}. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
+  <p class="lede">Share of papers that are <em>about</em> the phrase: it is in the title, used more than once, or used beyond the opening of the abstract{{ " (titles only: OpenAlex lacks most abstracts for this venue)" if r.text_mode == "title" else "" }}. A paper that only names a phrase in its first sentence is not counted. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
   <div class="grid">
   {% for t in r.rising %}
     <figure>
@@ -118,7 +118,7 @@
 
 <footer class="about" id="about">
   <h2>About the data</h2>
-  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrase shares are document frequencies: the fraction of that year's papers mentioning a phrase at least once in the title or abstract. “Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
+  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrases are word sequences taken from titles and abstracts; OpenAlex has no full text. A paper counts for a phrase when it is about it — the phrase is in the title, repeated, or used beyond the opening of the abstract — so a sentence like “with the rise of artificial intelligence…” does not make a paper an AI paper. {% if r.n_common_hidden %}{{ r.n_common_hidden }} phrases that are common in three or more other fields ({{ r.common_examples|join(", ") }}…) are left out of the rankings, because they say little about this conference in particular. {% endif %}“Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
   <p>Topics come from non-negative matrix factorisation of TF-IDF vectors with a fixed seed, so they are reproducible; labels are the topic's top terms. Institution names and parent relationships are OpenAlex's, which are good but not perfect.</p>
   <details><summary>Coverage by year</summary>
     <table><thead><tr><th>Year</th><th class="num">Papers</th><th class="num">With abstract</th></tr></thead><tbody>

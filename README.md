@@ -107,26 +107,37 @@ Each record contains: `id`, `doi`, `title`, `publication_year`, `abstract` (plai
 uv run python -m paper_trends keywords data/ectc.jsonl --years 2016-2025 --ngram 2-3 --csv data/ectc_keywords.csv
 ```
 
-Reports, for each term, the share of papers per year that mention it, plus the fastest
-rising and falling terms (early half vs. late half of the range). ECTC 2016–2025, phrases only:
+Phrases are word sequences from titles and abstracts (OpenAlex has no full text). Two
+rules keep the lists about the conference rather than about academic prose:
+
+- **A paper counts only when it is about the phrase**: the phrase is in the title, used
+  more than once, or used beyond the opening of the abstract. “With the rise of artificial
+  intelligence…” in a first sentence does not make a packaging paper an AI paper — at ECTC
+  only 30 % of the papers mentioning *artificial intelligence* are about it, against 92 %
+  for *hybrid bonding*. `--count any` counts every mention instead.
+- **Phrases common to three or more other fields are hidden** (*high performance*, *low
+  cost*, *next generation*…), judged against a small table of seven fields that ships with
+  the package. `--keep-common` shows them; `paper-trends background data/*.jsonl` rebuilds
+  the table from your own corpora.
+
+ECTC 2016–2025, share of papers, first vs. second half of the period:
 
 ```
 RISING                       early    late   delta      FALLING                    early    late   delta
-hybrid bonding                1.3%   11.5%  +10.3%      wafer level                  14.4%    9.2%   -5.1%
-heterogeneous integration     4.3%   10.7%   +6.4%      low cost                      7.9%    3.6%   -4.3%
-advanced packaging            2.7%    8.2%   +5.5%      fan out wafer                 6.9%    4.0%   -2.8%
-high performance              9.3%   13.5%   +4.2%      electrical performance        6.0%    3.5%   -2.6%
-high performance computing    2.2%    6.4%   +4.2%      flip chip                     9.9%    7.4%   -2.5%
-cu cu                         1.9%    5.8%   +3.9%      wafer level packaging         6.3%    3.9%   -2.4%
+hybrid bonding                1.2%   10.6%   +9.5%      wafer level                  11.3%    6.5%   -4.7%
+heterogeneous integration     2.8%    7.0%   +4.2%      level packaging               5.3%    3.3%   -2.0%
+cu cu                         1.7%    5.3%   +3.7%      wafer level packaging         4.2%    2.3%   -2.0%
+advanced packaging            1.8%    5.5%   +3.7%      board level reliability       2.8%    1.0%   -1.7%
+wafer hybrid bonding          0.2%    2.3%   +2.2%      fan out wafer                 3.9%    2.2%   -1.7%
+low temperature               5.6%    7.7%   +2.1%      electrical performance        4.6%    2.9%   -1.7%
 ```
 
-It also lists **emerging** terms — near-absent in the first half of the range, at least
-1 % of papers in the second half — which surfaces new vocabulary rather than already-common
-words: for ECTC that is co-packaged optics, chiplet integration, CPO, 6G, bridge die.
+It also lists **emerging** terms — near-absent in the first half, at least 1 % of papers
+in the second — which surfaces new vocabulary: for ECTC that is wafer hybrid bonding, co packaged optics, chiplet integration, cu hybrid bonding, hybrid bonding process.
 
-Options: `--ngram 1-3` (default), `--text title` to ignore abstracts, `--top N`, `--movers N`,
-`--emerging N`, `--min-total N`, `--stopwords file` for domain-specific noise words,
-`--keep-subphrases`.
+Options: `--ngram 1-3` (default), `--text title` to ignore abstracts, `--count topical|any`,
+`--keep-common`, `--field`, `--top N`, `--movers N`, `--emerging N`, `--min-total N`,
+`--stopwords file` for domain-specific noise words, `--keep-subphrases`.
 
 ### Topic evolution
 
@@ -175,18 +186,23 @@ uv run python -m paper_trends compare data/ectc.jsonl data/iedm.jsonl data/isscc
 uv run python -m paper_trends compare data/ectc.jsonl data/iedm.jsonl --term "hybrid bonding" --term chiplet
 ```
 
-Without `--term` it lists phrases rising in *every* corpus. Packaging (ECTC), devices
-(IEDM) and circuits (ISSCC) agree on what is new:
+Without `--term` it lists phrases rising in *every* corpus. Here phrases common to many
+fields are kept, since what venues share is the point. Packaging (ECTC), devices (IEDM)
+and circuits (ISSCC), 2016–2025:
 
 ```
-term                        ectc       iedm      isscc
-artificial intelligence    +3.2%      +1.6%      +1.9%
-high performance           +4.2%      +3.5%      +1.4%
-high density               +2.4%      +3.8%      +1.0%
-energy efficiency          +0.8%      +3.0%      +3.0%
-machine learning           +1.8%      +0.8%      +2.0%
-power delivery             +1.6%      +0.7%      +0.8%
+term                    ectc       iedm      isscc
+energy efficiency      +0.6%      +2.7%      +2.5%
+energy efficient       +0.8%      +1.3%      +0.5%
+large scale            +0.5%      +0.9%      +1.1%
+insertion loss         +1.2%      +0.4%      +1.0%
+machine learning       +1.3%      +0.3%      +1.2%
+current density        +0.3%      +0.5%      +0.5%
 ```
+
+Counting every mention instead (`keywords --count any`) would put *artificial
+intelligence* at the top of this list: it is named in many opening sentences, but few of
+these papers are about it.
 
 The app has a **Compare** tab that plots the same terms across any fetched conferences,
 and the Keywords tab lists the papers behind any term.
@@ -228,15 +244,14 @@ object detection / objects / detectors     1503   14%   10%    9%   10%   11%   
 deep / network / neural networks           3466   33%   34%   31%   32%   29%   24%   21%   18%   11%   10%  -15.7%
 ```
 
-Rising phrases: language models, diffusion models, vision language, self supervised,
-downstream tasks. Falling: convolutional neural networks, end to end, generative
-adversarial. Country share: China 33 % → 47 %, United States 44 % → 33 %.
+Rising phrases: diffusion models, language models, vision-language, contrastive
+learning. Falling: convolutional neural networks, end to end, generative adversarial. Country share: China 33 % → 47 %, United States 44 % → 33 %.
 
 ![CVPR topic evolution](docs/screenshot-cvpr-topics.png)
 
 **Interspeech 2016–2025** (9.7k papers, non-IEEE publisher, titles only because OpenAlex
-lacks most of its abstracts): self supervised, zero shot, large language and text to
-speech rise; neural networks, recurrent neural and acoustic models fall.
+lacks most of its abstracts): self-supervised, zero-shot, large language and
+text-to-speech rise; recurrent neural networks, speaker recognition and acoustic models fall.
 
 ### Data coverage, honestly
 
@@ -277,10 +292,12 @@ the years (VLSI Symposium has used ten) takes several `--doi-prefix` flags.
    prefixes (`10.1109/ectc`) are used as a second route, with a boundary check so
    `isca` never matches `iscas`. Front matter (title pages, session overviews,
    committees, "not made available for publication") is dropped.
-2. **Count, don't weigh.** Every statistic is the share of that year's papers: a term's
-   document frequency, a topic's dominant-paper count, an institution's papers (a paper
+2. **Count, don't weigh.** Every statistic is the share of that year's papers: papers
+   about a phrase, a topic's dominant-paper count, an institution's papers (a paper
    counts once per institution). Shares make years and venues of different size
-   comparable and are easy to sanity-check against the corpus.
+   comparable and are easy to sanity-check against the corpus. A paper is *about* a
+   phrase when the phrase is in its title, repeated, or used beyond the opening of its
+   abstract; phrases that three or more other fields also use are left out of rankings.
 3. **Rising / falling** = pooled share in the second half of the year range minus the
    first half, with a minimum-paper threshold. Terms that almost always occur inside a
    longer phrase are folded into it.
@@ -291,7 +308,9 @@ the years (VLSI Symposium has used ten) takes several `--doi-prefix` flags.
 Limitations worth knowing: abstracts for the latest year arrive months after the
 conference; OpenAlex institution matching occasionally maps a lab to a look-alike
 entity; venues without DOIs are sparsely indexed; and the stopword list is generic, so
-pass your field's boilerplate with `--stopwords` or the sidebar box.
+pass your field's boilerplate with `--stopwords` or under Options in the app. The two
+phrase rules are heuristics chosen from the data, not validated against hand-labelled
+papers; `--count any --keep-common` turns both off.
 
 ## Roadmap
 

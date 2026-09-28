@@ -8,7 +8,7 @@ def _rec(year, title):
 def test_term_shares_and_shared_risers():
     a = [_rec(2016, "solder"), _rec(2016, "solder"), _rec(2019, "chiplet ai"), _rec(2019, "chiplet")]
     b = [_rec(2016, "cmos"), _rec(2016, "cmos"), _rec(2019, "ai accelerator"), _rec(2019, "ai")]
-    trends = trends_for({"A": a, "B": b}, text="title", n_min=1, n_max=1, min_total=1)
+    trends = trends_for({"A": a, "B": b}, text="title", n_min=1, n_max=1, min_total=1, background=None)
     rows = term_shares(trends, ["ai"])
     share = {(r["conference"], r["year"]): r["share"] for r in rows}
     assert share[("A", 2019)] == 0.5 and share[("B", 2019)] == 1.0 and share[("A", 2016)] == 0.0

@@ -78,7 +78,8 @@ paper_trends/
   fetch.py     # conference -> works resolution, coverage table
   store.py     # JSONL read/write, year filtering (shared by all commands)
   text.py      # tokenizer (strips inline LaTeX from IEEE abstracts), n-grams, stopwords
-  keywords.py  # KeywordTrends: per-year document frequency, rising/falling terms
+  keywords.py  # KeywordTrends: per-year counts of papers about a phrase, rising/falling/emerging
+  background.py  # cross-field table of common phrases (resources/background.json) + builder
   topics.py    # TopicTrends: NMF on TF-IDF (default) or OpenAlex topic labels, per-year share
   rank.py      # Ranking: institutions / authors / countries, papers + citations per year
   compare.py   # same terms across several corpora; "shared risers"
@@ -198,19 +199,35 @@ labels come from `make_label`, which prefers phrases over their constituent word
 `--method openalex` uses OpenAlex's own labels instead — too coarse for ECTC (half the
 papers land in "3D IC and TSV technologies") but fine for broad venues.
 
-**Keyword analysis (`keywords.py`)** counts *document frequency* (papers mentioning a term
-at least once per year) and reports it as a share of that year's papers, so years of
-different size are comparable. Rising/falling terms compare pooled share in the early vs.
-late half of the year range. Two filters shape the output and are easy to misread as bugs:
+**Keyword analysis (`keywords.py`)**: phrases are n-grams of titles and abstracts (no full
+text in OpenAlex), reported as a share of that year's papers. Rising/falling compare pooled
+share in the early vs. late half of the range. Four things shape the output and are easy
+to misread as bugs:
 
+- **Topical counting** (`basis="topical"`, default). `text.term_mentions` gives every
+  phrase of a paper a role — `title`, `repeated`, `body`, `opening` — and only the first
+  three count. The opening is the first sentence or the first 20 % of the abstract,
+  whichever is longer; if the first "sentence" is over 40 % of the abstract (one-sentence
+  or unpunctuated abstracts) only the 20 % applies. Chosen from ECTC data: abstract-only
+  mentions of *artificial intelligence* are 72 % first-sentence and never repeated,
+  *finite element* 9 %. `KeywordTrends.doc_freq` holds the counts for the chosen basis,
+  `mention_freq` every mention, `topical_share(term)` their ratio.
+- **Common phrases** (`background.py`, `resources/background.json`). A phrase used by
+  >= 1 % of the papers in 3+ *other fields* is hidden from `candidates()` (so from top,
+  rising, falling, emerging). Fields pool several venues (`FIELD_OF`) so ECTC/EPTC/ICEPT
+  do not vouch for each other; a venue's own field is excluded. A single lift ratio could
+  not separate boilerplate (*high performance*) from cross-field technical terms
+  (*3D integration*, *power delivery*); breadth across fields does. Rebuild the table with
+  `paper-trends background data/*.jsonl` after adding venues; it is CC0-derived and
+  committed. Tests on synthetic corpora pass `background=None`.
 - `STOPWORDS` in `text.py` is generic English + academic boilerplate + unit tokens only.
   Do not add domain words there; users pass `--stopwords file` for that.
 - `collapse_subphrases` hides a term when a longer term containing it accounts for ≥ 80 %
-  of its occurrences (`performance computing` → `high-performance computing`). Disable
-  with `--keep-subphrases`.
+  of its occurrences. Disable with `--keep-subphrases`.
 
-Unigram rankings are dominated by generic words (process, performance, thermal); phrase
-level views (`--ngram 2-3`) and the rising/falling lists are where the signal is.
+These are data-driven heuristics without ground truth. Whether the phrases are typical
+enough is an open question the maintainer is still weighing (manual labelling was discussed, not
+decided); do not present the rules as validated.
 
 **Coverage differs a lot by venue.** IEEE venues with acronym DOIs (ECTC, ISSCC, CVPR,
 ICRA…) are complete. Interspeech (ISCA, `10.21437/interspeech`) has every paper but
@@ -224,7 +241,7 @@ the vega-datasets world-110m topojson (CDN) by ISO 3166-1 numeric id from
 Antarctica (id 10) is dropped; city-states are too small to see — say so rather than hack.
 
 **Report design (the public face; Streamlit is the local tool).** Editorial data-journalism
-style after Our World in Data / The Economist, agreed with Minjia on 2026-09-26: warm
+style after Our World in Data / The Economist, agreed with the maintainer on 2026-09-26: warm
 paper background `#FCFBF8`, ink `#1B1B1B`, one accent red `#E3120B` for the focus series
 and key numbers, blue `#1F4E79` for "fading", grey `#B8B5AE` for context; Newsreader for
 headings, IBM Plex Sans (tabular numerals) for everything else. Rules: every chart gets a

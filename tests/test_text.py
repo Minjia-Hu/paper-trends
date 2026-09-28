@@ -39,3 +39,28 @@ def test_urls_are_dropped():
     toks = tokenize("Code is available at https://github.com/foo/bar and project page www.foo.io/page. Diffusion models.")
     assert "github" not in toks and "https" not in toks and "foo" not in toks and "io" not in toks
     assert "diffusion" in toks and "models" in toks
+
+
+def test_mention_roles():
+    from paper_trends.text import mention_role, term_mentions
+
+    title = "Hybrid bonding at fine pitch"
+    abstract = ("With the growth of artificial intelligence, packaging density must rise. "
+                "We present a copper process. Finite element analysis predicts warpage. "
+                "The copper process reaches a fine pitch. Yield is reported for the copper process.")
+    roles = term_mentions(title, abstract, 1, 2)
+    assert roles["hybrid bonding"] == "title"
+    assert roles["artificial intelligence"] == "opening"      # once, in the first sentence
+    assert roles["finite element"] == "body"                  # once, beyond the opening
+    assert roles["copper process"] == "repeated"
+    assert mention_role(title, abstract, "Artificial Intelligence") == "opening"
+    assert mention_role(title, abstract, "fine pitch") == "title"   # the title wins over the abstract
+    assert mention_role(title, abstract, "solder") is None
+
+
+def test_one_sentence_abstract_is_not_all_opening():
+    from paper_trends.text import term_mentions
+
+    roles = term_mentions("A study", "thermal resistance heat sink cooling junction temperature heat flux variant three for packages", 1, 2)
+    assert roles["thermal resistance"] == "opening"     # first fifth of the text
+    assert roles["junction temperature"] == "body"      # the single sentence does not swallow everything

@@ -12,6 +12,7 @@ import streamlit as st
 
 from paper_trends import compare, frames
 from paper_trends.report import charts
+from paper_trends.background import MIN_FIELDS, field_of
 from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
@@ -297,15 +298,17 @@ def run_fetch(query: str, doi_prefixes: list[str], slug: str) -> None:
 
 
 @st.cache_data(show_spinner="Counting keywords…")
-def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, ngram: tuple[int, int], extra_stop: str):
+def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, ngram: tuple[int, int], extra_stop: str,
+                    basis: str = "topical", keep_common: bool = False):
     recs = filter_years(load_records(path, mtime), years)
     stop = load_stopwords(extra_stop.split())
-    return compute_trends(recs, text=text, n_min=ngram[0], n_max=ngram[1], stopwords=stop)
+    return compute_trends(recs, text=text, n_min=ngram[0], n_max=ngram[1], stopwords=stop, basis=basis,
+                          field=field_of(Path(path).stem), keep_common=keep_common)
 
 
 @st.cache_data(show_spinner="Searching papers…")
-def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str):
-    return papers_with(filter_years(load_records(path, mtime), years), term, text)
+def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str, topical_only: bool = True):
+    return papers_with(filter_years(load_records(path, mtime), years), term, text, topical_only=topical_only)
 
 
 @st.cache_data(show_spinner="Fitting topic model…")
@@ -618,7 +621,13 @@ if section == "keywords":
     ngram = o1.selectbox("N-grams", ["1–3", "2–3", "1"], index=1)
     text_mode = o2.selectbox("Text", ["title+abstract", "title"])
     ng = {"1–3": (1, 3), "2–3": (2, 3), "1": (1, 1)}[ngram]
-    kt = cached_keywords(path, mtime, years, text_mode, ng, extra_stop)
+    t1, t2 = st.columns([1, 1])
+    every = t1.toggle("Count every mention", value=False, help="Off (default): a paper counts only when it is about the phrase — in the title, repeated, or used beyond the opening of the abstract. On: a single mention anywhere counts, including 'with the rise of AI…' openings.")
+    keep_common = t2.toggle("Include phrases common to other fields", value=False, help=f"Off (default): phrases used by {MIN_FIELDS} or more other fields (high performance, low cost, next generation…) are hidden because they say little about this conference.")
+    basis = "any" if every else "topical"
+    kt = cached_keywords(path, mtime, years, text_mode, ng, extra_stop, basis, keep_common)
+    if kt.common and not keep_common:
+        note(f"{len(kt.common)} phrases common to {MIN_FIELDS}+ other fields are hidden, e.g. " + ", ".join(sorted(kt.common, key=lambda t: -kt.mentions(t))[:6]) + ".")
     rising = kt.rising(15, min_total=10)
     falling = kt.falling(15, min_total=10)
     default_terms = [t for t, *_ in rising[:5]]
@@ -642,13 +651,13 @@ if section == "keywords":
     pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
     pick = st.selectbox("Term", pick_options, key="kw_pick") if pick_options else None
     if pick:
-        hits = cached_papers_with(path, mtime, years, pick, text_mode)
-        note(f"{len(hits)} papers, newest and most cited first.")
+        hits = cached_papers_with(path, mtime, years, pick, text_mode, basis == "topical")
+        note(f"{len(hits)} papers {'about' if basis == 'topical' else 'mentioning'} this phrase, newest and most cited first.")
         html_table(pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits]), links=["doi"], max_rows=60)
     h2("Top terms by year")
     top = kt.top_terms(40)
     html_table(frames.keyword_table(kt, top), pct=[str(y) for y in kt.years])
-    note("Early/late compare the pooled share of papers in the first vs. second half of the year range. Terms that almost always occur inside a longer phrase are folded into it.")
+    note("Phrases come from titles and abstracts (OpenAlex has no full text). Early/late compare the pooled share of papers in the first vs. second half of the year range. Terms that almost always occur inside a longer phrase are folded into it.")
 
 if section == "topics":
     o1, o2 = st.columns([1, 1])
@@ -695,14 +704,14 @@ if section == "compare":
     note("Same terms, other conferences. Only conferences already fetched on this server are listed.")
     local = {k: v for k, v in PRESETS.items() if v["slug"] != slug and corpus_path(v["slug"]).exists()}
     others = st.multiselect("Compare with", list(local), default=list(local)[:2], format_func=lambda k: k.split(" — ")[0])
-    kt_here = cached_keywords(path, mtime, years, "title+abstract", (2, 3), extra_stop)
+    kt_here = cached_keywords(path, mtime, years, "title+abstract", (2, 3), extra_stop, "topical", True)   # comparisons keep cross-field phrases
     default_terms = [t for t, *_ in kt_here.rising(4, min_total=10)]
     cmp_terms = st.multiselect("Terms", kt_here.top_terms(300), default=default_terms, key="cmp_terms")
     if others and cmp_terms:
         trends = {SHORT.get(slug, query): kt_here}
         for k in others:
             cp = corpus_path(local[k]["slug"])
-            trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, "title+abstract", (2, 3), extra_stop)
+            trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, "title+abstract", (2, 3), extra_stop, "topical", True)
         df = pd.DataFrame(compare.term_shares(trends, cmp_terms))
         names = list(trends)
         yrs = sorted(df["year"].unique().tolist())

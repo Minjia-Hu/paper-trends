@@ -10,18 +10,34 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .store import Record, filter_years, parse_years, read_jsonl
-from .text import STOPWORDS, doc_terms, load_stopwords
+from . import background as bg
+from .text import STOPWORDS, TOPICAL_ROLES, load_stopwords, mention_role, term_mentions
 
 
 @dataclass
 class KeywordTrends:
     years: list[int]
     papers_per_year: dict[int, int]
-    # term -> year -> number of papers mentioning the term
+    # term -> year -> number of papers counted for the term. With basis "topical" (default)
+    # that is papers *about* the term; with "any", every paper that mentions it.
     doc_freq: dict[str, dict[int, int]]
     abstract_coverage: dict[int, float] = field(default_factory=dict)
     # if set, terms that are (almost) always part of a longer term are hidden from rankings
     collapse_ratio: float | None = 0.8
+    basis: str = "topical"
+    # term -> year -> papers mentioning the term in any role (>= doc_freq)
+    mention_freq: dict[str, dict[int, int]] = field(default_factory=dict)
+    # term -> other fields in which it is common; such terms are hidden from rankings
+    common: dict[str, list[str]] = field(default_factory=dict)
+    keep_common: bool = False
+
+    def mentions(self, term: str) -> int:
+        return sum(self.mention_freq.get(term, self.doc_freq[term]).values())
+
+    def topical_share(self, term: str) -> float:
+        """Of the papers mentioning the term, how many are about it."""
+        m = self.mentions(term)
+        return self.total(term) / m if m else 0.0
 
     def total(self, term: str) -> int:
         return sum(self.doc_freq[term].values())
@@ -31,7 +47,7 @@ class KeywordTrends:
         return self.doc_freq[term].get(year, 0) / n if n else 0.0
 
     def candidates(self) -> list[str]:
-        terms = list(self.doc_freq)
+        terms = [t for t in self.doc_freq if self.keep_common or t not in self.common]
         if self.collapse_ratio is None:
             return terms
         return collapse_subphrases(terms, self.total, self.collapse_ratio)
@@ -115,16 +131,14 @@ def _pooled_share(kt: KeywordTrends, term: str, years: list[int]) -> float:
     return hits / n if n else 0.0
 
 
-def papers_with(records: list[Record], term: str, text: str = "title+abstract") -> list[Record]:
-    """Papers whose title/abstract contains `term` as a whole phrase (same tokenization as
-    the counts, so the result matches the document frequency)."""
-    from .text import tokenize
-
-    needle = " " + " ".join(tokenize(term)) + " "
+def papers_with(records: list[Record], term: str, text: str = "title+abstract", topical_only: bool = True) -> list[Record]:
+    """Papers counted for `term`, newest and most cited first. With `topical_only` (the
+    default, matching the counts) a paper that only name-drops the phrase in its opening is
+    left out."""
     hits = []
     for r in records:
-        hay = " " + " ".join(tokenize(build_text(r, text))) + " "
-        if needle in hay:
+        role = mention_role(r.get("title"), r.get("abstract") if text != "title" else None, term)
+        if role and (role in TOPICAL_ROLES or not topical_only):
             hits.append(r)
     hits.sort(key=lambda r: (-(r.get("publication_year") or 0), -(r.get("cited_by_count") or 0)))
     return hits
@@ -179,10 +193,26 @@ def compute_trends(
     n_max: int = 3,
     stopwords: frozenset[str] = STOPWORDS,
     min_total: int = 2,
+    basis: str = "topical",
+    field: str | None = None,
+    background: dict | None | str = "default",
+    keep_common: bool = False,
 ) -> KeywordTrends:
+    """Per-year paper counts for every n-gram.
+
+    basis       "topical" counts a paper for a phrase only when the paper is about it (title,
+                repeated, or used beyond the opening of the abstract); "any" counts every mention.
+    field       the corpus' own field (see background.FIELD_OF), left out when judging
+                whether a phrase is common across fields.
+    background  the cross-field table; "default" loads the one shipped with the package,
+                None switches the filter off.
+    """
+    if basis not in ("topical", "any"):
+        raise ValueError("basis must be 'topical' or 'any'")
     papers: Counter[int] = Counter()
     with_abs: Counter[int] = Counter()
-    df: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    topical: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    anyrole: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
     for r in records:
         y = r.get("publication_year")
         if not y:
@@ -190,16 +220,32 @@ def compute_trends(
         papers[y] += 1
         if r.get("abstract"):
             with_abs[y] += 1
-        for term in doc_terms(build_text(r, text), n_min, n_max, stopwords):
-            df[term][y] += 1
+        roles = term_mentions(r.get("title"), r.get("abstract") if text != "title" else None, n_min, n_max, stopwords)
+        for term, role in roles.items():
+            anyrole[term][y] += 1
+            if role in TOPICAL_ROLES:
+                topical[term][y] += 1
     # prune rare terms to keep memory/output sane
-    pruned = {t: dict(ys) for t, ys in df.items() if sum(ys.values()) >= min_total}
+    keep = [t for t, ys in anyrole.items() if sum(ys.values()) >= min_total]
+    mention_freq = {t: dict(anyrole[t]) for t in keep}
+    counted = mention_freq if basis == "any" else {t: dict(topical[t]) for t in keep if t in topical}
+    table = bg.load() if background == "default" else background
+    common = {}
+    if table:
+        for t in counted:
+            fields = bg.common_fields(t, field, table)
+            if len(fields) >= table.get("min_fields", bg.MIN_FIELDS):
+                common[t] = fields
     years = sorted(papers)
     return KeywordTrends(
         years=years,
         papers_per_year=dict(papers),
-        doc_freq=pruned,
+        doc_freq=counted,
         abstract_coverage={y: with_abs[y] / papers[y] for y in years},
+        basis=basis,
+        mention_freq=mention_freq,
+        common=common,
+        keep_common=keep_common,
     )
 
 
@@ -262,13 +308,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--stopwords", type=Path, help="extra stopwords file, one term per line")
     p.add_argument("--counts", action="store_true", help="show raw paper counts instead of share")
     p.add_argument("--keep-subphrases", action="store_true", help="do not hide terms that are mostly part of longer terms")
+    p.add_argument("--count", choices=["topical", "any"], default="topical",
+                   help="topical (default): count a paper only when it is about the phrase; any: count every mention")
+    p.add_argument("--keep-common", action="store_true", help="do not hide phrases that are common to three or more other fields")
+    p.add_argument("--field", help="the conference's field, excluded from the cross-field check (default: from the file name)")
     p.add_argument("--csv", type=Path, help="also write the top terms table to CSV")
     args = p.parse_args(argv)
 
     records = filter_years(read_jsonl(args.jsonl), parse_years(args.years))
     n_min, n_max = parse_years(args.ngram) or (1, 3)
     extra = args.stopwords.read_text().splitlines() if args.stopwords else None
-    kt = compute_trends(records, text=args.text, n_min=n_min, n_max=n_max, stopwords=load_stopwords(extra))
+    kt = compute_trends(records, text=args.text, n_min=n_min, n_max=n_max, stopwords=load_stopwords(extra),
+                        basis=args.count, field=args.field or bg.field_of(args.jsonl.stem), keep_common=args.keep_common)
     if args.keep_subphrases:
         kt.collapse_ratio = None
 
@@ -281,7 +332,9 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     top = kt.top_terms(args.top)
-    print(f"{len(records)} papers, {kt.years[0]}-{kt.years[-1]}, text={args.text}, ngram={n_min}-{n_max}\n")
+    print(f"{len(records)} papers, {kt.years[0]}-{kt.years[-1]}, text={args.text}, ngram={n_min}-{n_max}, count={kt.basis}")
+    hidden = 0 if kt.keep_common else len(kt.common)
+    print(f"{hidden} phrases common to {bg.MIN_FIELDS}+ other fields hidden (--keep-common shows them)\n" if hidden else "")
     print(render_top_table(kt, top, as_share=not args.counts))
     print()
     print(render_momentum(kt.rising(args.movers, args.min_total), f"RISING (share of papers, early vs late half)"))

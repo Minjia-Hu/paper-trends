@@ -74,3 +74,29 @@ def test_restore_hyphens_from_corpus_spelling():
     assert restore_hyphens("wafer level packaging", forms) == "wafer-level packaging"
     assert restore_hyphens("hybrid bonding", forms) == "hybrid bonding"
     assert restore_hyphens("state of the art", Counter({"state-of-the-art": 5})) == "state-of-the-art"
+
+
+def test_topical_counts_ignore_opening_mentions():
+    abstract = ("Artificial intelligence drives demand for packaging. We study solder joints under load. "
+                "Cracks grow in solder joints after cycling. Results are reported for three alloys.")
+    recs = [_rec(2020, "Reliability of interconnects", abstract)] * 3
+    topical = compute_trends(recs, n_min=2, n_max=2, min_total=1, background=None)
+    every = compute_trends(recs, n_min=2, n_max=2, min_total=1, basis="any", background=None)
+    assert "artificial intelligence" not in topical.doc_freq            # name-dropped once in the opening
+    assert every.doc_freq["artificial intelligence"] == {2020: 3}
+    assert topical.doc_freq["solder joints"] == {2020: 3}
+    assert topical.mentions("solder joints") == 3 and topical.topical_share("solder joints") == 1.0
+
+
+def test_common_phrases_are_hidden_from_rankings():
+    table = {"min_fields": 3, "terms": {"high performance": {"devices": .08, "circuits": .06, "thermal": .09, "packaging": .11},
+                                         "hybrid bonding": {"packaging": .06, "devices": .006}}}
+    recs = [_rec(2016, "High performance hybrid bonding")] * 2 + [_rec(2019, "High performance hybrid bonding")] * 2
+    kt = compute_trends(recs, text="title", n_min=2, n_max=2, min_total=1, field="packaging", background=table)
+    assert kt.common == {"high performance": ["circuits", "devices", "thermal"]}   # own field is not counted
+    assert "high performance" not in kt.top_terms(10) and "hybrid bonding" in kt.top_terms(10)
+    kt.keep_common = True
+    assert "high performance" in kt.top_terms(10)
+    # only two other fields -> not common
+    table["terms"]["high performance"].pop("thermal")
+    assert not compute_trends(recs, text="title", n_min=2, n_max=2, min_total=1, field="packaging", background=table).common

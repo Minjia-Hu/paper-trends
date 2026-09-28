@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from ..background import field_of
 from ..keywords import KeywordTrends, compute_trends, hyphen_forms, restore_hyphens
 from ..rank import compute_ranking
 from ..store import Record, filter_years
@@ -121,7 +122,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     # Venues whose abstracts OpenAlex mostly lacks (Interspeech) are analysed on titles only,
     # otherwise the years with abstracts would dominate every share.
     text_mode = "title+abstract" if coverage >= 0.6 else "title"
-    kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=stopwords)
+    kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=stopwords, field=field_of(slug))
     rising = _dedupe(kt.rising(n_multiples * 2, min_total=10))[:n_multiples]
     falling = _dedupe(kt.falling(n_multiples * 2, min_total=10))[:n_multiples]
     emerging = _dedupe(kt.emerging(20, min_total=10))[:10]
@@ -181,6 +182,8 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "n_papers": len(recs),
         "abstract_coverage": coverage,
         "text_mode": text_mode,
+        "n_common_hidden": len(kt.common),
+        "common_examples": [show(t) for t in sorted(kt.common, key=lambda t: -kt.mentions(t))[:6]],
         "generated": date.today().isoformat(),
         "papers_per_year": [{"year": y, "papers": per_year[y], "abstracts": with_abs[y]} for y in ys],
         "growth_sentence": growth_sentence(per_year),
