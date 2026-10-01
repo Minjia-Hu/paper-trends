@@ -100,7 +100,16 @@
   <h2>Who publishes</h2>
   <p class="lede">Papers with at least one author at the institution (a paper counts once per institution; subsidiaries and institutes are credited to their parent). The arrow is the change in share of papers between the two halves of the period.</p>
   <figure class="wide" style="margin-bottom: 36px">
-    <figcaption><span class="headline">Where the papers come from</span><span class="sub">Share of papers with at least one author in the country, {{ r.year_range[0] }}–{{ r.year_range[1] }}. Countries without a paper are left blank.</span></figcaption>
+    <figcaption><span class="headline">Where the papers come from</span><span class="sub">Share of papers with at least one author in the country. Countries without a paper are left blank. Single years are three-year rolling shares, so the picture moves rather than jumps.</span></figcaption>
+    {% if r.map_lines %}
+    <div class="map-ctl" id="map-ctl">
+      <a href="#" data-year="0" class="on" id="map-all">{{ r.year_range[0] }}–{{ r.year_range[1] }}</a>
+      <input type="range" id="map-range" min="{{ r.year_range[0] }}" max="{{ r.year_range[1] }}" step="1" value="{{ r.year_range[0] }}" aria-label="Year">
+      <span class="map-year" id="map-year">{{ r.year_range[0] }}</span>
+      <a href="#" id="map-play">▶ Play</a>
+      <span class="map-line" id="map-line">{{ r.map_lines["0"] }}</span>
+    </div>
+    {% endif %}
     <div class="viz" id="fig-map"></div>
   </figure>
   <div class="two">
@@ -158,6 +167,33 @@ const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec,
   }
   return res;
 }));
+// the map's year control: 0 = the whole period, otherwise a three-year rolling view
+(function () {
+  const ctl = document.getElementById("map-ctl");
+  if (!ctl) return;
+  const lines = {{ map_lines_json }};
+  const range = document.getElementById("map-range"), all = document.getElementById("map-all"), play = document.getElementById("map-play");
+  const yearEl = document.getElementById("map-year"), line = document.getElementById("map-line");
+  const y0 = +range.min, y1 = +range.max;
+  let timer = null;
+  function stop() { if (timer) { clearInterval(timer); timer = null; play.textContent = "▶ Play"; } }
+  function set(y) {
+    all.classList.toggle("on", y === 0); yearEl.classList.toggle("on", y !== 0);
+    if (y) { range.value = y; yearEl.textContent = y; }
+    line.textContent = lines[String(y)] || "";
+    const view = window.VIEWS["fig-map"];
+    if (view) view.signal("year", y).runAsync();
+  }
+  range.addEventListener("input", () => { stop(); set(+range.value); });
+  all.addEventListener("click", (ev) => { ev.preventDefault(); stop(); set(0); });
+  play.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    if (timer) return stop();
+    let y = all.classList.contains("on") || +range.value >= y1 ? y0 : +range.value + 1;
+    set(y); play.textContent = "❚❚ Pause";
+    timer = setInterval(() => { if (y >= y1) return stop(); set(++y); }, 900);
+  });
+})();
 </script>
 <script>{{ entities_js }}</script>
 </body>

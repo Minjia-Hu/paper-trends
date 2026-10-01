@@ -235,29 +235,40 @@ def bump_chart(rows: list[dict], years: list[int], n: int) -> dict[str, Any]:
 WORLD_TOPOJSON = "https://cdn.jsdelivr.net/npm/vega-datasets@2.11.0/data/world-110m.json"
 
 
-def world_map(rows: list[dict], height: int = 360) -> dict[str, Any]:
+def world_map(rows: list[dict], height: int = 360, years: list[int] | None = None) -> dict[str, Any]:
     """Choropleth of the share of papers with at least one author in each country
-    (single-hue sequential scale, square-root so the leader does not wash out the rest)."""
-    vmax = max((r["share"] for r in rows), default=0.1)
+    (single-hue sequential scale, square-root so the leader does not wash out the rest).
+    With `years`, the rows carry rolling per-year fields (`s2019`, `n2019`) and a `year`
+    signal (0 = the pooled view) picks which one is drawn; the page's controls set it."""
+    years = years or []
+    fields = ["name", "papers", "share"] + [f"{p}{y}" for y in years for p in ("s", "n")]
+    vmax = max((r[f] for r in rows for f in fields if f.startswith("s")), default=0.1)
     topo = {"url": WORLD_TOPOJSON, "format": {"type": "topojson", "feature": "countries"}}
     spec = _base(height, {"left": 0, "right": 0, "top": 0, "bottom": 0})
     spec["projection"] = {"type": "equalEarth"}
     spec["config"] = {**CONFIG, "legend": {"disable": False, "labelColor": MUTED, "titleColor": MUTED, "labelFontSize": 11, "titleFontSize": 11, "titleFontWeight": "normal", "gradientThickness": 8, "gradientLength": 180}}
+    pick = [{"calculate": "datum.share", "as": "v"}, {"calculate": "datum.papers", "as": "np"}]
+    if years:
+        spec["params"] = [{"name": "year", "value": 0}]
+        pick = [{"calculate": "year == 0 ? datum.share : datum['s' + year]", "as": "v"},
+                {"calculate": "year == 0 ? datum.papers : datum['n' + year]", "as": "np"}]
     spec["layer"] = [
         {"data": topo, "transform": [{"filter": "datum.id != 10"}], "mark": {"type": "geoshape", "fill": "#EFECE5", "stroke": "#FCFBF8", "strokeWidth": 0.6}},
         {
             "data": topo,
             "transform": [
                 {"filter": "datum.id != 10"},
-                {"lookup": "id", "from": {"data": {"values": rows}, "key": "id", "fields": ["name", "papers", "share"]}},
+                {"lookup": "id", "from": {"data": {"values": rows}, "key": "id", "fields": fields}},
                 {"filter": "isValid(datum.papers) && datum.papers > 0"},
+                *pick,
+                {"filter": "datum.np > 0"},
             ],
             "mark": {"type": "geoshape", "stroke": "#FCFBF8", "strokeWidth": 0.6},
             "encoding": {
-                "color": {"field": "share", "type": "quantitative", "scale": {"type": "sqrt", "domain": [0, vmax], "range": ["#F6D6D4", RED]},
+                "color": {"field": "v", "type": "quantitative", "scale": {"type": "sqrt", "domain": [0, vmax], "range": ["#F6D6D4", RED]},
                           "legend": {"title": "share of papers", "orient": "bottom-left", "direction": "horizontal", "format": ".0%",
                                      "values": [0, round(vmax / 4, 2), round(vmax, 2)]}},
-                "tooltip": [{"field": "name", "title": "country"}, {"field": "papers"}, {"field": "share", "format": ".1%"}],
+                "tooltip": [{"field": "name", "title": "country"}, {"field": "np", "title": "papers"}, {"field": "v", "format": ".1%", "title": "share"}],
             },
         },
     ]

@@ -240,6 +240,11 @@ so they are not good showcases; say so rather than fetching them.
 the vega-datasets world-110m topojson (CDN) by ISO 3166-1 numeric id from
 `report/static/iso3166.json` (generated once with pycountry; not a runtime dependency).
 Antarctica (id 10) is dropped; city-states are too small to see — say so rather than hack.
+On the report page the map has a year control (period link / slider / Play): the rows
+carry three-year rolling fields `s<year>`/`n<year>` (`country_map_rows(..., years)`), a
+Vega signal `year` (0 = pooled) picks the field via `calculate`, and the page's own HTML
+controls set it with `view.signal("year", y).runAsync()` — no Vega `bind`, so the
+controls follow `report.css`. `build.map_lines` precomputes the "leaders" line per year.
 
 **Report design (the public face; Streamlit is the local tool).** Editorial data-journalism
 style after Our World in Data / The Economist, agreed with the maintainer on 2026-09-26: warm

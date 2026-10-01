@@ -49,7 +49,7 @@ def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
     if r["emerging"]:
         specs["fig-emerging"] = charts.emerging_heatmap(r["emerging"], years)
     specs["fig-topics"] = charts.streamgraph(r["topic_rows"], [t["label"] for t in r["topics"]], years)
-    specs["fig-map"] = charts.world_map(r["country_map"])
+    specs["fig-map"] = charts.world_map(r["country_map"], years=years if r.get("map_lines") else None)
     specs["fig-inst"] = charts.ranked_bars(r["institutions"])
     specs["fig-country"] = charts.ranked_bars(r["countries"])
     if r.get("inst_topic"):
@@ -86,6 +86,7 @@ def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = 
         r=r, nav=nav or [], specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
         embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
         entities_json=json.dumps(r.get("entities") or None, ensure_ascii=False).replace("</", "<\\/"),
+        map_lines_json=json.dumps(r.get("map_lines") or {}, ensure_ascii=False).replace("</", "<\\/"),
         entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
     )
 

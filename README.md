@@ -45,7 +45,7 @@ open site/ectc.html
 
 Renders one static page per conference in an editorial layout: a few sentences at a
 glance, small multiples of rising and fading phrases, the new vocabulary, a topic
-streamgraph, and who publishes — a world map, institution and country rankings, how the
+streamgraph, and who publishes — a world map you can play through the years, institution and country rankings, how the
 leading institutions' ranks crossed over the years (bump chart) and what each of them
 works on (institution × topic heatmap) — each chart with a one-line conclusion and a
 source line. Pass several corpora to get a linked set with an index page. The pages are plain

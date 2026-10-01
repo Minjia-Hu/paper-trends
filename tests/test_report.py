@@ -69,6 +69,16 @@ def test_country_map_rows_and_spec():
     assert {r["name"] for r in rows} == {"United States", "South Korea", "Japan", "Taiwan"}
     assert abs(sum(r["share"] for r in rows) - 1.0) < 1e-9
     json.dumps(world_map(rows))
+    # per-year rolling fields for the map's year control; each year's shares sum to one too
+    years = list(range(2016, 2024))
+    rows = country_map_rows(rk, 80, years)
+    for y in years:
+        assert abs(sum(r[f"s{y}"] for r in rows) - 1.0) < 1e-9 and sum(r[f"n{y}"] for r in rows) > 0
+    from paper_trends.report.build import map_lines
+    lines = map_lines(rows, years)
+    assert set(lines) == {"0", *map(str, years)} and "United States" in lines["0"]
+    spec = world_map(rows, years=years)
+    assert spec["params"] == [{"name": "year", "value": 0}] and "s2019" in spec["layer"][1]["transform"][1]["from"]["fields"]
 
 
 def test_institution_topic_matrix_and_ranks():

@@ -104,6 +104,15 @@ footer.about p { margin: 0 0 12px; }
 }
 
 /* ---- detail panel (entities.js) ---- */
+/* map year control: period link, slider, year, play; the leaders line wraps below */
+.map-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 10px; font-family: var(--sans); font-size: 13px; color: var(--muted); }
+.map-ctl a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--rule); padding-bottom: 1px; }
+.map-ctl a.on, .map-ctl .map-year.on { color: var(--red); border-color: var(--red); }
+.map-ctl .map-year { font-variant-numeric: tabular-nums; min-width: 3ch; border-bottom: 1px solid transparent; }
+.map-ctl input[type="range"] { width: 220px; accent-color: var(--ink); margin: 0; }
+.map-ctl .map-line { flex-basis: 100%; color: var(--ink); }
+.map-ctl .map-line:empty { display: none; }
+
 .ent, .ent-chip { cursor: pointer; }
 .ent { border-bottom: 1px solid var(--rule); }
 .ent:hover { border-bottom-color: var(--red); color: var(--red); }

@@ -45,15 +45,32 @@ def country_id(code: str) -> int | None:
     return _ISO.get(code, {}).get("id")
 
 
-def country_map_rows(country_ranking, n_papers: int) -> list[dict[str, Any]]:
+def country_map_rows(country_ranking, n_papers: int, years: list[int] | None = None, window: int = 3) -> list[dict[str, Any]]:
+    """One row per country with its pooled papers and share; with `years`, also a rolling
+    `window`-year share and count per year (`s2019`, `n2019`) for the map's year control."""
+    half = window // 2
     rows = []
     for code in country_ranking.by_year:
         cid = country_id(code)
         if cid is None:
             continue
         n = country_ranking.total(code)
-        rows.append({"id": cid, "name": country_name(code), "papers": n, "share": n / n_papers if n_papers else 0.0})
+        row = {"id": cid, "name": country_name(code), "papers": n, "share": n / n_papers if n_papers else 0.0}
+        for y in years or []:
+            span = [yy for yy in years if abs(yy - y) <= half]
+            denom = sum(country_ranking.papers_per_year.get(yy, 0) for yy in span)
+            row[f"n{y}"] = sum(country_ranking.by_year[code].get(yy, 0) for yy in span)
+            row[f"s{y}"] = row[f"n{y}"] / denom if denom else 0.0
+        rows.append(row)
     return rows
+
+
+def map_lines(rows: list[dict[str, Any]], years: list[int], k: int = 4) -> dict[str, str]:
+    """The leading countries, as one line per map position: "0" for the pooled view."""
+    def line(field: str) -> str:
+        top = sorted(rows, key=lambda r: -r[field])[:k]
+        return " · ".join(f"{r['name']} {_pct(r[field])}" for r in top if r[field] > 0)
+    return {"0": line("share"), **{str(y): line(f"s{y}") for y in years}}
 
 
 def inst_topic_rows(records: list[Record], tt, inst, inst_keys: list[str], topics: list) -> list[dict[str, Any]]:
@@ -281,7 +298,8 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "inst_topic_sentence": heat_sentence,
         "inst_ranks": rank_rows,
         "inst_rank_sentence": rank_sentence,
-        "country_map": country_map_rows(country, len(recs)),
+        "country_map": (country_map := country_map_rows(country, len(recs), ys)),
+        "map_lines": map_lines(country_map, ys),
         "countries": [
             {"name": country_name(country.names[k]), "papers": country.total(k), "early": country_mov[k][0], "late": country_mov[k][1], "delta": country_mov[k][2]}
             for k in country_top
