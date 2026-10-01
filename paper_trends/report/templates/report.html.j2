@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
 </head>
-<body>
+<body class="{{ 'embedded' if embedded else '' }}">
 {% if nav %}<nav class="masthead"><div class="row">
   <a class="brand" href="{{ './' if app_links else 'index.html' }}"{{ ' target="_top"' if app_links else '' }}>paper-trends</a>
   <div class="venues">
@@ -48,7 +48,7 @@
   <div class="grid">
   {% for t in r.rising %}
     <figure>
-      <p class="term">{{ t.term }}</p>
+      <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="up">{{ "%.1f"|format(t.late*100) }}%</span></p>
       <div class="viz" id="fig-rise-{{ loop.index }}"></div>
     </figure>
@@ -59,11 +59,11 @@
 
 <section id="fading">
   <h2>What is fading</h2>
-  <p class="lede">The same measure for the phrases losing the most share. A fading phrase is often a technique that became standard and stopped being worth mentioning.</p>
+  <p class="lede">The same measure for the phrases losing the most share. A fading phrase is often a technique that became standard and stopped being worth mentioning. Click any phrase, institution or topic on this page to see who writes about it, what it travels with and the papers behind it.</p>
   <div class="grid">
   {% for t in r.falling %}
     <figure class="fading">
-      <p class="term">{{ t.term }}</p>
+      <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="down">{{ "%.1f"|format(t.late*100) }}%</span></p>
       <div class="viz" id="fig-fall-{{ loop.index }}"></div>
     </figure>
@@ -91,7 +91,7 @@
   </figure>
   <ul class="topic-list">
   {% for t in r.topics %}
-    <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><b>{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} papers)</span></li>
+    <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><b class="ent" data-ent="topic" data-name="{{ t.label }}">{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} papers)</span></li>
   {% endfor %}
   </ul>
 </section>
@@ -132,7 +132,19 @@
 <script>
 const specs = {{ specs_json }};
 const opts = { actions: false, renderer: "svg" };
-const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts));
+window.ENTITIES = {{ entities_json }};
+window.VIEWS = {};
+const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts).then((res) => {
+  window.VIEWS[id] = res.view;
+  // marks of some figures open the detail panel
+  const kind = id === "fig-inst" ? ["inst", "name"] : id === "fig-topics" ? ["topic", "topic"] : id === "fig-emerging" ? ["term", "term"] : null;
+  if (kind) {  // openEntity is defined by a later script, so look it up when the click happens
+    res.view.addEventListener("click", (ev, item) => { const v = item && item.datum && item.datum[kind[1]]; if (v != null && v !== "Other" && window.openEntity) window.openEntity(kind[0], v); });
+    document.getElementById(id).style.cursor = "pointer";
+  }
+  return res;
+}));
 </script>
+<script>{{ entities_js }}</script>
 </body>
 </html>

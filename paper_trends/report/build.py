@@ -14,6 +14,7 @@ from ..rank import compute_ranking
 from ..store import Record, filter_years
 from ..text import STOPWORDS
 from ..topics import compute_nmf
+from .entities import build_entities
 
 
 COUNTRY = {
@@ -175,6 +176,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     )
 
     return {
+        "entities": build_entities(recs, kt, tt, inst, show),
         "name": name,
         "slug": slug,
         "years": ys,

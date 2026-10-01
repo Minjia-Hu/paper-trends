@@ -49,6 +49,13 @@ streamgraph, and who publishes — each chart with a one-line conclusion and a s
 line. Pass several corpora to get a linked set with an index page. The pages are plain
 HTML + CSS with Vega-Lite charts, so they can be hosted anywhere static.
 
+Everything named on a page is a link into it: click a phrase, an institution bar or a
+topic band and a panel opens with its trend, who writes about it, which topics it belongs
+to, what it co-occurs with and the most cited papers (DOI links). Names inside the panel
+are clickable too, so you can walk from *hybrid bonding* to the institutions behind it to
+their other signature phrases, with a back button and a trail. The panel data is
+precomputed and inlined, so the page still works offline and without a server.
+
 ![Report page header](docs/screenshot-report-top.png)
 
 ### Interactive app

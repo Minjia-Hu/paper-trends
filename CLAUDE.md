@@ -86,8 +86,9 @@ paper_trends/
   frames.py    # analysis results -> tidy pandas DataFrames (charts/tables)
   viz.py       # chart palette (CVD-validated, fixed slot order) + Altair theme
   report/      # static report site: build.py (numbers + sentences), charts.py (Vega-Lite specs),
-               #   render.py (Jinja2 -> site/), templates/, static/report.css
-app.py         # Streamlit UI: sidebar presets/fetch, tabs Overview/Keywords/Topics/Rankings/Compare/Data
+               #   entities.py (linked-entity panel data), render.py (Jinja2 -> site/), templates/,
+               #   static/report.css, static/entities.js (the panel, no library)
+app.py         # Streamlit UI: masthead + search, Report (iframe) / Explore views, no sidebar
 .github/workflows/ci.yml  # pytest on push/PR (tests are fully offline: OpenAlex is mocked)
 .streamlit/config.toml  # theme; secrets.toml (git-ignored) may hold OPENALEX_MAILTO when hosted
 data/<name>.jsonl   # one work per line (git-ignored)
@@ -254,6 +255,22 @@ network. `site/` is git-ignored. `build_report` switches to title-only phrase co
 abstract coverage is under 60 % (Interspeech), restores corpus hyphenation for display
 (`restore_hyphens`: "co-packaged optics"), and drops singular/plural twins from the lists.
 `render.FULL`/`SHORT`/`GROUPS` hold the preset names and the masthead grouping.
+
+**Linked-entity panel** (`report/entities.py` + `static/entities.js`). Every phrase,
+institution and topic on the page is clickable (`<span class="ent" data-ent="term|inst|topic"
+data-name="…">`, plus Vega click listeners on the institution bars, topic bands and
+emerging cells) and opens a drawer with the entity's trend, related institutions / topics /
+co-occurring phrases (lift > 1.3, ≥ 8 shared papers) / signature phrases (lift > 1.4, ≥ 5
+papers) and most cited papers; names inside the drawer are clickable too, with a history
+stack and crumbs. The data (`build_entities`: 150 terms, 60 institutions, all topics)
+is inlined as `window.ENTITIES`; only the papers some panel lists are shipped, renumbered,
+which keeps CVPR at ~0.4 MB instead of 2.7 MB. Topic membership comes from
+`TopicTrends.assignments` (record index → dominant NMF topic). Two things that are easy to
+break: Vega embed promises resolve before the next `<script>` runs, so the click handlers
+must look up `window.openEntity` lazily at click time, not when binding; and inside the
+Streamlit iframe (`<body class="embedded">`) the drawer cannot be `position: fixed`
+(the iframe is sized to its content, so fixed = the top of the document) — `place()`
+positions it absolutely near the last click instead.
 
 ## Known data caveats (ECTC run, 2026-09)
 

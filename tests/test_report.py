@@ -69,3 +69,34 @@ def test_country_map_rows_and_spec():
     assert {r["name"] for r in rows} == {"United States", "South Korea", "Japan", "Taiwan"}
     assert abs(sum(r["share"] for r in rows) - 1.0) < 1e-9
     json.dumps(world_map(rows))
+
+
+def test_entities_are_consistent_with_the_page():
+    import json
+    from paper_trends.report.build import build_report
+
+    r = build_report(_corpus(), name="Test Conf", slug="test", years=(2016, 2023), n_topics=2)
+    e = r["entities"]
+    json.dumps(e)
+    assert e["n_papers"] == 80 and len(e["topics"]) == 2
+    # only the papers some panel lists are shipped, and every reference points inside that list
+    assert 0 < len(e["papers"]) <= 80
+    refs = [p for group in ("terms", "insts", "topics") for ent in e[group] for p in ent["papers"]]
+    assert refs and set(refs) == set(range(len(e["papers"])))
+    assert all(p["tp"] in (0, 1, None) for p in e["papers"])
+    assert e["inst_index"] and e["term_index"]
+    term = e["terms"][0]
+    assert term["insts"] and all(isinstance(i, int) for i, _ in term["insts"])
+    # a rising phrase on the page can be looked up in the panel data
+    assert all(t["term"] in e["term_index"] for t in r["rising"][:3])
+    inst = e["insts"][0]
+    assert inst["total"] == sum(s["n"] for s in inst["series"])
+
+
+def test_rendered_page_carries_the_panel(tmp_path):
+    r = build_report(_corpus(), name="Test Conf", slug="test", years=(2016, 2023), n_topics=2)
+    render_site([r], tmp_path)
+    html = (tmp_path / "test.html").read_text()
+    assert "window.ENTITIES = {" in html and "ent-drawer" in html
+    assert 'data-ent="term"' in html and 'data-ent="topic"' in html
+    assert "openEntity" in html and "<\\/" not in html[:200]

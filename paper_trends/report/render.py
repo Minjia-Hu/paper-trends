@@ -81,6 +81,8 @@ def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = 
     return _env().get_template("report.html.j2").render(
         r=r, nav=nav or [], specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
         embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
+        entities_json=json.dumps(r.get("entities") or None, ensure_ascii=False).replace("</", "<\\/"),
+        entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
     )
 
 
@@ -96,7 +98,7 @@ def render_site(reports: list[dict[str, Any]], out: Path) -> None:
     nav_short = [(g, [(s, short) for s, short, _, _ in items]) for g, items in nav_full]
     for r in reports:
         (out / f"{r['slug']}.html").write_text(render_page(r, nav_short), encoding="utf-8")
-        (out / f"{r['slug']}.json").write_text(json.dumps({k: v for k, v in r.items() if k != "topic_rows"}, ensure_ascii=False), encoding="utf-8")
+        (out / f"{r['slug']}.json").write_text(json.dumps({k: v for k, v in r.items() if k not in ("topic_rows", "entities")}, ensure_ascii=False), encoding="utf-8")
     (out / "index.html").write_text(render_index(nav_full), encoding="utf-8")
     shutil.copy(HERE / "static" / "report.css", out / "report.css")
 

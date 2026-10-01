@@ -33,6 +33,8 @@ class TopicTrends:
     topics: list[Topic]
     by_year: dict[int, dict[int, int]]  # topic id -> year -> papers (dominant topic)
     method: str
+    # index of the record in the input list -> its dominant topic id (NMF only)
+    assignments: dict[int, int] = field(default_factory=dict)
 
     def total(self, tid: int) -> int:
         return sum(self.by_year[tid].values())
@@ -96,7 +98,8 @@ def compute_nmf(
     from sklearn.decomposition import NMF
     from sklearn.feature_extraction.text import TfidfVectorizer
 
-    docs = [r for r in records if r.get("publication_year") and (r.get("abstract") or r.get("title"))]
+    doc_idx = [i for i, r in enumerate(records) if r.get("publication_year") and (r.get("abstract") or r.get("title"))]
+    docs = [records[i] for i in doc_idx]
     if len(docs) < 2:
         raise ValueError("Need at least two papers with text to fit topics.")
     texts = [_doc_text(r) for r in docs]
@@ -134,11 +137,13 @@ def compute_nmf(
     dominant = W.argmax(axis=1)
     papers: Counter[int] = Counter()
     by_year: dict[int, dict[int, int]] = {k: defaultdict(int) for k in range(n_topics)}
-    for r, k, w in zip(docs, dominant, W):
+    assignments: dict[int, int] = {}
+    for i, r, k, w in zip(doc_idx, docs, dominant, W):
         y = r["publication_year"]
         papers[y] += 1
         if w[k] > 0:
             by_year[k][y] += 1
+            assignments[i] = int(k)
     # representative papers: highest topic weight, tie-break by citations
     for k in range(n_topics):
         idx = W[:, k].argsort()[::-1][:20]
@@ -150,6 +155,7 @@ def compute_nmf(
         topics=topics,
         by_year={k: dict(v) for k, v in by_year.items()},
         method="nmf",
+        assignments=assignments,
     )
 
 
