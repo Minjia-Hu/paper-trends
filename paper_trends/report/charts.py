@@ -187,6 +187,51 @@ def ranked_bars(rows: list[dict], value: str = "papers", highlight: int = 3) -> 
     return spec
 
 
+def inst_topic_heatmap(rows: list[dict], insts: list[str], topics: list[str]) -> dict[str, Any]:
+    """institution × topic cells shaded by the share of the institution's papers in the
+    topic (each row sums to one); the share is printed where it is large enough to read."""
+    spec = _base(26 * len(insts) + 70, {"left": 4, "right": 4, "top": 4, "bottom": 4})
+    spec["data"] = {"values": rows}
+    enc_y = {"field": "name", "type": "nominal", "sort": insts, "axis": {"title": None, "labelColor": INK, "labelFontSize": 12.5, "labelLimit": 320}}
+    # column labels: the first two words of the topic label are enough to tell the columns apart
+    enc_x = {"field": "topic", "type": "nominal", "sort": topics, "axis": {"title": None, "orient": "top", "labelAngle": -30, "labelAlign": "left", "labelLimit": 200, "labelFontSize": 11.5, "labelPadding": 4,
+                                                                           "labelExpr": "join(slice(split(datum.value, ' / '), 0, 2), ' / ')"}}
+    spec["layer"] = [
+        {"mark": {"type": "rect", "stroke": "#FCFBF8", "strokeWidth": 2, "cornerRadius": 2},
+         "encoding": {
+             "y": enc_y, "x": enc_x,
+             "color": {"field": "share", "type": "quantitative", "scale": {"range": ["#F6F3EE", RED], "domain": [0, 0.6], "clamp": True}},
+             "tooltip": [{"field": "name", "title": "institution"}, {"field": "topic"}, {"field": "share", "format": ".0%", "title": "of its papers"}, {"field": "papers"}],
+         }},
+        {"mark": {"type": "text", "fontSize": 11.5},
+         "transform": [{"filter": "datum.share >= 0.1"}],
+         "encoding": {"y": enc_y, "x": enc_x, "text": {"field": "share", "format": ".0%"},
+                      "color": {"condition": {"test": "datum.share >= 0.3", "value": "#FFFFFF"}, "value": MUTED}}},
+    ]
+    return spec
+
+
+def bump_chart(rows: list[dict], years: list[int], n: int) -> dict[str, Any]:
+    """Rank of each institution per year among the leading ones; lines that climbed are
+    red, lines that slipped are blue, the rest grey; names at the right edge."""
+    last = years[-1]
+    spec = _base(28 * n + 24, {"left": 20, "right": 240, "top": 8, "bottom": 4})
+    spec["data"] = {"values": rows}
+    ticks = sorted({*years[::3], last})
+    x = {"field": "year", "type": "quantitative", "axis": {"format": "d", "title": None, "values": ticks}, "scale": {"domain": [years[0], last], "nice": False}}
+    y = {"field": "rank", "type": "quantitative", "axis": {"title": None, "values": list(range(1, n + 1)), "format": "d", "grid": False, "labelColor": GREY}, "scale": {"domain": [n + 0.5, 0.5], "nice": False}}
+    color = {"field": "tone", "type": "nominal", "scale": {"domain": ["up", "down", "flat"], "range": [RED, BLUE, GREY]}}
+    tooltip = [{"field": "name"}, {"field": "year"}, {"field": "rank"}, {"field": "papers", "title": "papers (3-yr)"}]
+    spec["layer"] = [
+        {"mark": {"type": "line", "strokeWidth": 2.4, "interpolate": "monotone"}, "encoding": {"x": x, "y": y, "color": color, "detail": {"field": "name"}}},
+        {"mark": {"type": "point", "filled": True, "size": 42, "stroke": "#FCFBF8", "strokeWidth": 1.2}, "encoding": {"x": x, "y": y, "color": color, "tooltip": tooltip}},
+        {"mark": {"type": "text", "align": "left", "dx": 10, "fontSize": 12.5, "fontWeight": 500}, "transform": [{"filter": f"datum.year == {last}"}],
+         "encoding": {"x": x, "y": y, "text": {"field": "label"},
+                      "color": {"condition": {"test": "datum.tone == 'flat'", "value": INK}, "field": "tone", "type": "nominal", "scale": {"domain": ["up", "down", "flat"], "range": [RED, BLUE, GREY]}}}},
+    ]
+    return spec
+
+
 WORLD_TOPOJSON = "https://cdn.jsdelivr.net/npm/vega-datasets@2.11.0/data/world-110m.json"
 
 

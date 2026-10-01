@@ -35,7 +35,7 @@ def test_build_and_render(tmp_path):
     assert r["glance"] and "Test Conf" in r["glance"][0]
     assert r["countries"][0]["name"] in {"United States", "South Korea", "Japan", "Taiwan"}
     specs = figure_specs(r)
-    assert {"fig-papers", "fig-topics", "fig-inst", "fig-country"} <= set(specs)
+    assert {"fig-papers", "fig-topics", "fig-inst", "fig-country", "fig-heat", "fig-bump"} <= set(specs)
     json.dumps(specs)  # must be JSON-serialisable
     render_site([r], tmp_path)
     html = (tmp_path / "test.html").read_text()
@@ -69,6 +69,28 @@ def test_country_map_rows_and_spec():
     assert {r["name"] for r in rows} == {"United States", "South Korea", "Japan", "Taiwan"}
     assert abs(sum(r["share"] for r in rows) - 1.0) < 1e-9
     json.dumps(world_map(rows))
+
+
+def test_institution_topic_matrix_and_ranks():
+    from collections import defaultdict
+
+    r = build_report(_corpus(), name="Test Conf", slug="test", years=(2016, 2023), n_topics=2)
+    # every institution row of the heatmap sums to one, over the listed columns
+    sums = defaultdict(float)
+    for row in r["inst_topic"]:
+        assert row["topic"] in r["inst_topic_topics"] and row["name"] in r["inst_topic_insts"]
+        sums[row["name"]] += row["share"]
+    assert set(sums) == set(r["inst_topic_insts"]) and all(abs(s - 1) < 1e-9 for s in sums.values())
+    assert r["inst_topic_sentence"].endswith("of the conference.")
+    # ranks: each year is a permutation of 1..n, and the label carries the climb
+    by_year = defaultdict(list)
+    for row in r["inst_ranks"]:
+        by_year[row["year"]].append(row["rank"])
+    n = len({row["name"] for row in r["inst_ranks"]})
+    assert all(sorted(v) == list(range(1, n + 1)) for v in by_year.values()) and set(by_year) == set(r["years"])
+    for row in r["inst_ranks"]:
+        assert ("▲" in row["label"]) == (row["climb"] > 0) and ("▼" in row["label"]) == (row["climb"] < 0)
+    assert r["inst_rank_sentence"]
 
 
 def test_entities_are_consistent_with_the_page():

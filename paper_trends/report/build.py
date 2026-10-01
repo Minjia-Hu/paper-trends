@@ -10,10 +10,11 @@ from typing import Any
 
 from ..background import field_of
 from ..keywords import KeywordTrends, compute_trends, hyphen_forms, restore_hyphens
-from ..rank import compute_ranking
+from ..rank import compute_ranking, entities_of
 from ..store import Record, filter_years
 from ..text import STOPWORDS
 from ..topics import compute_nmf
+from .charts import TOPIC_COLORS
 from .entities import build_entities
 
 
@@ -52,6 +53,50 @@ def country_map_rows(country_ranking, n_papers: int) -> list[dict[str, Any]]:
             continue
         n = country_ranking.total(code)
         rows.append({"id": cid, "name": country_name(code), "papers": n, "share": n / n_papers if n_papers else 0.0})
+    return rows
+
+
+def inst_topic_rows(records: list[Record], tt, inst, inst_keys: list[str], topics: list) -> list[dict[str, Any]]:
+    """Share of each institution's papers whose dominant topic is each topic (rows sum to
+    one). Topics beyond the coloured ones are folded into "Other", as in the streamgraph."""
+    n_colored = len(TOPIC_COLORS)
+    label_of = {t.id: (t.label if i < n_colored else "Other") for i, t in enumerate(topics)}
+    pos = {k: i for i, k in enumerate(inst_keys)}
+    counts: dict[int, Counter] = {i: Counter() for i in pos.values()}
+    for i, r in enumerate(records):
+        topic = tt.assignments.get(i)
+        if topic is None:
+            continue
+        for k in entities_of(r, "institution", roll_up=True):
+            if k in pos:
+                counts[pos[k]][label_of[topic]] += 1
+    columns = [t.label for t in topics[:n_colored]] + (["Other"] if len(topics) > n_colored else [])
+    rows = []
+    for k, i in pos.items():
+        total = sum(counts[i].values()) or 1
+        for col in columns:
+            rows.append({"name": inst.names[k], "topic": col, "papers": counts[i][col], "share": counts[i][col] / total})
+    return rows
+
+
+def inst_rank_rows(inst, inst_keys: list[str], years: list[int], window: int = 3) -> list[dict[str, Any]]:
+    """Yearly rank of each institution among `inst_keys`, on a rolling `window`-year count
+    (a single year is too noisy for 10–30 papers). Ties go to the larger total."""
+    half = window // 2
+    rolling = {k: {y: sum(inst.by_year[k].get(yy, 0) for yy in years if abs(yy - y) <= half) for y in years} for k in inst_keys}
+    rank: dict[str, dict[int, int]] = {k: {} for k in inst_keys}
+    for y in years:
+        order = sorted(inst_keys, key=lambda k: (-rolling[k][y], -inst.total(k)))
+        for r, k in enumerate(order, 1):
+            rank[k][y] = r
+    rows = []
+    for k in inst_keys:
+        climb = rank[k][years[0]] - rank[k][years[-1]]
+        tone = "up" if climb >= 3 else ("down" if climb <= -3 else "flat")
+        name = inst.names[k]
+        label = name if not climb else f"{name}  {'▲' if climb > 0 else '▼'}{abs(climb)}"
+        for y in years:
+            rows.append({"name": name, "year": y, "rank": rank[k][y], "papers": rolling[k][y], "tone": tone, "climb": climb, "label": label})
     return rows
 
 
@@ -175,6 +220,34 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         f"while “{loser[0]}” fell from {_pct(loser[1])} to {_pct(loser[2])}."
     )
 
+    # institution × topic: who specialises, measured against the conference as a whole
+    heat_keys = inst_top[:12]
+    heat_rows = inst_topic_rows(recs, tt, inst, heat_keys, topics)
+    heat_sentence = ""
+    if heat_rows:
+        focus = max((r for r in heat_rows if r["topic"] != "Other"), key=lambda r: r["share"], default=None)
+        if focus:
+            conf_share = tt.total(next(t.id for t in topics if t.label == focus["topic"])) / len(recs)
+            detail = f"{_pct(focus['share'])} of its papers are about “{focus['topic']}”, against {_pct(conf_share)} of the conference"
+            if conf_share and focus["share"] / conf_share >= 1.8:
+                heat_sentence = f"{focus['name']} is the most focused: {detail}."
+            else:  # everyone works on everything (CVPR): say so instead of inventing a speciality
+                heat_sentence = f"No leading institution specialises much; the most focused is {focus['name']}, {detail}."
+    # ranks over time among the leading institutions
+    rank_keys = inst_top[:10]
+    rank_rows = inst_rank_rows(inst, rank_keys, ys)
+    rank_sentence = ""
+    if rank_rows:
+        ends = {r["name"]: r for r in rank_rows if r["year"] == y1}
+        climb = sorted(ends.values(), key=lambda r: -r["climb"])
+        up, down = climb[0], climb[-1]
+        bits = []
+        if up["climb"] > 0:
+            bits.append(f"{up['name']} climbed from rank {up['rank'] + up['climb']} to {up['rank']}")
+        if down["climb"] < 0:
+            bits.append(f"{down['name']} slipped from {down['rank'] + down['climb']} to {down['rank']}")
+        rank_sentence = ("; ".join(bits) + ".") if bits else "The order of the leading institutions barely changed."
+
     return {
         "entities": build_entities(recs, kt, tt, inst, show),
         "name": name,
@@ -202,6 +275,12 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
              "early": inst_mov[k][0], "late": inst_mov[k][1], "delta": inst_mov[k][2]}
             for k in inst_top
         ],
+        "inst_topic": heat_rows,
+        "inst_topic_insts": [inst.names[k] for k in heat_keys],
+        "inst_topic_topics": [t.label for t in topics[: len(TOPIC_COLORS)]] + (["Other"] if len(topics) > len(TOPIC_COLORS) else []),
+        "inst_topic_sentence": heat_sentence,
+        "inst_ranks": rank_rows,
+        "inst_rank_sentence": rank_sentence,
         "country_map": country_map_rows(country, len(recs)),
         "countries": [
             {"name": country_name(country.names[k]), "papers": country.total(k), "early": country_mov[k][0], "late": country_mov[k][1], "delta": country_mov[k][2]}

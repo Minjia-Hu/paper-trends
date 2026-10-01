@@ -52,6 +52,10 @@ def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
     specs["fig-map"] = charts.world_map(r["country_map"])
     specs["fig-inst"] = charts.ranked_bars(r["institutions"])
     specs["fig-country"] = charts.ranked_bars(r["countries"])
+    if r.get("inst_topic"):
+        specs["fig-heat"] = charts.inst_topic_heatmap(r["inst_topic"], r["inst_topic_insts"], r["inst_topic_topics"])
+    if r.get("inst_ranks"):
+        specs["fig-bump"] = charts.bump_chart(r["inst_ranks"], years, len({x["name"] for x in r["inst_ranks"]}))
     return specs
 
 

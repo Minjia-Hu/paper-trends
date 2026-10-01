@@ -256,6 +256,13 @@ abstract coverage is under 60 % (Interspeech), restores corpus hyphenation for d
 (`restore_hyphens`: "co-packaged optics"), and drops singular/plural twins from the lists.
 `render.FULL`/`SHORT`/`GROUPS` hold the preset names and the masthead grouping.
 
+"Who publishes" also carries a **bump chart** (`charts.bump_chart`; ranks among the top
+10 institutions on a 3-year rolling count, `build.inst_rank_rows`; red = climbed ≥ 3
+places, blue = slipped ≥ 3) and an **institution × topic heatmap** (`charts.inst_topic_heatmap`;
+rows sum to one, `build.inst_topic_rows`, topics folded like the streamgraph). Their
+headline sentences are computed; when no institution's share of a topic reaches 1.8× the
+conference's (CVPR) the sentence says that nobody specialises instead of naming one.
+
 **Linked-entity panel** (`report/entities.py` + `static/entities.js`). Every phrase,
 institution and topic on the page is clickable (`<span class="ent" data-ent="term|inst|topic"
 data-name="…">`, plus Vega click listeners on the institution bars, topic bands and

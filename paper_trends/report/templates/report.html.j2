@@ -114,6 +114,20 @@
     </figure>
   </div>
   <p class="source">OpenAlex · paper-trends</p>
+  {% if r.inst_ranks %}
+  <figure class="wide" style="margin-top: 44px">
+    <figcaption><span class="headline">{{ r.inst_rank_sentence }}</span><span class="sub">Rank among the ten most prolific institutions, on a three-year rolling count of papers. Red lines climbed three places or more, blue lines slipped.</span></figcaption>
+    <div class="viz" id="fig-bump"></div>
+    <p class="source">OpenAlex · paper-trends</p>
+  </figure>
+  {% endif %}
+  {% if r.inst_topic %}
+  <figure class="wide" style="margin-top: 36px">
+    <figcaption><span class="headline">{{ r.inst_topic_sentence }}</span><span class="sub">Share of each institution's papers whose dominant topic is the column; each row sums to 100 %. Dark cells are specialities.</span></figcaption>
+    <div class="viz" id="fig-heat"></div>
+    <p class="source">OpenAlex · paper-trends</p>
+  </figure>
+  {% endif %}
 </section>
 
 <footer class="about" id="about">
@@ -137,7 +151,7 @@ window.VIEWS = {};
 const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts).then((res) => {
   window.VIEWS[id] = res.view;
   // marks of some figures open the detail panel
-  const kind = id === "fig-inst" ? ["inst", "name"] : id === "fig-topics" ? ["topic", "topic"] : id === "fig-emerging" ? ["term", "term"] : null;
+  const kind = { "fig-inst": ["inst", "name"], "fig-bump": ["inst", "name"], "fig-heat": ["inst", "name"], "fig-topics": ["topic", "topic"], "fig-emerging": ["term", "term"] }[id] || null;
   if (kind) {  // openEntity is defined by a later script, so look it up when the click happens
     res.view.addEventListener("click", (ev, item) => { const v = item && item.datum && item.datum[kind[1]]; if (v != null && v !== "Other" && window.openEntity) window.openEntity(kind[0], v); });
     document.getElementById(id).style.cursor = "pointer";
