@@ -36,16 +36,48 @@ def test_abstract_coverage_reported():
     assert kt.abstract_coverage == {2016: 0.5, 2017: 0.0}
 
 
-def test_subphrases_collapse_into_longer_terms():
-    from paper_trends.keywords import collapse_subphrases
+def test_fragments_of_longer_phrases_are_hidden():
+    # "level packaging" only ever sits inside wafer-/panel-level packaging; "fine pitch" is
+    # followed by many different nouns and stands on its own
+    nouns = ["interconnects", "bumps", "pillars", "applications", "copper", "assembly", "redistribution", "substrates", "probes", "flip", "test", "dies"]
+    recs = [_rec(2016 + i % 4, f"Wafer level packaging with fine pitch {nouns[i]}") for i in range(12)]
+    recs += [_rec(2016 + i % 4, f"Panel level packaging at fine pitch {nouns[i]}") for i in range(12)]
+    kt = compute_trends(recs, text="title", n_min=2, n_max=3, min_total=1, background=None)
+    assert kt.is_fragment("level packaging") and kt.inside["level packaging"] == 1.0
+    assert not kt.is_fragment("fine pitch") and kt.inside["fine pitch"] < 0.5
+    assert "level packaging" not in kt.top_terms(50) and "fine pitch" in kt.top_terms(50)
+    kt.collapse_ratio = None
+    assert "level packaging" in kt.top_terms(50)
 
-    totals = {"hybrid bonding": 100, "hybrid": 110, "bonding": 400, "intelligence ai": 30,
-              "artificial intelligence ai": 28, "ai": 50}
-    kept = collapse_subphrases(list(totals), totals.__getitem__, 0.8)
-    assert "hybrid" not in kept            # 100/110 >= 0.8 -> absorbed by 'hybrid bonding'
-    assert "bonding" in kept               # 100/400 < 0.8 -> stands on its own
-    assert "intelligence ai" not in kept   # 28/30 >= 0.8 -> absorbed by the 3-gram
-    assert "artificial intelligence ai" in kept and "ai" in kept
+
+def test_group_families_folds_variants_and_twins():
+    from paper_trends.keywords import group_families
+
+    rows = [("hybrid bonding", 0.1), ("heterogeneous integration", 0.05), ("wafer hybrid bonding", 0.04),
+            ("solder joints", 0.03), ("hybrid bonding process", 0.02), ("solder joint", 0.01), ("high bandwidth", 0.01), ("high bandwidth memory", 0.005)]
+    fams = group_families(rows)
+    assert [h[0] for h, _ in fams] == ["hybrid bonding", "heterogeneous integration", "solder joints", "high bandwidth"]
+    assert dict((h[0], v) for h, v in fams)["hybrid bonding"] == ["wafer hybrid bonding", "hybrid bonding process"]
+    assert dict((h[0], v) for h, v in fams)["solder joints"] == ["solder joint"]
+    # with totals, a longer member that carries most of the papers heads the family
+    totals = {"high bandwidth": 90, "high bandwidth memory": 60, "hybrid bonding": 200, "wafer hybrid bonding": 40, "hybrid bonding process": 30,
+              "heterogeneous integration": 1, "solder joints": 1, "solder joint": 1}
+    fams = group_families(rows, k=4, total=totals.__getitem__)
+    assert [h[0] for h, _ in fams] == ["hybrid bonding", "heterogeneous integration", "solder joints", "high bandwidth memory"]
+    assert len(group_families(rows, k=2)) == 2
+
+
+def test_corpus_acronyms_need_agreement():
+    from paper_trends.keywords import corpus_acronyms
+
+    recs = [_rec(2020, "x", "A thermal interface material (TIM) is used. TIM thickness matters.")] * 4
+    recs += [_rec(2021, "x", "The time in minutes (TIM) is logged.")]
+    recs += [_rec(2021, "x", "Power delivery (PD) and photodiode (PD) differ.")] * 2
+    am = corpus_acronyms(recs)
+    assert am.expand["tim"] == ["thermal", "interface", "material"]   # 4 of 5 definitions agree
+    assert "pd" not in am.defs                                         # too few, and inconsistent
+    kt = compute_trends(recs + [_rec(2022, "TIM reliability", "No definition here, TIM used twice. TIM again.")], n_min=2, n_max=3, min_total=1, background=None)
+    assert kt.doc_freq["thermal interface material"] == {2020: 4, 2022: 1}   # the undefined use is read through the corpus map
 
 
 def test_emerging_and_papers_with():
@@ -76,13 +108,14 @@ def test_restore_hyphens_from_corpus_spelling():
     assert restore_hyphens("state of the art", Counter({"state-of-the-art": 5})) == "state-of-the-art"
 
 
-def test_topical_counts_ignore_opening_mentions():
+def test_topical_counts_ignore_single_mentions():
     abstract = ("Artificial intelligence drives demand for packaging. We study solder joints under load. "
-                "Cracks grow in solder joints after cycling. Results are reported for three alloys.")
+                "Cracks grow in solder joints after cycling. Finite element analysis is used.")
     recs = [_rec(2020, "Reliability of interconnects", abstract)] * 3
     topical = compute_trends(recs, n_min=2, n_max=2, min_total=1, background=None)
     every = compute_trends(recs, n_min=2, n_max=2, min_total=1, basis="any", background=None)
-    assert "artificial intelligence" not in topical.doc_freq            # name-dropped once in the opening
+    assert "artificial intelligence" not in topical.doc_freq            # name-dropped once
+    assert "finite element" not in topical.doc_freq                     # a method, used once
     assert every.doc_freq["artificial intelligence"] == {2020: 3}
     assert topical.doc_freq["solder joints"] == {2020: 3}
     assert topical.mentions("solder joints") == 3 and topical.topical_share("solder joints") == 1.0

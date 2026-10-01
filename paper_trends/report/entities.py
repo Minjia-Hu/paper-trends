@@ -46,7 +46,7 @@ def build_entities(recs: list[Record], kt: KeywordTrends, tt: TopicTrends, inst:
     paper_insts: list[list[int]] = []
     paper_topic: list[int | None] = []
     for i, r in enumerate(recs):
-        roles = term_mentions(r.get("title"), r.get("abstract"), 2, 3, STOPWORDS)
+        roles = term_mentions(r.get("title"), r.get("abstract"), 2, 3, STOPWORDS, kt.acronyms)
         paper_terms.append(sorted(term_id[t] for t, role in roles.items() if t in chosen_set and role in TOPICAL_ROLES))
         paper_insts.append(sorted({inst_id[k] for k in entities_of(r, "institution", roll_up=True) if k in inst_id}))
         k = tt.assignments.get(i)

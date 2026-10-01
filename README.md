@@ -116,14 +116,25 @@ Each record contains: `id`, `doi`, `title`, `publication_year`, `abstract` (plai
 uv run python -m paper_trends keywords data/ectc.jsonl --years 2016-2025 --ngram 2-3 --csv data/ectc_keywords.csv
 ```
 
-Phrases are word sequences from titles and abstracts (OpenAlex has no full text). Two
+Phrases are word sequences from titles and abstracts (OpenAlex has no full text). A few
 rules keep the lists about the conference rather than about academic prose:
 
-- **A paper counts only when it is about the phrase**: the phrase is in the title, used
-  more than once, or used beyond the opening of the abstract. “With the rise of artificial
-  intelligence…” in a first sentence does not make a packaging paper an AI paper — at ECTC
-  only 30 % of the papers mentioning *artificial intelligence* are about it, against 92 %
-  for *hybrid bonding*. `--count any` counts every mention instead.
+- **A paper counts only when it is about the phrase**: the phrase is in the title or
+  mentioned more than once. A method used in passing (*finite element* appears once in
+  65 % of the papers that mention it) or a motivation sentence (“with the rise of
+  artificial intelligence…”) does not count; *hybrid bonding* is repeated in 83 % of the
+  papers that mention it. The rule was chosen by checking each kind of mention against
+  the title — see `paper-trends validate`. `--count any` counts every mention instead.
+- **Acronyms are read as their phrase.** When the corpus defines one (“redistribution
+  layer (RDL)”), later *RDL*s count as repeats; a long form that cannot be a phrase
+  (*through-silicon via*, *fan-out wafer-level packaging*) is folded into the acronym
+  instead (*TSV*, *FOWLP*).
+- **Fragments are folded into the phrase they belong to**: *level packaging* only ever
+  occurs inside *wafer-level packaging* and *panel-level packaging*, *scanning electron*
+  inside *scanning electron microscopy*. `--keep-subphrases` shows them.
+- **One phrase per family** in the rising, falling and emerging lists: *wafer hybrid
+  bonding* and *hybrid bonding process* are listed under *hybrid bonding* rather than
+  taking three slots.
 - **Phrases common to three or more other fields are hidden** (*high performance*, *low
   cost*, *next generation*…), judged against a small table of seven fields that ships with
   the package. `--keep-common` shows them; `paper-trends background data/*.jsonl` rebuilds
@@ -132,21 +143,19 @@ rules keep the lists about the conference rather than about academic prose:
 ECTC 2016–2025, share of papers, first vs. second half of the period:
 
 ```
-RISING                       early    late   delta      FALLING                    early    late   delta
-hybrid bonding                1.2%   10.6%   +9.5%      wafer level                  11.3%    6.5%   -4.7%
-heterogeneous integration     2.8%    7.0%   +4.2%      level packaging               5.3%    3.3%   -2.0%
-cu cu                         1.7%    5.3%   +3.7%      wafer level packaging         4.2%    2.3%   -2.0%
-advanced packaging            1.8%    5.5%   +3.7%      board level reliability       2.8%    1.0%   -1.7%
-wafer hybrid bonding          0.2%    2.3%   +2.2%      fan out wafer                 3.9%    2.2%   -1.7%
-low temperature               5.6%    7.7%   +2.1%      electrical performance        4.6%    2.9%   -1.7%
+RISING                       early    late   delta      FALLING                      early    late   delta
+hybrid bonding                1.1%    9.6%   +8.6%      wafer-level                   6.6%    2.6%   -4.0%
+heterogeneous integration     1.9%    4.6%   +2.6%      board-level                   3.2%    1.9%   -1.3%
+cu-cu                         1.3%    3.5%   +2.2%      package-on-package            1.6%    0.3%   -1.2%
+advanced packaging            1.4%    3.5%   +2.1%      flip-chip                     4.8%    3.6%   -1.2%
+co-packaged optics            0.1%    1.7%   +1.7%      ultra-thin                    2.2%    1.0%   -1.2%
+wafer-to-wafer                0.6%    2.1%   +1.4%      radio-frequency               3.8%    2.8%   -1.0%
 ```
 
-It also lists **emerging** terms — near-absent in the first half, at least 1 % of papers
-in the second — which surfaces new vocabulary: for ECTC that is wafer hybrid bonding, co packaged optics, chiplet integration, cu hybrid bonding, hybrid bonding process.
-
-Options: `--ngram 1-3` (default), `--text title` to ignore abstracts, `--count topical|any`,
-`--keep-common`, `--field`, `--top N`, `--movers N`, `--emerging N`, `--min-total N`,
-`--stopwords file` for domain-specific noise words, `--keep-subphrases`.
+These are statistical heuristics, not a validated taxonomy. `paper-trends validate
+data/ectc.jsonl` prints the one check the data supports on its own — how often a phrase
+with each kind of mention also appears in the title (ECTC: repeated 36 %, once in the
+opening 19 %, once later 10 %) — so a change to the rules can be judged.
 
 ### Topic evolution
 
@@ -200,18 +209,24 @@ fields are kept, since what venues share is the point. Packaging (ECTC), devices
 and circuits (ISSCC), 2016–2025:
 
 ```
-term                    ectc       iedm      isscc
-energy efficiency      +0.6%      +2.7%      +2.5%
-energy efficient       +0.8%      +1.3%      +0.5%
-large scale            +0.5%      +0.9%      +1.1%
-insertion loss         +1.2%      +0.4%      +1.0%
-machine learning       +1.3%      +0.3%      +1.2%
-current density        +0.3%      +0.5%      +0.5%
+term                          ectc       iedm      isscc
+artificial intelligence      +3.5%      +4.5%      +4.3%
+high density                 +1.4%      +1.1%      +0.4%
+high performance             +2.2%      +0.2%      +0.3%
+power delivery               +0.9%      +0.2%      +0.6%
+large scale                  +0.4%      +0.2%      +0.6%
+
+artificial intelligence
+         2016   2017   2018   2019   2020   2021   2022   2023   2024   2025
+ectc     0.0%   0.0%   0.5%   1.1%   0.6%   2.2%   1.4%   1.9%   4.2%   9.9%
+iedm     0.0%   0.0%   0.9%   1.2%   1.7%   2.7%   2.2%   4.8%   6.5%   8.7%
+isscc    0.5%   0.0%   1.4%   2.4%   3.2%   4.2%   5.5%   6.1%   6.0%   7.0%
 ```
 
-Counting every mention instead (`keywords --count any`) would put *artificial
-intelligence* at the top of this list: it is named in many opening sentences, but few of
-these papers are about it.
+*Artificial intelligence* here is not name-dropping: a paper counts only when it is in
+the title or repeated, and papers write “artificial intelligence (AI)” once and *AI*
+thereafter, which the acronym rule reads as repeats. Packaging, devices and circuits all
+turned towards AI hardware from 2023.
 
 The app has a **Compare** tab that plots the same terms across any fetched conferences,
 and the Keywords tab lists the papers behind any term.
@@ -305,11 +320,12 @@ the years (VLSI Symposium has used ten) takes several `--doi-prefix` flags.
    about a phrase, a topic's dominant-paper count, an institution's papers (a paper
    counts once per institution). Shares make years and venues of different size
    comparable and are easy to sanity-check against the corpus. A paper is *about* a
-   phrase when the phrase is in its title, repeated, or used beyond the opening of its
-   abstract; phrases that three or more other fields also use are left out of rankings.
+   phrase when the phrase is in its title or mentioned more than once (acronyms the
+   corpus defines count as the phrase); phrases that three or more other fields also use
+   are left out of rankings.
 3. **Rising / falling** = pooled share in the second half of the year range minus the
-   first half, with a minimum-paper threshold. Terms that almost always occur inside a
-   longer phrase are folded into it.
+   first half, with a minimum-paper threshold. Fragments that almost always sit inside a
+   longer phrase are folded into it, and the lists show one phrase per family.
 4. **Topics** are NMF on TF-IDF of titles + abstracts with a fixed seed; labels are the
    top terms, phrases preferred. OpenAlex's own topic labels are available as an
    alternative but are too coarse for a single-field venue.

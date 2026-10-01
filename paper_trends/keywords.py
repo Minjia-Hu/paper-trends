@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .store import Record, filter_years, parse_years, read_jsonl
 from . import background as bg
-from .text import STOPWORDS, TOPICAL_ROLES, load_stopwords, mention_role, term_mentions
+from .text import STOPWORDS, TOPICAL_ROLES, Acronyms, acronym_definitions, extension_pairs, load_stopwords, mention_role, paper_tokens, phrase_roles
 
 
 @dataclass
@@ -22,8 +22,13 @@ class KeywordTrends:
     # that is papers *about* the term; with "any", every paper that mentions it.
     doc_freq: dict[str, dict[int, int]]
     abstract_coverage: dict[int, float] = field(default_factory=dict)
-    # if set, terms that are (almost) always part of a longer term are hidden from rankings
+    # if set, a term is hidden from rankings when at least this share of its occurrences sit
+    # inside established longer phrases ("level packaging" inside "wafer level packaging")
     collapse_ratio: float | None = 0.8
+    # term -> share of its occurrences inside established longer phrases (see `fragment_share`)
+    inside: dict[str, float] = field(default_factory=dict)
+    # corpus-wide acronym map (RDL -> redistribution layer, through silicon via -> TSV)
+    acronyms: Acronyms | None = None
     basis: str = "topical"
     # term -> year -> papers mentioning the term in any role (>= doc_freq)
     mention_freq: dict[str, dict[int, int]] = field(default_factory=dict)
@@ -50,7 +55,11 @@ class KeywordTrends:
         terms = [t for t in self.doc_freq if self.keep_common or t not in self.common]
         if self.collapse_ratio is None:
             return terms
-        return collapse_subphrases(terms, self.total, self.collapse_ratio)
+        return [t for t in terms if not self.is_fragment(t)]
+
+    def is_fragment(self, term: str) -> bool:
+        """True when the term is (almost) always part of established longer phrases."""
+        return self.inside.get(term, 0.0) >= (self.collapse_ratio or 0.8)
 
     def top_terms(self, k: int, min_total: int = 1) -> list[str]:
         ranked = sorted(self.candidates(), key=lambda t: (-self.total(t), t))
@@ -104,25 +113,96 @@ class KeywordTrends:
         return rows[:k]
 
 
-def collapse_subphrases(terms: list[str], total, ratio: float) -> list[str]:
-    """Drop a term when a longer term containing it (on word boundaries) accounts for at
-    least `ratio` of its occurrences — e.g. 'performance computing' disappears into
-    'high-performance computing', 'intelligence ai' into 'artificial intelligence ai'."""
-    by_len: dict[int, list[str]] = defaultdict(list)
-    for t in terms:
-        by_len[len(t.split())].append(t)
-    # index longer terms by each of their contained sub-phrases
-    contained: dict[str, int] = defaultdict(int)  # sub-phrase -> max total of a containing term
-    for n, group in by_len.items():
-        for t in group:
-            words = t.split()
-            tot = total(t)
-            for size in range(1, n):
-                for i in range(n - size + 1):
-                    sub = " ".join(words[i : i + size])
-                    if tot > contained[sub]:
-                        contained[sub] = tot
-    return [t for t in terms if contained.get(t, 0) < ratio * total(t)]
+FAMILY_HEAD_SHARE = 0.6  # a longer member heads its family when it has this share of the shortest member's papers
+
+
+def group_families(rows: list[tuple], k: int | None = None, total=None) -> list[tuple[tuple, list[str]]]:
+    """Fold rows whose terms contain one another ("hybrid bonding", "wafer hybrid bonding",
+    "hybrid bonding process"), or are singular/plural twins, into one row that carries the
+    others as variants: [(row, [variant terms])]. Rows are (term, ...) in rank order; the
+    highest-ranked member heads the family, except that a longer member takes over when it
+    accounts for most of the papers (`total`): "high-bandwidth memory" over "high-bandwidth"."""
+    families: list[list[tuple]] = []
+    for row in rows:
+        words = singular(row[0]).split()
+        for fam in families:
+            head = singular(fam[0][0]).split()
+            if _contains(head, words) or _contains(words, head):
+                fam.append(row)
+                break
+        else:
+            families.append([row])
+    out = []
+    for fam in families:
+        head = fam[0]
+        if total is not None:
+            shortest = min(fam, key=lambda r: len(r[0].split()))
+            longer = [r for r in fam if len(r[0].split()) > len(shortest[0].split()) and total(r[0]) >= FAMILY_HEAD_SHARE * total(shortest[0])]
+            if longer and head is shortest:
+                head = longer[0]
+        out.append((head, [r[0] for r in fam if r is not head]))
+        if k is not None and len(out) >= k:
+            break
+    return out
+
+
+def singular(term: str) -> str:
+    """Crude singular form for twin detection: "solder joints" -> "solder joint"."""
+    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in term.split())
+
+
+def _contains(outer: list[str], inner: list[str]) -> bool:
+    n = len(inner)
+    return any(outer[i : i + n] == inner for i in range(len(outer) - n + 1))
+
+
+def corpus_acronyms(records: list[Record], n_max: int = 3, stopwords: frozenset[str] = STOPWORDS,
+                    min_defs: int = 3, agreement: float = 0.8) -> Acronyms:
+    """Acronyms the corpus defines consistently: at least `min_defs` definitions, of which
+    `agreement` share give the same long form. Papers that use the acronym without
+    defining it are then read with it."""
+    seen: dict[str, Counter[tuple[str, ...]]] = defaultdict(Counter)
+    raw: dict[str, Counter[str]] = defaultdict(Counter)
+    for r in records:
+        for acr, (written, long_form) in {**acronym_definitions(r.get("title"), stopwords),
+                                          **acronym_definitions(r.get("abstract"), stopwords)}.items():
+            seen[acr][tuple(long_form)] += 1
+            raw[acr][written] += 1
+    defs = {}
+    for acr, forms in seen.items():
+        n = sum(forms.values())
+        (best, m), = forms.most_common(1)
+        if n >= min_defs and m >= agreement * n:
+            defs[acr] = (raw[acr].most_common(1)[0][0], list(best))
+    return Acronyms(defs, n_max, stopwords)
+
+
+FRAGMENT_MIN = 10        # mentions a term needs before the fragment check is worth running
+FRAGMENT_EXT_SHARE = 0.1  # a longer phrase is "established" for a term when it carries this share of its occurrences
+
+
+def fragment_share(token_lists: list[list[str]], terms: set[str], n_min: int, n_max: int,
+                   stopwords: frozenset[str] = STOPWORDS) -> dict[str, float]:
+    """term -> share of its occurrences that sit inside an established longer phrase, i.e.
+    one that carries at least FRAGMENT_EXT_SHARE of the term's occurrences on its own.
+    "level packaging" scores ~1 (wafer-/panel-level packaging), "fine pitch" low (followed
+    by many different nouns, none of them often)."""
+    ext: dict[str, Counter[tuple[str | None, str | None]]] = defaultdict(Counter)
+    for tokens in token_lists:
+        for term, left, right in extension_pairs(tokens, terms, n_min, n_max, stopwords):
+            ext[term][(left, right)] += 1
+    out: dict[str, float] = {}
+    for term, pairs in ext.items():
+        occ = sum(pairs.values())
+        by_ext: Counter[str] = Counter()
+        for (left, right), n in pairs.items():
+            for e in (left, right):
+                if e:
+                    by_ext[e] += n
+        established = {e for e, n in by_ext.items() if n >= FRAGMENT_EXT_SHARE * occ}
+        covered = sum(n for (left, right), n in pairs.items() if left in established or right in established)
+        out[term] = covered / occ if occ else 0.0
+    return out
 
 
 def _pooled_share(kt: KeywordTrends, term: str, years: list[int]) -> float:
@@ -131,13 +211,17 @@ def _pooled_share(kt: KeywordTrends, term: str, years: list[int]) -> float:
     return hits / n if n else 0.0
 
 
-def papers_with(records: list[Record], term: str, text: str = "title+abstract", topical_only: bool = True) -> list[Record]:
+def papers_with(records: list[Record], term: str, text: str = "title+abstract", topical_only: bool = True,
+                acronyms: Acronyms | None = None, n_max: int = 3) -> list[Record]:
     """Papers counted for `term`, newest and most cited first. With `topical_only` (the
-    default, matching the counts) a paper that only name-drops the phrase in its opening is
-    left out."""
+    default, matching the counts) a paper that mentions the phrase just once is left out.
+    `acronyms` should be the map the counts were made with (`KeywordTrends.acronyms`); it
+    is rebuilt from the records when not given."""
+    if acronyms is None:
+        acronyms = corpus_acronyms(records, n_max)
     hits = []
     for r in records:
-        role = mention_role(r.get("title"), r.get("abstract") if text != "title" else None, term)
+        role = mention_role(r.get("title"), r.get("abstract") if text != "title" else None, term, acronyms)
         if role and (role in TOPICAL_ROLES or not topical_only):
             hits.append(r)
     hits.sort(key=lambda r: (-(r.get("publication_year") or 0), -(r.get("cited_by_count") or 0)))
@@ -178,6 +262,17 @@ def restore_hyphens(term: str, forms: Counter[str], min_count: int = 3) -> str:
     return " ".join(out)
 
 
+def restore_case(term: str, surface: dict[str, str]) -> str:
+    """Write contracted acronyms the way the corpus does: "cowos interposer" -> "CoWoS
+    interposer" (`surface` is KeywordTrends.acronyms.surface)."""
+    return " ".join("-".join(surface.get(p, p) for p in w.split("-")) for w in term.split())
+
+
+def display_form(term: str, forms: Counter[str], surface: dict[str, str] | None = None) -> str:
+    """Hyphens and acronym casing restored for display; counts stay keyed by the plain form."""
+    return restore_case(restore_hyphens(term, forms), surface or {})
+
+
 def build_text(rec: Record, mode: str) -> str:
     title = rec.get("title") or ""
     if mode == "title":
@@ -200,8 +295,8 @@ def compute_trends(
 ) -> KeywordTrends:
     """Per-year paper counts for every n-gram.
 
-    basis       "topical" counts a paper for a phrase only when the paper is about it (title,
-                repeated, or used beyond the opening of the abstract); "any" counts every mention.
+    basis       "topical" counts a paper for a phrase only when the paper is about it (in the
+                title, or mentioned more than once); "any" counts every mention.
     field       the corpus' own field (see background.FIELD_OF), left out when judging
                 whether a phrase is common across fields.
     background  the cross-field table; "default" loads the one shipped with the package,
@@ -213,6 +308,8 @@ def compute_trends(
     with_abs: Counter[int] = Counter()
     topical: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
     anyrole: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    acronyms = corpus_acronyms(records, n_max, stopwords)
+    token_lists: list[list[str]] = []  # kept for the second pass (fragments)
     for r in records:
         y = r.get("publication_year")
         if not y:
@@ -220,13 +317,16 @@ def compute_trends(
         papers[y] += 1
         if r.get("abstract"):
             with_abs[y] += 1
-        roles = term_mentions(r.get("title"), r.get("abstract") if text != "title" else None, n_min, n_max, stopwords)
-        for term, role in roles.items():
+        t_toks, a_toks = paper_tokens(r.get("title"), r.get("abstract") if text != "title" else None, acronyms, stopwords, n_max)
+        token_lists.append(t_toks)
+        token_lists.append(a_toks)
+        for term, role in phrase_roles(t_toks, a_toks, n_min, n_max, stopwords).items():
             anyrole[term][y] += 1
             if role in TOPICAL_ROLES:
                 topical[term][y] += 1
     # prune rare terms to keep memory/output sane
     keep = [t for t, ys in anyrole.items() if sum(ys.values()) >= min_total]
+    inside = fragment_share(token_lists, {t for t in keep if sum(anyrole[t].values()) >= FRAGMENT_MIN}, n_min, n_max, stopwords)
     mention_freq = {t: dict(anyrole[t]) for t in keep}
     counted = mention_freq if basis == "any" else {t: dict(topical[t]) for t in keep if t in topical}
     table = bg.load() if background == "default" else background
@@ -246,37 +346,41 @@ def compute_trends(
         mention_freq=mention_freq,
         common=common,
         keep_common=keep_common,
+        inside=inside,
+        acronyms=acronyms,
     )
 
 
 # ---- rendering -----------------------------------------------------------------
 
 
-def render_top_table(kt: KeywordTrends, terms: list[str], as_share: bool = True) -> str:
-    w = max((len(t) for t in terms), default=10)
+def render_top_table(kt: KeywordTrends, terms: list[str], as_share: bool = True, show=str) -> str:
+    names = [show(t) for t in terms]
+    w = max((len(n) for n in names), default=10)
     head = f"{'term':<{w}} {'total':>6} " + " ".join(f"{y:>6}" for y in kt.years)
     lines = [head, "-" * len(head)]
-    for t in terms:
+    for t, name in zip(terms, names):
         cells = []
         for y in kt.years:
             cells.append(f"{kt.share(t, y):>6.1%}" if as_share else f"{kt.doc_freq[t].get(y, 0):>6}")
-        lines.append(f"{t:<{w}} {kt.total(t):>6} " + " ".join(cells))
+        lines.append(f"{name:<{w}} {kt.total(t):>6} " + " ".join(cells))
     return "\n".join(lines)
 
 
-def render_emerging(rows: list[tuple[str, int, float, float]], title: str) -> str:
-    w = max((len(r[0]) for r in rows), default=10)
+def render_emerging(rows: list[tuple[str, int, float, float]], title: str, show=str) -> str:
+    w = max((len(show(r[0])) for r in rows), default=10)
     lines = [title, f"{'term':<{w}} {'first':>6} {'early':>7} {'late':>7}", "-" * (w + 23)]
     for t, first, e, l in rows:
-        lines.append(f"{t:<{w}} {first:>6} {e:>7.1%} {l:>7.1%}")
+        lines.append(f"{show(t):<{w}} {first:>6} {e:>7.1%} {l:>7.1%}")
     return "\n".join(lines)
 
 
-def render_momentum(rows: list[tuple[str, float, float, float]], title: str) -> str:
-    w = max((len(r[0]) for r in rows), default=10)
+def render_momentum(rows: list[tuple[str, float, float, float]], title: str, variants: dict[str, list[str]] | None = None, show=str) -> str:
+    w = max((len(show(r[0])) for r in rows), default=10)
     lines = [title, f"{'term':<{w}} {'early':>7} {'late':>7} {'delta':>7}", "-" * (w + 24)]
     for t, e, l, d in rows:
-        lines.append(f"{t:<{w}} {e:>7.1%} {l:>7.1%} {d:>+7.1%}")
+        also = (variants or {}).get(t)
+        lines.append(f"{show(t):<{w}} {e:>7.1%} {l:>7.1%} {d:>+7.1%}" + (f"   also: {', '.join(show(v) for v in also)}" if also else ""))
     return "\n".join(lines)
 
 
@@ -331,18 +435,23 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    top = kt.top_terms(args.top)
+    forms = hyphen_forms(records, text=args.text)
+    show = lambda t: display_form(t, forms, kt.acronyms.surface if kt.acronyms else None)  # noqa: E731
+    top = [h[0] for h, _ in group_families([(t,) for t in kt.top_terms(args.top * 2)], args.top, kt.total)]
     print(f"{len(records)} papers, {kt.years[0]}-{kt.years[-1]}, text={args.text}, ngram={n_min}-{n_max}, count={kt.basis}")
     hidden = 0 if kt.keep_common else len(kt.common)
-    print(f"{hidden} phrases common to {bg.MIN_FIELDS}+ other fields hidden (--keep-common shows them)\n" if hidden else "")
-    print(render_top_table(kt, top, as_share=not args.counts))
+    print(f"{hidden} phrases common to {bg.MIN_FIELDS}+ other fields hidden (--keep-common shows them)" if hidden else "")
+    if kt.acronyms:
+        print(f"{len(kt.acronyms.defs)} acronyms read as their long form (or the long form as the acronym: {', '.join(sorted(kt.acronyms.surface[a] for a in list(kt.acronyms.short)[:5]))}…)\n")
+    print(render_top_table(kt, top, as_share=not args.counts, show=show))
     print()
-    print(render_momentum(kt.rising(args.movers, args.min_total), f"RISING (share of papers, early vs late half)"))
-    print()
-    print(render_momentum(kt.falling(args.movers, args.min_total), f"FALLING (share of papers, early vs late half)"))
-    if args.emerging:
+    for name, rows in (("RISING", kt.rising(args.movers * 4, args.min_total)), ("FALLING", kt.falling(args.movers * 4, args.min_total))):
+        fams = group_families(rows, args.movers, kt.total)
+        print(render_momentum([h for h, _ in fams], f"{name} (share of papers, early vs late half; one phrase per family)", {h[0]: v for h, v in fams if v}, show))
         print()
-        print(render_emerging(kt.emerging(args.emerging, args.min_total), "EMERGING (near-absent in the early half, >= 1% of papers in the late half)"))
+    if args.emerging:
+        fams = group_families(kt.emerging(args.emerging * 3, args.min_total), args.emerging, kt.total)
+        print(render_emerging([h for h, _ in fams], "EMERGING (near-absent in the early half, >= 1% of papers in the late half)", show))
     if args.csv:
         write_csv(kt, top, args.csv)
         print(f"\n[csv] wrote {args.csv}", file=sys.stderr)

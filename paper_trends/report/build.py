@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..background import field_of
-from ..keywords import KeywordTrends, compute_trends, hyphen_forms, restore_hyphens
+from ..keywords import KeywordTrends, compute_trends, display_form, group_families, hyphen_forms
 from ..rank import compute_ranking, entities_of
 from ..store import Record, filter_years
 from ..text import STOPWORDS
@@ -125,22 +125,9 @@ def _series(kt: KeywordTrends, term: str) -> list[dict[str, Any]]:
     return [{"year": y, "share": kt.share(term, y), "papers": kt.doc_freq[term].get(y, 0)} for y in kt.years]
 
 
-def _singular(term: str) -> str:
-    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in term.split())
-
-
-def _dedupe(rows: list[tuple]) -> list[tuple]:
-    """Drop singular/plural twins ("diffusion model" next to "diffusion models"), keeping the
-    higher-ranked one."""
-    seen: set[str] = set()
-    out = []
-    for row in rows:
-        key = _singular(row[0])
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(row)
-    return out
+def _families(rows: list[tuple], k: int, kt: KeywordTrends) -> list[tuple[tuple, list[str]]]:
+    """One row per family of phrases (see keywords.group_families), with the variants."""
+    return group_families(rows, k, kt.total)
 
 
 def coverage_note(papers: dict[int, int], with_abs: dict[int, int]) -> str:
@@ -186,11 +173,12 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     # otherwise the years with abstracts would dominate every share.
     text_mode = "title+abstract" if coverage >= 0.6 else "title"
     kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=stopwords, field=field_of(slug))
-    rising = _dedupe(kt.rising(n_multiples * 2, min_total=10))[:n_multiples]
-    falling = _dedupe(kt.falling(n_multiples * 2, min_total=10))[:n_multiples]
-    emerging = _dedupe(kt.emerging(20, min_total=10))[:10]
+    rising = _families(kt.rising(n_multiples * 4, min_total=10), n_multiples, kt)
+    falling = _families(kt.falling(n_multiples * 4, min_total=10), n_multiples, kt)
+    emerging = _families(kt.emerging(30, min_total=10), 10, kt)
     forms = hyphen_forms(recs, text=text_mode)
-    show = lambda t: restore_hyphens(t, forms)  # noqa: E731  display form only; counts stay keyed by the split form
+    surface = kt.acronyms.surface if kt.acronyms else {}
+    show = lambda t: display_form(t, forms, surface)  # noqa: E731  display form only; counts stay keyed by the plain form
 
     tt = compute_nmf(recs, n_topics=n_topics, stopwords=stopwords)
     topics = tt.ordered()
@@ -213,7 +201,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     inst_gainer = max(inst.movers(1, 10, rising=True), default=None)
     country_gainer = max(country.movers(1, 10, rising=True), default=None)
 
-    top_rise = rising[0] if rising else None
+    top_rise = rising[0][0] if rising else None
     glance = [
         f"{name} published {len(recs):,} papers between {y0} and {y1}, {growth_sentence(per_year)}.",
     ]
@@ -230,7 +218,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
             bits.append(f"{country_name(country.names[k])} among countries ({_pct(e)} → {_pct(l)})")
         glance.append("; ".join(bits) + ".")
     if emerging:
-        glance.append("New vocabulary: " + ", ".join(show(t) for t, *_ in emerging[:4]) + ".")
+        glance.append("New vocabulary: " + ", ".join(show(row[0]) for row, _ in emerging[:4]) + ".")
 
     topic_sentence = (
         f"“{gainer[0]}” grew from {_pct(gainer[1])} to {_pct(gainer[2])} of papers, "
@@ -281,9 +269,9 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "growth_sentence": growth_sentence(per_year),
         "coverage_note": coverage_note(per_year, with_abs),
         "glance": glance,
-        "rising": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in rising],
-        "falling": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t)} for t, e, l, d in falling],
-        "emerging": [{"term": show(t), "first": f, "early": e, "late": l, "series": _series(kt, t)} for t, f, e, l in emerging],
+        "rising": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t), "variants": [show(v) for v in var]} for (t, e, l, d), var in rising],
+        "falling": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t), "variants": [show(v) for v in var]} for (t, e, l, d), var in falling],
+        "emerging": [{"term": show(t), "first": f, "early": e, "late": l, "series": _series(kt, t), "variants": [show(v) for v in var]} for (t, f, e, l), var in emerging],
         "topics": [{"label": t.label, "terms": t.terms, "examples": t.examples, "papers": tt.total(t.id)} for t in topics],
         "topic_rows": topic_rows,
         "topic_sentence": topic_sentence,

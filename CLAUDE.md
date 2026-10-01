@@ -74,6 +74,7 @@ analysis code free of printing/argparse.
 ```
 paper_trends/
   cli.py       # `paper-trends <command>` dispatcher; add new subcommands to COMMANDS
+  validate.py  # title-agreement check of the mention roles (how the counting rule was chosen)
   openalex.py  # API client: polite pool, cursor paging, retries, abstract reconstruction
   fetch.py     # conference -> works resolution, coverage table
   store.py     # JSONL read/write, year filtering (shared by all commands)
@@ -202,17 +203,44 @@ papers land in "3D IC and TSV technologies") but fine for broad venues.
 
 **Keyword analysis (`keywords.py`)**: phrases are n-grams of titles and abstracts (no full
 text in OpenAlex), reported as a share of that year's papers. Rising/falling compare pooled
-share in the early vs. late half of the range. Four things shape the output and are easy
+share in the early vs. late half of the range. Five things shape the output and are easy
 to misread as bugs:
 
-- **Topical counting** (`basis="topical"`, default). `text.term_mentions` gives every
-  phrase of a paper a role — `title`, `repeated`, `body`, `opening` — and only the first
-  three count. The opening is the first sentence or the first 20 % of the abstract,
-  whichever is longer; if the first "sentence" is over 40 % of the abstract (one-sentence
-  or unpunctuated abstracts) only the 20 % applies. Chosen from ECTC data: abstract-only
-  mentions of *artificial intelligence* are 72 % first-sentence and never repeated,
-  *finite element* 9 %. `KeywordTrends.doc_freq` holds the counts for the chosen basis,
-  `mention_freq` every mention, `topical_share(term)` their ratio.
+- **Topical counting** (`basis="topical"`, default): a paper counts for a phrase when the
+  phrase is in its title or mentioned more than once (`text.TOPICAL_ROLES` = title,
+  repeated; a single mention is role `once`). Chosen with `paper-trends validate`, which
+  judges roles from the abstract alone and asks how often the phrase is also in the title
+  (ECTC: repeated 36 %, once in the opening 19 %, once later 10 %). An earlier rule that
+  counted "once, beyond the opening" and excluded "once, in the opening" had it backwards:
+  single late mentions are methods and test conditions (finite element, thermal cycling).
+  `KeywordTrends.doc_freq` holds the counts for the chosen basis, `mention_freq` every
+  mention, `topical_share(term)` their ratio.
+- **Acronyms** (`text.acronym_definitions`, `text.Acronyms`, `keywords.corpus_acronyms`):
+  "long form (ACR)" definitions are found with the Schwartz-Hearst rule; the corpus map
+  keeps acronyms defined ≥ 3 times with ≥ 80 % agreement, a paper's own definitions
+  override it. Each acronym is normalised one way: expanded to the long form when that is a
+  usable phrase (fewer than `n_max` tokens, or `n_max` tokens without a stopword at either
+  edge: RDL → redistribution layer, FO → fan out), otherwise the long form is contracted to
+  the acronym (through silicon via → tsv, fan out wafer level packaging → fowlp; "via",
+  "through", "out" are stopwords). The defining occurrence is dropped so it is not a
+  repeat; plurals fold. `Acronyms.surface` keeps the corpus casing for display
+  (`display_form` = `restore_hyphens` + `restore_case`). Consequence worth knowing: after
+  "artificial intelligence (AI)" every later "AI" is a repeat, so AI now counts in ~2 % of
+  ECTC papers (10 % in 2025) and tops the ECTC/IEDM/ISSCC shared risers — a real trend,
+  not name-dropping, but it is what the rule does.
+- **Fragments** (`fragment_share`, `KeywordTrends.inside`, `is_fragment`): a second pass
+  over the stored token lists records, for every occurrence of a term with ≥ 10 mentions,
+  the one-token-longer phrases to its left and right. Extensions carrying ≥ 10 % of the
+  term's occurrences are "established"; when they cover ≥ `collapse_ratio` (0.8) of the
+  occurrences the term is hidden ("level packaging" 1.0, "scanning electron" 0.94, "fine
+  pitch" 0.0, "hybrid bonding" 0.14). The earlier total-based `collapse_subphrases` missed
+  terms split between several longer phrases; a "standalone occurrence" test hid every
+  adjective-like bigram. `--keep-subphrases` sets `collapse_ratio=None`.
+- **Families** (`group_families`): rising/falling/emerging lists show one row per family
+  of terms that contain one another or are singular/plural twins, variants listed under
+  the head; a longer member heads the family when it has ≥ 60 % of the shortest member's
+  papers (high-bandwidth memory over high-bandwidth; not finite-element analysis over
+  finite-element at 52 %). Callers ask for more rows than they show (`rising(k*4)`).
 - **Common phrases** (`background.py`, `resources/background.json`). A phrase used by
   >= 1 % of the papers in 3+ *other fields* is hidden from `candidates()` (so from top,
   rising, falling, emerging). Fields pool several venues (`FIELD_OF`) so ECTC/EPTC/ICEPT
@@ -222,13 +250,13 @@ to misread as bugs:
   `paper-trends background data/*.jsonl` after adding venues; it is CC0-derived and
   committed. Tests on synthetic corpora pass `background=None`.
 - `STOPWORDS` in `text.py` is generic English + academic boilerplate + unit tokens only.
-  Do not add domain words there; users pass `--stopwords file` for that.
-- `collapse_subphrases` hides a term when a longer term containing it accounts for ≥ 80 %
-  of its occurrences. Disable with `--keep-subphrases`.
+  Do not add domain words there; users pass `--stopwords file` for that. Test corpora must
+  avoid stopwords inside the phrases they expect ("study", "paper" are stopwords) and
+  repeat a phrase or put it in the title, or nothing is topical.
 
-These are data-driven heuristics without ground truth. Whether the phrases are typical
-enough is an open question the maintainer is still weighing (manual labelling was discussed, not
-decided); do not present the rules as validated.
+These are data-driven heuristics without ground truth; `validate` is a sanity check, not a
+gold standard. Hand-labelling was discussed with the maintainer and not decided; do not
+present the rules as validated.
 
 **Coverage differs a lot by venue.** IEEE venues with acronym DOIs (ECTC, ISSCC, CVPR,
 ICRA…) are complete. Interspeech (ISCA, `10.21437/interspeech`) has every paper but

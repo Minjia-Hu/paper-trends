@@ -19,7 +19,7 @@ def _write_corpus(path: Path) -> None:
         topic = THERMAL if i % 2 else BONDING
         recs.append(
             {
-                "id": f"W{i}", "doi": f"10.1109/ectc.{y}.{i}", "title": f"paper {i} {topic.split()[0]}",
+                "id": f"W{i}", "doi": f"10.1109/ectc.{y}.{i}", "title": f"{' '.join(topic.split()[:2])} paper {i}",
                 "publication_year": y, "abstract": f"{topic} variant {i % 4}", "cited_by_count": i,
                 "authorships": [{"author_id": f"A{i % 5}", "author_name": f"Author {i % 5}", "position": "first",
                                  "institutions": [{"id": f"I{i % 3}", "name": f"Inst {i % 3}", "country": ["US", "TW", "JP"][i % 3]}],

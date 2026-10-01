@@ -50,17 +50,49 @@ def test_mention_roles():
                 "The copper process reaches a fine pitch. Yield is reported for the copper process.")
     roles = term_mentions(title, abstract, 1, 2)
     assert roles["hybrid bonding"] == "title"
-    assert roles["artificial intelligence"] == "opening"      # once, in the first sentence
-    assert roles["finite element"] == "body"                  # once, beyond the opening
+    assert roles["artificial intelligence"] == "once"         # motivation, named once
+    assert roles["finite element"] == "once"                  # a method used once
     assert roles["copper process"] == "repeated"
-    assert mention_role(title, abstract, "Artificial Intelligence") == "opening"
+    assert mention_role(title, abstract, "Artificial Intelligence") == "once"
     assert mention_role(title, abstract, "fine pitch") == "title"   # the title wins over the abstract
     assert mention_role(title, abstract, "solder") is None
 
 
-def test_one_sentence_abstract_is_not_all_opening():
-    from paper_trends.text import term_mentions
+def test_acronym_definitions_follow_schwartz_hearst():
+    from paper_trends.text import acronym_definitions
 
-    roles = term_mentions("A study", "thermal resistance heat sink cooling junction temperature heat flux variant three for packages", 1, 2)
-    assert roles["thermal resistance"] == "opening"     # first fifth of the text
-    assert roles["junction temperature"] == "body"      # the single sentence does not swallow everything
+    d = acronym_definitions("A redistribution layer (RDL) on a through-silicon via (TSV); coefficient of thermal expansion (CTE); see Fig. 2 (a); 85 °C (RH).")
+    assert d["rdl"] == ("RDL", ["redistribution", "layer"])
+    assert d["tsv"] == ("TSV", ["through", "silicon", "via"])
+    assert d["cte"] == ("CTE", ["coefficient", "of", "thermal", "expansion"])
+    assert "a" not in d and "rh" not in d
+    assert acronym_definitions("chip on wafer on substrate (CoWoS)")["cowos"][0] == "CoWoS"
+
+
+def test_acronyms_expand_or_contract_consistently():
+    from paper_trends.text import Acronyms, acronym_definitions, mention_role, term_mentions, tokenize
+
+    abstract = ("We study through-silicon via (TSV) reliability. The TSVs crack. TSV depth matters. "
+                "A redistribution layer (RDL) is added; the RDL is thin. Fan-out (FO) packages use it.")
+    am = Acronyms(acronym_definitions(abstract), n_max=3)
+    assert am.expand["rdl"] == ["redistribution", "layer"]       # a usable phrase: the acronym expands
+    assert am.expand["fo"] == ["fan", "out"]                      # short: kept although "out" is a stopword
+    assert "tsv" in am.short                                      # "through … via" cannot be a phrase: the long form contracts
+    toks = am.apply(tokenize(abstract))
+    assert toks.count("tsv") == 3 and "silicon" not in toks       # defining "(TSV)" dropped, plural folded
+    assert toks.count("redistribution") == 2 and "rdl" not in toks
+    roles = term_mentions("TSV interposer", abstract, 1, 2)
+    assert roles["tsv"] == "title" and roles["redistribution layer"] == "repeated"
+    assert mention_role("x", abstract, "through silicon via") == "repeated"   # queries are normalised the same way
+    assert mention_role("x", abstract, "RDL") == "repeated"
+
+
+def test_extension_pairs_tell_fragments_from_phrases():
+    from paper_trends.text import extension_pairs, tokenize
+
+    toks = tokenize("wafer level packaging and panel level packaging. hybrid bonding is used, with hybrid bonding process too")
+    pairs = list(extension_pairs(toks, {"level packaging", "hybrid bonding"}, 2, 2))
+    lp = [(l, r) for t, l, r in pairs if t == "level packaging"]
+    assert lp == [("wafer level packaging", None), ("panel level packaging", "level packaging hybrid")]   # "and" cannot extend; punctuation is invisible
+    hb = [(l, r) for t, l, r in pairs if t == "hybrid bonding"]
+    assert hb == [("packaging hybrid bonding", None), (None, "hybrid bonding process")]

@@ -13,6 +13,7 @@ COMMANDS = {
     "compare": "paper_trends.compare",
     "report": "paper_trends.report.render",
     "background": "paper_trends.background",
+    "validate": "paper_trends.validate",
 }
 
 

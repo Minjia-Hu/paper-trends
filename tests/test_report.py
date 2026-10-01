@@ -14,7 +14,7 @@ def _corpus():
         y = 2016 + i % 8
         topic = BONDING if (i % 3 == 0 or y >= 2021) else THERMAL
         recs.append({
-            "id": f"W{i}", "doi": f"10.1109/x.{y}.{i}", "title": f"{topic.split()[0]} study {i}", "publication_year": y,
+            "id": f"W{i}", "doi": f"10.1109/x.{y}.{i}", "title": f"{' '.join(topic.split()[:2])} study {i}", "publication_year": y,
             "abstract": f"{topic} variant {i % 5}", "cited_by_count": i,
             "authorships": [{"author_id": f"A{i % 7}", "author_name": f"Author {i % 7}",
                              "institutions": [{"id": f"I{i % 4}", "name": f"Inst {i % 4}", "country": ["US", "KR", "JP", "TW"][i % 4],
@@ -41,13 +41,6 @@ def test_build_and_render(tmp_path):
     html = (tmp_path / "test.html").read_text()
     assert "Test Conf" in html and "fig-topics" in html and "report.css" in html
     assert (tmp_path / "index.html").exists() and (tmp_path / "report.css").exists()
-
-
-def test_dedupe_singular_plural():
-    from paper_trends.report.build import _dedupe
-
-    rows = [("diffusion models", 1), ("diffusion model", 2), ("vision language", 3), ("solder joint", 4), ("solder joints", 5), ("stress", 6)]
-    assert [r[0] for r in _dedupe(rows)] == ["diffusion models", "vision language", "solder joint", "stress"]
 
 
 def test_coverage_note():

@@ -14,7 +14,7 @@ from paper_trends import compare, frames
 from paper_trends.report import charts
 from paper_trends.background import MIN_FIELDS, field_of
 from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
-from paper_trends.keywords import compute_trends, papers_with
+from paper_trends.keywords import compute_trends, group_families, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report, country_map_rows, country_name, coverage_note, growth_sentence
@@ -307,8 +307,8 @@ def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, 
 
 
 @st.cache_data(show_spinner="Searching papers…")
-def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str, topical_only: bool = True):
-    return papers_with(filter_years(load_records(path, mtime), years), term, text, topical_only=topical_only)
+def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str, topical_only: bool = True, n_max: int = 3):
+    return papers_with(filter_years(load_records(path, mtime), years), term, text, topical_only=topical_only, n_max=n_max)
 
 
 @st.cache_data(show_spinner="Fitting topic model…")
@@ -622,14 +622,16 @@ if section == "keywords":
     text_mode = o2.selectbox("Text", ["title+abstract", "title"])
     ng = {"1–3": (1, 3), "2–3": (2, 3), "1": (1, 1)}[ngram]
     t1, t2 = st.columns([1, 1])
-    every = t1.toggle("Count every mention", value=False, help="Off (default): a paper counts only when it is about the phrase — in the title, repeated, or used beyond the opening of the abstract. On: a single mention anywhere counts, including 'with the rise of AI…' openings.")
+    every = t1.toggle("Count every mention", value=False, help="Off (default): a paper counts only when it is about the phrase — it is in the title or mentioned more than once. On: a single mention anywhere counts, including 'with the rise of AI…' openings and methods used in passing.")
     keep_common = t2.toggle("Include phrases common to other fields", value=False, help=f"Off (default): phrases used by {MIN_FIELDS} or more other fields (high performance, low cost, next generation…) are hidden because they say little about this conference.")
     basis = "any" if every else "topical"
     kt = cached_keywords(path, mtime, years, text_mode, ng, extra_stop, basis, keep_common)
     if kt.common and not keep_common:
         note(f"{len(kt.common)} phrases common to {MIN_FIELDS}+ other fields are hidden, e.g. " + ", ".join(sorted(kt.common, key=lambda t: -kt.mentions(t))[:6]) + ".")
-    rising = kt.rising(15, min_total=10)
-    falling = kt.falling(15, min_total=10)
+    rising_f = group_families(kt.rising(60, min_total=10), 15, kt.total)
+    falling_f = group_families(kt.falling(60, min_total=10), 15, kt.total)
+    rising = [h for h, _ in rising_f]
+    falling = [h for h, _ in falling_f]
     default_terms = [t for t, *_ in rising[:5]]
     terms = o3.multiselect("Plot terms", kt.top_terms(300), default=default_terms)
     if terms:
@@ -639,25 +641,25 @@ if section == "keywords":
     r, f = st.columns(2)
     r.markdown('<h2 class=\"pt-h2\">' + "Rising" + '</h2>', unsafe_allow_html=True)
     with r:
-        html_table(frames.movers_table(rising), pct=["early", "late", "delta"], signed=["delta"])
+        html_table(frames.movers_table(rising).assign(also=[", ".join(v) for _, v in rising_f]), pct=["early", "late", "delta"], signed=["delta"])
     f.markdown('<h2 class=\"pt-h2\">' + "Falling" + '</h2>', unsafe_allow_html=True)
     with f:
-        html_table(frames.movers_table(falling), pct=["early", "late", "delta"], signed=["delta"])
+        html_table(frames.movers_table(falling).assign(also=[", ".join(v) for _, v in falling_f]), pct=["early", "late", "delta"], signed=["delta"])
     h2("Emerging")
-    emerging = kt.emerging(15, min_total=10)
+    emerging = [h for h, _ in group_families(kt.emerging(45, min_total=10), 15, kt.total)]
     html_table(pd.DataFrame(emerging, columns=["term", "first seen", "early", "late"]), pct=["early", "late"])
     note("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
     h2("Papers mentioning a term")
     pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
     pick = st.selectbox("Term", pick_options, key="kw_pick") if pick_options else None
     if pick:
-        hits = cached_papers_with(path, mtime, years, pick, text_mode, basis == "topical")
+        hits = cached_papers_with(path, mtime, years, pick, text_mode, basis == "topical", ng[1])
         note(f"{len(hits)} papers {'about' if basis == 'topical' else 'mentioning'} this phrase, newest and most cited first.")
         html_table(pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits]), links=["doi"], max_rows=60)
     h2("Top terms by year")
     top = kt.top_terms(40)
     html_table(frames.keyword_table(kt, top), pct=[str(y) for y in kt.years])
-    note("Phrases come from titles and abstracts (OpenAlex has no full text). Early/late compare the pooled share of papers in the first vs. second half of the year range. Terms that almost always occur inside a longer phrase are folded into it.")
+    note("Phrases come from titles and abstracts (OpenAlex has no full text). Early/late compare the pooled share of papers in the first vs. second half of the year range. Acronyms the corpus defines are read as their long form; fragments that almost always sit inside a longer phrase are folded into it; the rising and falling lists show one phrase per family.")
 
 if section == "topics":
     o1, o2 = st.columns([1, 1])

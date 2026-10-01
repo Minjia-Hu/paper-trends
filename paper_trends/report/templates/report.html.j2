@@ -44,12 +44,13 @@
 
 <section id="rising">
   <h2>What is rising</h2>
-  <p class="lede">Share of papers that are <em>about</em> the phrase: it is in the title, used more than once, or used beyond the opening of the abstract{{ " (titles only: OpenAlex lacks most abstracts for this venue)" if r.text_mode == "title" else "" }}. A paper that only names a phrase in its first sentence is not counted. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
+  <p class="lede">Share of papers that are <em>about</em> the phrase: it is in the title or used more than once{{ " (titles only: OpenAlex lacks most abstracts for this venue)" if r.text_mode == "title" else "" }}; a single mention does not count. One phrase per family — variants such as “wafer hybrid bonding” are listed under it. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
   <div class="grid">
   {% for t in r.rising %}
     <figure>
       <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="up">{{ "%.1f"|format(t.late*100) }}%</span></p>
+      {% if t.variants %}<p class="variants">also {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
       <div class="viz" id="fig-rise-{{ loop.index }}"></div>
     </figure>
   {% endfor %}
@@ -65,6 +66,7 @@
     <figure class="fading">
       <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="down">{{ "%.1f"|format(t.late*100) }}%</span></p>
+      {% if t.variants %}<p class="variants">also {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
       <div class="viz" id="fig-fall-{{ loop.index }}"></div>
     </figure>
   {% endfor %}
@@ -141,7 +143,7 @@
 
 <footer class="about" id="about">
   <h2>About the data</h2>
-  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrases are word sequences taken from titles and abstracts; OpenAlex has no full text. A paper counts for a phrase when it is about it — the phrase is in the title, repeated, or used beyond the opening of the abstract — so a sentence like “with the rise of artificial intelligence…” does not make a paper an AI paper. {% if r.n_common_hidden %}{{ r.n_common_hidden }} phrases that are common in three or more other fields ({{ r.common_examples|join(", ") }}…) are left out of the rankings, because they say little about this conference in particular. {% endif %}“Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
+  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrases are word sequences taken from titles and abstracts; OpenAlex has no full text. A paper counts for a phrase when it is about it — the phrase is in its title or mentioned more than once — so a sentence like “with the rise of artificial intelligence…” does not make a paper an AI paper, and a method used once does not become its subject. Acronyms the corpus defines (“redistribution layer (RDL)”) are read as the same phrase. Fragments that almost always sit inside a longer phrase (“level packaging”) are folded into it, and the lists show one phrase per family. {% if r.n_common_hidden %}{{ r.n_common_hidden }} phrases that are common in three or more other fields ({{ r.common_examples|join(", ") }}…) are left out of the rankings, because they say little about this conference in particular. {% endif %}“Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
   <p>Topics come from non-negative matrix factorisation of TF-IDF vectors with a fixed seed, so they are reproducible; labels are the topic's top terms. Institution names and parent relationships are OpenAlex's, which are good but not perfect.</p>
   <details><summary>Coverage by year</summary>
     <table><thead><tr><th>Year</th><th class="num">Papers</th><th class="num">With abstract</th></tr></thead><tbody>
