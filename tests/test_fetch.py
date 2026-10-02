@@ -18,6 +18,7 @@ def test_session_overviews_and_forums_are_front_matter():
     assert is_front_matter({"title": "Quantum engineering", "abstract_inverted_index": {"The": [0], "talk": [1], "was": [2], "not": [3], "made": [4], "available": [5], "for": [6], "publication": [7]}})
     assert not is_front_matter({"title": "A 5G Transceiver in 28nm CMOS", "abstract_inverted_index": {"We": [0], "present": [1]}})
     assert not is_front_matter({"title": "Session-Based Recommendation Hardware"})
+    assert is_front_matter({"title": "心外膜パラレルワイヤロボットの並列力/位置制御【Powered by NICT】"})   # machine-translated duplicate
 
 
 def test_doi_prefix_boundary():

@@ -37,6 +37,7 @@ FIELD_OF = {
     "isscc": "circuits",
     "cvpr": "vision",
     "interspeech": "speech",
+    "icra": "robotics",
 }
 
 

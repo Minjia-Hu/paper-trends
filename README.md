@@ -94,12 +94,15 @@ side — tables, a term drill-down to the underlying papers, and cross-conferenc
 comparison. Fetched data is cached under `data/`; a DOI prefix for a custom venue and
 extra stopwords live under **Options**.
 
-Presets (2016 onwards): **packaging** — ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE;
-**devices & circuits** — IEDM, ISSCC, VLSI Symposium, IMW; **other fields** — CVPR,
-Interspeech. Each one is a conference name plus the DOI prefix(es) its papers carry, so
-anything indexed by OpenAlex can be added the same way.
+The home page lists the presets that come ready-made, grouped by field: **semiconductor
+packaging** (ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE), **devices & circuits** (IEDM,
+ISSCC, VLSI Symposium, IMW), **computer vision** (CVPR), **speech** (Interspeech) and
+**robotics** (ICRA). They are examples, not the scope — the mix leans towards
+semiconductors because that is where the maintainer works. Each preset is a conference
+name plus the DOI prefix(es) its papers carry, so any venue indexed by OpenAlex can be
+added the same way, or simply typed into the search box.
 
-![The app: presets in the masthead, a search box for any venue, and the report below](docs/screenshot-app.png)
+![The app's home page: a search box for any venue, and the ready-made conferences grouped by field](docs/screenshot-app.png)
 
 To host it (e.g. on Streamlit Community Cloud) set `OPENALEX_MAILTO` and `OPENALEX_API_KEY` in
 the app's secrets; the app reads them from `st.secrets` when the environment variables are absent.
@@ -295,6 +298,11 @@ learning. Falling: convolutional neural networks, end to end, generative adversa
 **Interspeech 2016–2025** (9.7k papers, non-IEEE publisher, titles only because OpenAlex
 lacks most of its abstracts): self-supervised, zero-shot, large language and
 text-to-speech rise; recurrent neural networks, speaker recognition and acoustic models fall.
+
+**ICRA 2016–2025** (11.7k papers, 98 % with abstracts): reinforcement learning (3.0 % →
+6.7 % of papers), real-world, point clouds, autonomous driving and multi-agent rise;
+convolutional neural networks and unmanned aerial vehicles fade; China's share of papers
+goes from 8 % to 22 %.
 
 ### Data coverage, honestly
 

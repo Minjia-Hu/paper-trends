@@ -9,27 +9,26 @@
 {% if not embedded %}<nav class="masthead"><div class="row"><a class="brand" href="index.html">paper-trends</a></div></nav>{% endif %}
 <main class="page{{ ' embedded' if embedded else '' }}">
 <header class="title">
-  <div class="kicker">Publication trends for academic conferences</div>
+  <div class="kicker">{{ tagline }}</div>
   <h1>What a field talks about, year by year</h1>
-  <div class="meta"><span>Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes.</span></div>
+  <div class="meta"><span>Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes. Any conference indexed by OpenAlex gets the same page; these are the ones generated ahead of time.</span></div>
 </header>
+<div class="groups">
 {% for group, items in nav %}
-<section>
+<section class="group">
   <h2>{{ group }}</h2>
   <ul class="glance">
-  {% for slug, short, name, n in items %}<li><a href="{{ ('?conference=' ~ slug) if app_links else (slug ~ '.html') }}"{{ ' target="_top"' if app_links else '' }}><em>{{ short }}</em> — {{ name }}</a> <span style="color: var(--faint); font-family: var(--sans); font-size: 14px">{{ "{:,}".format(n) }} papers</span></li>{% endfor %}
+  {% for slug, short, name, n in items %}<li><a href="{{ slug ~ '.html' }}"><em>{{ short }}</em> — {{ name }}</a> <span class="n">{{ "{:,}".format(n) }} papers</span></li>{% endfor %}
   </ul>
 </section>
 {% endfor %}
+</div>
 <section>
   <h2>Your own conference</h2>
-  {% if app_links %}
-  <p class="lede">Open <b>Settings</b> (the arrow at the top left), choose “Custom…”, type the conference name as OpenAlex spells it and, if you know it, its DOI prefix, then fetch. A page like the ones above appears in a minute or two; the data stays cached on this machine.</p>
-  {% else %}
-  <p class="lede">These pages are generated ahead of time. Any conference indexed by OpenAlex can get the same page in two commands; venues outside the groups above land in a “More” group.</p>{% endif %}
-  {% if not app_links %}<pre class="code">uv run python -m paper_trends fetch "Design Automation Conference" --doi-prefix 10.1109/dac --years 2016-2026 --name dac
-uv run python -m paper_trends report data/dac.jsonl --years 2016-2025 --out site</pre>{% endif %}
-  {% if app_links %}<p class="lede">Switch Settings → View to <b>Explore</b> for tables, the papers behind any term, and cross-conference comparison.</p>{% else %}<p class="lede">For live exploration — pick a term, see the papers behind it, compare venues — run the interactive app: <span class="mono">uv run streamlit run app.py</span>. Source and instructions: <a href="https://github.com/Minjia-Hu/paper-trends">github.com/Minjia-Hu/paper-trends</a>.</p>{% endif %}
+  <p class="lede">Two commands give any conference indexed by OpenAlex a page like these:</p>
+  <pre class="code">uv run python -m paper_trends fetch "Design Automation Conference" --doi-prefix 10.1109/dac --years 2016-2026 --name dac
+uv run python -m paper_trends report data/dac.jsonl --years 2016-2025 --out site</pre>
+  <p class="lede">For live exploration — pick a term, see the papers behind it, compare venues — run the interactive app: <span class="mono">uv run streamlit run app.py</span>. Source and instructions: <a href="https://github.com/Minjia-Hu/paper-trends">github.com/Minjia-Hu/paper-trends</a>.</p>
 </section>
 </main>
 </body>

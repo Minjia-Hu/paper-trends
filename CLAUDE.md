@@ -9,6 +9,15 @@ historical paper metadata from OpenAlex, then produces keyword trends, topic evo
 and institution/author rankings. Target users are researchers in any field, not only
 semiconductor packaging.
 
+**Positioning (decided with the maintainer on 2026-10-02): "any conference" is the
+product; the presets are examples.** The semiconductor-heavy mix of presets reflects
+where the maintainer works, not the tool's scope, and the UI must not suggest otherwise:
+the masthead carries only the brand, the tagline (`render.TAGLINE`, "Publication trends
+for any academic conference") and, on a conference page, "All conferences →"; the search
+box is the primary entry; presets live on the home page grouped by *field name*
+(never "Other fields"). Keep the README's first sentence and the home page consistent
+with this.
+
 - First showcase: **ECTC (Electronic Components and Technology Conference) 2016–2026**.
 - The README must also demonstrate at least one other venue (ISSCC or IEDM) to prove the
   tool is general-purpose, not ECTC-specific.
@@ -98,8 +107,10 @@ tests/              # pytest, incl. a streamlit.testing AppTest smoke test of ap
 ```
 
 **Streamlit app = shell around the report, no sidebar.** Layout top to bottom: masthead
-(brand = home, grouped conference links; Streamlit-rendered HTML because the report iframe
-is sandboxed without top navigation), a search row (`st.text_input` for any OpenAlex
+(brand = home, tagline, "All conferences →" on a conference page; Streamlit-rendered HTML
+because the report iframe is sandboxed without top navigation; the conference list is on
+the home page in a grid of field groups, unfetched presets greyed with the fetch offered
+when opened), a search row (`st.text_input` for any OpenAlex
 conference + an **Options** popover holding DOI prefix, extra stopwords and refresh), then
 for a selected conference a controls row of plain text links (period, Report/Explore,
 Options — all `?param=` links, no widgets: Streamlit widgets cannot be restyled enough to
@@ -160,9 +171,12 @@ preset acronyms/slugs straight to `?conference=`.
 Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
-**Presets** live in `app.py:PRESETS` (packaging: ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE;
-devices/circuits: IEDM, ISSCC, VLSI Symposium, IMW; other fields: CVPR, Interspeech —
-the generality showcase), each with its DOI prefix list. VLSI
+**Presets** live in `app.py:PRESETS` (semiconductor packaging: ECTC, EPTC, ICEPT, ITherm,
+IRPS, EuroSimE; devices & circuits: IEDM, ISSCC, VLSI Symposium, IMW; computer vision:
+CVPR; speech: Interspeech; robotics: ICRA — the last three show generality), each with
+its DOI prefix list; `render.GROUPS` holds the same grouping for the home page and the
+static index, `background.FIELD_OF` the field used by the common-phrase filter (rebuild
+`resources/background.json` when a preset is added). VLSI
 Symposium needs ten prefixes because IEEE (10.1109) and JSAP (10.23919) alternate as
 publisher and the acronym changed (vlsit/vlsic → vlsitechnology/vlsicircuits →
 vlsitechnologyandcir). Venues that alternate IEEE/ACM DOIs by year (DAC, ICCAD) or whose
@@ -186,8 +200,9 @@ labels with subfield/field), `oa_keywords`.
 `fetch` drops proceedings front matter via `is_front_matter`: OpenAlex's `is_paratext`
 flag catches only a fraction; the rest is a title regex (title pages, committees, indexes,
 "Session N overview", timetables, tutorials, ISSCC-style "F6:"/"EE3:" forum codes) plus
-an abstract rule for invited talks "not made available for publication". ISSCC loses
-~800 such items (a quarter of its DOIs), ECTC ~100. Extend the regex if junk topics like
+an abstract rule for invited talks "not made available for publication", and J-GLOBAL's
+machine-translated Japanese duplicates ("【Powered by NICT】", no DOI; 65 in ICRA). ISSCC
+loses ~800 such items (a quarter of its DOIs), ECTC ~100. Extend the regex if junk topics like
 "title page / copyright" or "session overview" reappear in `topics`.
 
 **Shared analysis conventions** (keywords, topics, rank all follow them):
@@ -287,7 +302,7 @@ so the right-edge labels (computed in Python) line up with the bands. Preview wi
 network. `site/` is git-ignored. `build_report` switches to title-only phrase counting when
 abstract coverage is under 60 % (Interspeech), restores corpus hyphenation for display
 (`restore_hyphens`: "co-packaged optics"), and drops singular/plural twins from the lists.
-`render.FULL`/`SHORT`/`GROUPS` hold the preset names and the masthead grouping.
+`render.FULL`/`SHORT`/`GROUPS`/`TAGLINE` hold the preset names, the home-page grouping and the tagline.
 
 "Who publishes" also carries a **bump chart** (`charts.bump_chart`; ranks among the top
 10 institutions on a 3-year rolling count, `build.inst_rank_rows`; red = climbed ≥ 3

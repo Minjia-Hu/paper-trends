@@ -15,10 +15,16 @@ from . import charts
 from .build import build_report
 
 HERE = Path(__file__).parent
+TAGLINE = "Publication trends for any academic conference"
+# Preset conferences, grouped by field. The tool is not tied to these: they are the pages
+# that exist ready-made, and the mix (heavy on semiconductors, where the maintainer works)
+# is a choice of examples, not a scope.
 GROUPS = [
-    ("Packaging", ["ectc", "eptc", "icept", "itherm", "irps", "eurosime"]),
+    ("Semiconductor packaging", ["ectc", "eptc", "icept", "itherm", "irps", "eurosime"]),
     ("Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
-    ("Other fields", ["cvpr", "interspeech"]),
+    ("Computer vision", ["cvpr"]),
+    ("Speech", ["interspeech"]),
+    ("Robotics", ["icra"]),
 ]
 FULL = {
     "ectc": "Electronic Components and Technology Conference",
@@ -33,9 +39,10 @@ FULL = {
     "imw": "International Memory Workshop",
     "cvpr": "Conference on Computer Vision and Pattern Recognition",
     "interspeech": "Interspeech",
+    "icra": "International Conference on Robotics and Automation",
 }
 SHORT = {"ectc": "ECTC", "eptc": "EPTC", "icept": "ICEPT", "itherm": "ITherm", "irps": "IRPS", "eurosime": "EuroSimE", "iedm": "IEDM",
-         "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech"}
+         "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech", "icra": "ICRA"}
 
 
 def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
@@ -83,7 +90,7 @@ def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = 
     """HTML for one report. `embedded=True` inlines the CSS (for a Streamlit iframe);
     `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`)."""
     return _env().get_template("report.html.j2").render(
-        r=r, nav=nav or [], specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
+        r=r, nav=nav or [], tagline=TAGLINE, specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
         embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
         entities_json=json.dumps(r.get("entities") or None, ensure_ascii=False).replace("</", "<\\/"),
         map_lines_json=json.dumps(r.get("map_lines") or {}, ensure_ascii=False).replace("</", "<\\/"),
@@ -92,7 +99,7 @@ def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = 
 
 
 def render_index(nav_full: list, *, embedded: bool = False, app_links: bool = False) -> str:
-    return _env().get_template("index.html.j2").render(nav=nav_full, embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links)
+    return _env().get_template("index.html.j2").render(nav=nav_full, tagline=TAGLINE, embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links)
 
 
 def render_site(reports: list[dict[str, Any]], out: Path) -> None:

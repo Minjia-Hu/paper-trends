@@ -13,12 +13,8 @@
 <body class="{{ 'embedded' if embedded else '' }}">
 {% if nav %}<nav class="masthead"><div class="row">
   <a class="brand" href="{{ './' if app_links else 'index.html' }}"{{ ' target="_top"' if app_links else '' }}>paper-trends</a>
-  <div class="venues">
-  {% for group, items in nav %}
-    <span class="group">{{ group }}</span>
-    {% for slug, short in items %}<a href="{{ ('?conference=' ~ slug) if app_links else (slug ~ '.html') }}"{{ ' target="_top"' if app_links else '' }} class="{{ 'current' if slug == r.slug else '' }}">{{ short }}</a>{% endfor %}
-  {% endfor %}
-  </div>
+  <span class="tagline">{{ tagline }}</span>
+  <a class="all" href="{{ './' if app_links else 'index.html' }}"{{ ' target="_top"' if app_links else '' }}>All conferences →</a>
 </div></nav>{% endif %}
 
 <main class="page{{ ' embedded' if embedded else '' }}">

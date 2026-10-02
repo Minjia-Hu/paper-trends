@@ -18,7 +18,7 @@ from paper_trends.keywords import compute_trends, display_form, group_families, 
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report, country_map_rows, country_name, coverage_note, growth_sentence
-from paper_trends.report.render import FULL, SHORT, nav_for, render_page
+from paper_trends.report.render import FULL, SHORT, TAGLINE, nav_for, render_page
 from paper_trends.store import filter_years, read_jsonl, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import compute_nmf, compute_openalex
@@ -26,48 +26,51 @@ from paper_trends.topics import compute_nmf, compute_openalex
 DATA_DIR = Path("data")
 PRESETS = {
     # ---- packaging, assembly, thermal, reliability -----------------------------------
-    "Packaging · ECTC — Electronic Components and Technology Conference": {
+    "Semiconductor packaging · ECTC — Electronic Components and Technology Conference": {
         "query": "Electronic Components and Technology Conference", "doi_prefixes": ["10.1109/ectc"], "slug": "ectc",
     },
-    "Packaging · EPTC — Electronics Packaging Technology Conference": {
+    "Semiconductor packaging · EPTC — Electronics Packaging Technology Conference": {
         "query": "Electronics Packaging Technology Conference", "doi_prefixes": ["10.1109/eptc"], "slug": "eptc",
     },
-    "Packaging · ICEPT — International Conference on Electronic Packaging Technology": {
+    "Semiconductor packaging · ICEPT — International Conference on Electronic Packaging Technology": {
         "query": "International Conference on Electronic Packaging Technology", "doi_prefixes": ["10.1109/icept"], "slug": "icept",
     },
-    "Packaging · ITherm — Thermal and Thermomechanical Phenomena in Electronic Systems": {
+    "Semiconductor packaging · ITherm — Thermal and Thermomechanical Phenomena in Electronic Systems": {
         "query": "Thermal and Thermomechanical Phenomena in Electronic Systems", "doi_prefixes": ["10.1109/itherm"], "slug": "itherm",
     },
-    "Packaging · IRPS — International Reliability Physics Symposium": {
+    "Semiconductor packaging · IRPS — International Reliability Physics Symposium": {
         "query": "International Reliability Physics Symposium", "doi_prefixes": ["10.1109/irps"], "slug": "irps",
     },
-    "Packaging · EuroSimE — Thermal, Mechanical and Multi-Physics Simulation in Microelectronics": {
+    "Semiconductor packaging · EuroSimE — Thermal, Mechanical and Multi-Physics Simulation in Microelectronics": {
         "query": "Thermal, Mechanical and Multi-Physics Simulation and Experiments in Microelectronics and Microsystems",
         "doi_prefixes": ["10.1109/eurosime"], "slug": "eurosime",
     },
     # ---- devices and circuits ----------------------------------------------------------
-    "Devices · IEDM — International Electron Devices Meeting": {
+    "Devices & circuits · IEDM — International Electron Devices Meeting": {
         "query": "International Electron Devices Meeting", "doi_prefixes": ["10.1109/iedm"], "slug": "iedm",
     },
-    "Circuits · ISSCC — International Solid-State Circuits Conference": {
+    "Devices & circuits · ISSCC — International Solid-State Circuits Conference": {
         "query": "International Solid-State Circuits Conference", "doi_prefixes": ["10.1109/isscc"], "slug": "isscc",
     },
-    "Devices · VLSI Symposium — Symposium on VLSI Technology and Circuits": {
+    "Devices & circuits · VLSI Symposium — Symposium on VLSI Technology and Circuits": {
         "query": "Symposium on VLSI Technology and Circuits",
         # the DOI prefix changed almost every year (IEEE / JSAP alternate as publisher)
         "doi_prefixes": [f"{reg}/{acr}" for reg in ("10.1109", "10.23919")
                          for acr in ("vlsit", "vlsic", "vlsitechnology", "vlsicircuits", "vlsitechnologyandcir")],
         "slug": "vlsi",
     },
-    "Devices · IMW — International Memory Workshop": {
+    "Devices & circuits · IMW — International Memory Workshop": {
         "query": "International Memory Workshop", "doi_prefixes": ["10.1109/imw"], "slug": "imw",
     },
-    # ---- other fields: the tool is not semiconductor-specific ---------------------------
-    "Other fields · CVPR — Conference on Computer Vision and Pattern Recognition": {
+    # ---- other fields: the presets are examples, not the tool's scope ------------------
+    "Computer vision · CVPR — Conference on Computer Vision and Pattern Recognition": {
         "query": "Conference on Computer Vision and Pattern Recognition", "doi_prefixes": ["10.1109/cvpr"], "slug": "cvpr",
     },
-    "Other fields · Interspeech — Conference of the International Speech Communication Association": {
+    "Speech · Interspeech — Conference of the International Speech Communication Association": {
         "query": "Interspeech", "doi_prefixes": ["10.21437/interspeech"], "slug": "interspeech",
+    },
+    "Robotics · ICRA — International Conference on Robotics and Automation": {
+        "query": "International Conference on Robotics and Automation", "doi_prefixes": ["10.1109/icra"], "slug": "icra",
     },
 }
 FETCH_YEARS = (2016, 2026)
@@ -84,12 +87,9 @@ st.markdown(
     /* masthead rendered by Streamlit (outside the iframe, so links can change the query string) */
     .pt-masthead { display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
     .pt-masthead .brand { font-family: Newsreader, Georgia, serif; font-size: 20px; font-weight: 600; color: #1B1B1B; text-decoration: none; letter-spacing: -0.01em; }
-    .pt-masthead .venues { display: flex; gap: 4px 18px; flex-wrap: wrap; font-size: 13.5px; color: #5C5C5C; }
-    .pt-masthead .group { color: #8A877F; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; margin-right: 2px; }
-    .pt-masthead a { color: inherit; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
-    .pt-masthead a:hover { color: #E3120B; }
-    .pt-masthead a.current { color: #E3120B; border-bottom-color: #E3120B; }
-    .pt-masthead a.unfetched { color: #B8B5AE; }
+    .pt-masthead .tagline { font-size: 13.5px; color: #5C5C5C; }
+    .pt-masthead .all { margin-left: auto; font-size: 13.5px; color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
+    .pt-masthead .all:hover { color: #E3120B; border-color: #E3120B; }
     [data-testid="stExpandSidebarButton"] { display: none !important; }
     .st-key-controls_search { padding: 10px 24px 0; }
     .st-key-controls_row { padding: 6px 24px 0; }
@@ -175,7 +175,9 @@ st.markdown(
     .pt-home h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; }
     .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 28px; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
     .pt-home h2 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
-    .pt-home ul { list-style: none; margin: 0; padding: 0; max-width: 58ch; font-family: Newsreader, Georgia, serif; font-size: 22px; line-height: 1.45; }
+    .pt-home .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 0 48px; max-width: 1120px; }
+    .pt-home .group h2 { font-size: 24px; margin-top: 30px; }
+    .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
     .pt-home li a { color: #1B1B1B; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
@@ -190,16 +192,19 @@ st.markdown(
 
 def home_page(available: dict[str, dict]) -> str:
     parts = [
-        '<div class="pt-home"><div class="kicker">Publication trends for academic conferences</div>',
+        f'<div class="pt-home"><div class="kicker">{TAGLINE}</div>',
         "<h1>What a field talks about, year by year</h1>",
-        '<p class="lede">Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes. Pick a conference.</p>',
+        '<p class="lede">Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes. '
+        "Type any conference into the search box, or open one of these.</p>",
+        '<div class="groups">',
     ]
     for group, items in nav_for(available):
-        parts.append(f"<h2>{group}</h2><ul>")
+        parts.append(f'<section class="group"><h2>{group}</h2><ul>')
         for slug_, short, name, n in items:
             tail = f"{n:,} papers" if n else "not fetched yet — open to fetch"
             parts.append(f'<li><a href="?conference={slug_}" target="_self"><em>{short}</em> — {name}</a><span class="n">{tail}</span></li>')
-        parts.append("</ul>")
+        parts.append("</ul></section>")
+    parts.append("</div>")
     parts.append(
         "<h2>Your own conference</h2><p>Type any conference name in the search box above, as OpenAlex spells it, and press Enter; if the name "
         "does not match an OpenAlex source, add its DOI prefix under Options. Fetching takes a minute or two for most venues, and the data stays "
@@ -208,15 +213,12 @@ def home_page(available: dict[str, dict]) -> str:
     return "".join(parts)
 
 
-def masthead(available: dict[str, dict], current: str) -> str:
-    parts = ['<nav class="pt-masthead"><a class="brand" href="?" target="_self">paper-trends</a><div class="venues">']
-    for group, items in nav_for(available):
-        parts.append(f'<span class="group">{group}</span>')
-        for slug_, short, _, n in items:
-            cls = ' class="current"' if slug_ == current else (' class="unfetched" title="not fetched yet"' if not n else "")
-            parts.append(f'<a href="?conference={slug_}" target="_self"{cls}>{short}</a>')
-    parts.append("</div></nav>")
-    return "".join(parts)
+def masthead(on_conference: bool) -> str:
+    """Brand and tagline; on a conference page, a way back to the list. The conferences
+    themselves live on the home page (the tool is for any venue, the presets are examples)."""
+    # the home page says the tagline in its kicker, so the masthead carries it only elsewhere
+    rest = f'<span class="tagline">{TAGLINE}</span><a class="all" href="?" target="_self">All conferences →</a>' if on_conference else ""
+    return f'<nav class="pt-masthead"><a class="brand" href="?" target="_self">paper-trends</a>{rest}</nav>'
 
 # OpenAlex credentials: environment first, then Streamlit secrets (hosted demo).
 for _var in ("OPENALEX_MAILTO", "OPENALEX_API_KEY"):
@@ -493,7 +495,7 @@ if show_options:
             extra_stop = stop_in
         opt_refresh = st.button("Refresh data from OpenAlex", key="refresh_btn")
 
-masthead_slot.markdown(masthead(available, wanted), unsafe_allow_html=True)
+masthead_slot.markdown(masthead(bool(wanted or custom_q)), unsafe_allow_html=True)
 preset = next((v for v in PRESETS.values() if v["slug"] == wanted), None)
 if preset:
     query, doi_prefixes, slug = preset["query"], preset["doi_prefixes"], preset["slug"]

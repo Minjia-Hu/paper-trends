@@ -33,13 +33,16 @@ _FRONT_MATTER_RE = re.compile(
 )
 # Invited talks / panels whose "abstract" says there is no paper.
 _NO_PAPER_RE = re.compile(r"not (?:been )?made available for publication|\[\d+ abstracts?\]", re.I)
+# Machine-translated duplicates of real papers (J-GLOBAL's Japanese records, marked
+# "【Powered by NICT】"), indexed by OpenAlex as separate works without a DOI.
+_TRANSLATION_RE = re.compile(r"powered by nict", re.I)
 
 
 def is_front_matter(work: dict[str, Any]) -> bool:
     if work.get("is_paratext") or work.get("type") in {"paratext", "editorial"}:
         return True
     title = work.get("title") or ""
-    if _FRONT_MATTER_RE.match(title) or _NO_PAPER_RE.search(title):
+    if _FRONT_MATTER_RE.match(title) or _NO_PAPER_RE.search(title) or _TRANSLATION_RE.search(title):
         return True
     inv = work.get("abstract_inverted_index") or {}
     if inv and len(inv) < 60:  # short blurbs only; a real abstract is longer
