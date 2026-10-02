@@ -14,7 +14,7 @@ from paper_trends import compare, frames
 from paper_trends.report import charts
 from paper_trends.background import MIN_FIELDS, field_of
 from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
-from paper_trends.keywords import compute_trends, group_families, papers_with
+from paper_trends.keywords import compute_trends, display_form, group_families, hyphen_forms, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report, country_map_rows, country_name, coverage_note, growth_sentence
@@ -304,6 +304,11 @@ def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, 
     stop = load_stopwords(extra_stop.split())
     return compute_trends(recs, text=text, n_min=ngram[0], n_max=ngram[1], stopwords=stop, basis=basis,
                           field=field_of(Path(path).stem), keep_common=keep_common)
+
+
+@st.cache_data(show_spinner=False)
+def cached_hyphen_forms(path: str, mtime: float, years: tuple[int, int], text: str):
+    return hyphen_forms(filter_years(load_records(path, mtime), years), text=text)
 
 
 @st.cache_data(show_spinner="Searching papers…")
@@ -628,37 +633,39 @@ if section == "keywords":
     kt = cached_keywords(path, mtime, years, text_mode, ng, extra_stop, basis, keep_common)
     if kt.common and not keep_common:
         note(f"{len(kt.common)} phrases common to {MIN_FIELDS}+ other fields are hidden, e.g. " + ", ".join(sorted(kt.common, key=lambda t: -kt.mentions(t))[:6]) + ".")
+    forms = cached_hyphen_forms(path, mtime, years, text_mode)
+    show = lambda t: display_form(t, forms, kt.acronyms.surface if kt.acronyms else None)  # noqa: E731
     rising_f = group_families(kt.rising(60, min_total=10), 15, kt.total)
     falling_f = group_families(kt.falling(60, min_total=10), 15, kt.total)
     rising = [h for h, _ in rising_f]
     falling = [h for h, _ in falling_f]
     default_terms = [t for t, *_ in rising[:5]]
-    terms = o3.multiselect("Plot terms", kt.top_terms(300), default=default_terms)
+    terms = o3.multiselect("Plot terms", kt.top_terms(300), default=default_terms, format_func=show)
     if terms:
         figure_head("Share of papers mentioning the phrase", f"{years[0]}–{years[1]}; the number at the end of each line is the latest year")
-        small_multiples([{"term": t, "early": kt.momentum(t)[0], "late": kt.momentum(t)[1], "series": [{"year": y, "share": kt.share(t, y), "papers": kt.doc_freq[t].get(y, 0)} for y in kt.years]} for t in terms], kt.years, charts.RED)
+        small_multiples([{"term": show(t), "early": kt.momentum(t)[0], "late": kt.momentum(t)[1], "series": [{"year": y, "share": kt.share(t, y), "papers": kt.doc_freq[t].get(y, 0)} for y in kt.years]} for t in terms], kt.years, charts.RED)
         source_line()
     r, f = st.columns(2)
     r.markdown('<h2 class=\"pt-h2\">' + "Rising" + '</h2>', unsafe_allow_html=True)
     with r:
-        html_table(frames.movers_table(rising).assign(also=[", ".join(v) for _, v in rising_f]), pct=["early", "late", "delta"], signed=["delta"])
+        html_table(frames.movers_table(rising).assign(term=[show(t) for t, *_ in rising], also=[", ".join(show(x) for x in v) for _, v in rising_f]), pct=["early", "late", "delta"], signed=["delta"])
     f.markdown('<h2 class=\"pt-h2\">' + "Falling" + '</h2>', unsafe_allow_html=True)
     with f:
-        html_table(frames.movers_table(falling).assign(also=[", ".join(v) for _, v in falling_f]), pct=["early", "late", "delta"], signed=["delta"])
+        html_table(frames.movers_table(falling).assign(term=[show(t) for t, *_ in falling], also=[", ".join(show(x) for x in v) for _, v in falling_f]), pct=["early", "late", "delta"], signed=["delta"])
     h2("Emerging")
     emerging = [h for h, _ in group_families(kt.emerging(45, min_total=10), 15, kt.total)]
-    html_table(pd.DataFrame(emerging, columns=["term", "first seen", "early", "late"]), pct=["early", "late"])
+    html_table(pd.DataFrame([(show(t), *rest) for t, *rest in emerging], columns=["term", "first seen", "early", "late"]), pct=["early", "late"])
     note("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
     h2("Papers mentioning a term")
     pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
-    pick = st.selectbox("Term", pick_options, key="kw_pick") if pick_options else None
+    pick = st.selectbox("Term", pick_options, key="kw_pick", format_func=show) if pick_options else None
     if pick:
         hits = cached_papers_with(path, mtime, years, pick, text_mode, basis == "topical", ng[1])
         note(f"{len(hits)} papers {'about' if basis == 'topical' else 'mentioning'} this phrase, newest and most cited first.")
         html_table(pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits]), links=["doi"], max_rows=60)
     h2("Top terms by year")
-    top = kt.top_terms(40)
-    html_table(frames.keyword_table(kt, top), pct=[str(y) for y in kt.years])
+    top = [h[0] for h, _ in group_families([(t,) for t in kt.top_terms(80)], 40, kt.total)]
+    html_table(frames.keyword_table(kt, top).assign(term=[show(t) for t in top]), pct=[str(y) for y in kt.years])
     note("Phrases come from titles and abstracts (OpenAlex has no full text). Early/late compare the pooled share of papers in the first vs. second half of the year range. Acronyms the corpus defines are read as their long form; fragments that almost always sit inside a longer phrase are folded into it; the rising and falling lists show one phrase per family.")
 
 if section == "topics":
