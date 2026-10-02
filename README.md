@@ -11,7 +11,7 @@ The same command works for ISSCC, IEDM, or any other venue indexed by OpenAlex.
 
 > Status: early but usable. Command-line tools for fetching and analysis, a static report generator, and a Streamlit app.
 
-![Report page: what is rising at ECTC](docs/screenshot-report-rising.png)
+![ECTC report page with the detail panel open on “hybrid bonding”: trend, who writes about it, topics, co-occurring phrases](docs/screenshot-report-panel.png)
 
 ## Requirements
 
@@ -77,7 +77,7 @@ are clickable too, so you can walk from *hybrid bonding* to the institutions beh
 their other signature phrases, with a back button and a trail. The panel data is
 precomputed and inlined, so the page still works offline and without a server.
 
-![Report page header](docs/screenshot-report-top.png)
+![Who publishes: institution ranks over the years and what each institution works on](docs/screenshot-who-publishes.png)
 
 ### Interactive app
 
@@ -99,7 +99,7 @@ Presets (2016 onwards): **packaging** — ECTC, EPTC, ICEPT, ITherm, IRPS, EuroS
 Interspeech. Each one is a conference name plus the DOI prefix(es) its papers carry, so
 anything indexed by OpenAlex can be added the same way.
 
-![Topic evolution](docs/screenshot-topics.png)
+![The app: presets in the masthead, a search box for any venue, and the report below](docs/screenshot-app.png)
 
 To host it (e.g. on Streamlit Community Cloud) set `OPENALEX_MAILTO` and `OPENALEX_API_KEY` in
 the app's secrets; the app reads them from `st.secrets` when the environment variables are absent.
