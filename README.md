@@ -34,6 +34,25 @@ echo "OPENALEX_MAILTO=you@example.com" > .env
 echo "OPENALEX_API_KEY=your_key" >> .env
 ```
 
+## Quick start
+
+```bash
+# 1. find the venue — an acronym or a name; prints the OpenAlex name, DOI prefix and paper count
+uv run python -m paper_trends resolve ECTC
+
+# 2. fetch it (one to fifteen minutes depending on size; data/ectc.jsonl, git-ignored)
+uv run python -m paper_trends fetch "Electronic Components and Technology Conference" \
+    --doi-prefix 10.1109/ectc --years 2016-2025 --name ectc
+
+# 3. a report page, and/or the app
+uv run python -m paper_trends report data/ectc.jsonl --name "Electronic Components and Technology Conference" --years 2016-2025 --out site
+open site/ectc.html
+uv run streamlit run app.py
+```
+
+Or skip the command line: `uv run streamlit run app.py`, pick a preset or type a venue,
+and press **Fetch**.
+
 ## Usage
 
 ### Report pages

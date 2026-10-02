@@ -89,6 +89,7 @@ st.markdown(
     .pt-masthead a { color: inherit; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
     .pt-masthead a:hover { color: #E3120B; }
     .pt-masthead a.current { color: #E3120B; border-bottom-color: #E3120B; }
+    .pt-masthead a.unfetched { color: #B8B5AE; }
     [data-testid="stExpandSidebarButton"] { display: none !important; }
     .st-key-controls_search { padding: 10px 24px 0; }
     .st-key-controls_row { padding: 6px 24px 0; }
@@ -196,7 +197,8 @@ def home_page(available: dict[str, dict]) -> str:
     for group, items in nav_for(available):
         parts.append(f"<h2>{group}</h2><ul>")
         for slug_, short, name, n in items:
-            parts.append(f'<li><a href="?conference={slug_}" target="_self"><em>{short}</em> — {name}</a><span class="n">{n:,} papers</span></li>')
+            tail = f"{n:,} papers" if n else "not fetched yet — open to fetch"
+            parts.append(f'<li><a href="?conference={slug_}" target="_self"><em>{short}</em> — {name}</a><span class="n">{tail}</span></li>')
         parts.append("</ul>")
     parts.append(
         "<h2>Your own conference</h2><p>Type any conference name in the search box above, as OpenAlex spells it, and press Enter; if the name "
@@ -210,8 +212,8 @@ def masthead(available: dict[str, dict], current: str) -> str:
     parts = ['<nav class="pt-masthead"><a class="brand" href="?" target="_self">paper-trends</a><div class="venues">']
     for group, items in nav_for(available):
         parts.append(f'<span class="group">{group}</span>')
-        for slug_, short, _, _ in items:
-            cls = ' class="current"' if slug_ == current else ""
+        for slug_, short, _, n in items:
+            cls = ' class="current"' if slug_ == current else (' class="unfetched" title="not fetched yet"' if not n else "")
             parts.append(f'<a href="?conference={slug_}" target="_self"{cls}>{short}</a>')
     parts.append("</div></nav>")
     return "".join(parts)
@@ -249,12 +251,13 @@ def corpus_size(path: str, mtime: float) -> int:
 
 
 def available_corpora() -> dict[str, dict]:
-    """Preset conferences that have data on this machine, for the masthead and the home page."""
+    """Every preset conference, for the masthead and the home page; `n_papers` is 0 until
+    its data has been fetched on this machine (the page then offers the fetch)."""
     out = {}
     for label, cfg in PRESETS.items():
         cp = corpus_path(cfg["slug"])
-        if cp.exists():
-            out[cfg["slug"]] = {"name": cfg["query"] if cfg["slug"] not in FULL else FULL[cfg["slug"]], "n_papers": corpus_size(str(cp), cp.stat().st_mtime)}
+        n = corpus_size(str(cp), cp.stat().st_mtime) if cp.exists() else 0
+        out[cfg["slug"]] = {"name": cfg["query"] if cfg["slug"] not in FULL else FULL[cfg["slug"]], "n_papers": n}
     return out
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 import sys
 from collections import Counter
@@ -52,28 +53,36 @@ def _norm(text: str) -> str:
 
 # Decoration OpenAlex source names carry around the conference name proper:
 # "2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)"
+# "ESSCIRC 2022- IEEE 48th European Solid State Circuits Conference": an acronym with a year
+_ACR_YEAR = r"[a-z][a-z0-9/]{1,11}\s*['’]?\d{2,4}(?!\s*(?:st|nd|rd|th))\s*[-–:]?\s*"
 _DECOR_LEAD = re.compile(
-    r"^(?:proceedings of (?:the )?|proceedings\W+|\d{4}\s*|\d+(?:st|nd|rd|th)\s*|"
+    r"^(?:proceedings of (?:the )?|proceedings\W+|" + _ACR_YEAR + r"|\d{4}\s*|\d+(?:st|nd|rd|th)\s*|"
     r"(?:ieee|acm|ieee/cvf|cvf|ieee/acm|acm/ieee|usenix|siam|international|annual)\W+)+",
     re.I,
 )
 _DECOR_TAIL = re.compile(
     r"(?:\s*[\(\[][^\)\]]*[\)\]]"  # "(CVPR)", "[Cat. No...]"
     r"|\s*[-–:.,]\s*(?:digest|technical digest|proceedings|conference proceedings|part\b|vol\b)[^\(\[]*"
-    r"|\s*[-–:]\s*\d{4}\b.*"  # " - 2019 ..."
+    r"|\s*[-–:,]\s*\d{4}\b.*"  # " - 2019 ...", "(DATE), 2017"
+    r"|\s+\d{4}"  # "... Conference 2019"
+    r"|\s*[-–:]"  # a dangling dash once the bracket after it is gone
     r")+\s*$",
     re.I,
 )
 
 
-_DECOR_LEAD_LIGHT = re.compile(r"^(?:proceedings of (?:the )?|proceedings\W+|\d{4}\s*|\d+(?:st|nd|rd|th)\s*|(?:ieee|acm|ieee/cvf|cvf|ieee/acm|acm/ieee|usenix|siam)\W+)+", re.I)
+_DECOR_LEAD_LIGHT = re.compile(r"^(?:proceedings of (?:the )?|proceedings\W+|" + _ACR_YEAR + r"|\d{4}\s*|\d+(?:st|nd|rd|th)\s*|(?:ieee|acm|ieee/cvf|cvf|ieee/acm|acm/ieee|usenix|siam)\W+)+", re.I)
 
 
 def strip_decoration(display_name: str, light: bool = False) -> str:
     """Conference name without year/ordinal/publisher prefixes and trailing "(ACR)". `light`
     keeps words like "International" (for display); the default also drops them (for matching)."""
-    name = _DECOR_TAIL.sub("", display_name.strip())
-    return (_DECOR_LEAD_LIGHT if light else _DECOR_LEAD).sub("", name).strip()
+    name = html.unescape(html.unescape(display_name.strip()))  # OpenAlex ships "&amp;amp;" in some names
+    name = _DECOR_TAIL.sub("", name)
+    out = (_DECOR_LEAD_LIGHT if light else _DECOR_LEAD).sub("", name).strip()
+    if not out:  # the name *is* an acronym with a year ("Interspeech 2022"): keep the word
+        out = re.sub(r"\s*['’]?\d{2,4}\s*[-–:]?\s*$", "", name).strip()
+    return out
 
 
 def _core_name(display_name: str) -> str:
@@ -316,7 +325,10 @@ def fetch_conference(
     return records
 
 
-def coverage_table(records: list[dict[str, Any]]) -> str:
+def coverage_table(records: list[dict[str, Any]], years: tuple[int, int] | None = None) -> str:
+    """Papers and abstract coverage per year. With `years`, a year inside the range that
+    has no papers is printed as a gap rather than silently left out (ESSCIRC 2020, or a
+    venue that changed its DOI prefix)."""
     total: Counter[int] = Counter()
     with_abs: Counter[int] = Counter()
     for r in records:
@@ -324,13 +336,22 @@ def coverage_table(records: list[dict[str, Any]]) -> str:
         total[y] += 1
         if r.get("abstract"):
             with_abs[y] += 1
+    shown = sorted(set(total) | (set(range(years[0], years[1] + 1)) if years else set()))
     lines = [f"{'year':>6} {'papers':>8} {'abstracts':>10} {'coverage':>9}", "-" * 37]
-    for y in sorted(total):
+    gaps = []
+    for y in shown:
         n, a = total[y], with_abs[y]
-        lines.append(f"{y:>6} {n:>8} {a:>10} {a / n:>8.1%}")
+        if n:
+            lines.append(f"{y:>6} {n:>8} {a:>10} {a / n:>8.1%}")
+        else:
+            lines.append(f"{y:>6} {0:>8} {'':>10} {'':>9}   <- no papers found")
+            gaps.append(y)
     n, a = sum(total.values()), sum(with_abs.values())
     lines.append("-" * 37)
     lines.append(f"{'all':>6} {n:>8} {a:>10} {a / n if n else 0:>8.1%}")
+    if gaps:
+        lines.append(f"\nNo papers for {', '.join(map(str, gaps))}: the venue may have skipped the year, or used another DOI prefix "
+                     "or source name then. Check OpenAlex (https://openalex.org) and pass extra --doi-prefix values if so.")
     return "\n".join(lines)
 
 
@@ -364,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
     write_jsonl(records, out)
     print(f"[done] wrote {len(records)} records -> {out}", file=sys.stderr)
     print()
-    print(coverage_table(records))
+    print(coverage_table(records, parse_years(args.years)))
     return 0
 
 

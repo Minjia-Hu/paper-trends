@@ -60,15 +60,27 @@ _FIG_REF_RE = re.compile(
 _URL_RE = re.compile(r"(?:https?://|www\.)\S+|\b\S+\.(?:com|org|io|net|edu)(?:/\S*)?", re.I)
 
 
+# A number and its unit become one token, so "28 nm", "28-nm" and "28nm" are the same word.
+_UNITS = frozenset("nm um mm cm m ghz mhz khz hz db dbm mw kw w ma mv v ms ns ps fs gb mb kb gbps mbps bit bits".split())
+
+
 def tokenize(text: str | None) -> list[str]:
-    """Lower-case word tokens; hyphens split, internal dots kept (e.g. '2.5d')."""
+    """Lower-case word tokens; hyphens split, internal dots kept (e.g. '2.5d'), a number
+    joined to the unit that follows it ('28nm')."""
     if not text:
         return []
     if "\\" in text or "$" in text:
         text = clean_latex(text)
     text = _URL_RE.sub(" ", text)
     text = _FIG_REF_RE.sub(" ", text)
-    return _TOKEN_RE.findall(text.lower().translate(_DASHES))
+    toks = _TOKEN_RE.findall(text.lower().translate(_DASHES))
+    out: list[str] = []
+    for tok in toks:
+        if out and tok in _UNITS and _is_number(out[-1]):
+            out[-1] += tok
+        else:
+            out.append(tok)
+    return out
 
 
 def _gram_ok(gram: list[str], stopwords: frozenset[str]) -> bool:

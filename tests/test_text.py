@@ -26,7 +26,12 @@ def test_doc_terms_are_distinct():
 def test_latex_is_stripped():
     toks = tokenize(r"pitch of 5$\mu \mathrm{m}$ and $\boldsymbol{\mu}-\mathbf{bumps}$ at 250$^{\circ}$C")
     assert "mathrm" not in toks and "mu" not in toks and "boldsymbol" not in toks
-    assert "um" in toks and "bumps" in toks
+    assert "5um" in toks and "bumps" in toks   # the number and its unit are one token
+
+
+def test_number_and_unit_are_one_token():
+    assert tokenize("a 28-nm CMOS, a 28 nm CMOS and a 28nm CMOS") .count("28nm") == 3
+    assert tokenize("10-bit ADC at 1.2 GHz") == ["10bit", "adc", "at", "1.2ghz"]
 
 
 def test_figure_references_are_dropped():
