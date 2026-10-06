@@ -689,7 +689,7 @@ if mode == "Report":
     with loading_slot.container(key="report_loading"):
         st.markdown(
             f'<div class="pt-report-loading"><div class="kicker">{escape(t("Generating report"))}</div>'
-            f'<h2>{escape(SHORT.get(slug) or query)}</h2><p>{escape(t("Analyzing keywords, topics and publishing institutions. The first build usually takes several seconds to around ten seconds; the same settings reopen faster."))}</p></div>',
+            f'<h2>{escape(SHORT.get(slug) or query)}</h2><p>{escape(t("Analyzing keywords, topics and publishing institutions. Large conferences may take tens of seconds."))}</p></div>',
             unsafe_allow_html=True,
         )
         with st.skeleton(height=360):
