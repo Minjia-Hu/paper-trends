@@ -18,10 +18,10 @@ from paper_trends.report import charts
 from paper_trends.background import field_of
 from paper_trends.coverage import coverage_details, default_period
 from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
-from paper_trends.keywords import compute_trends, display_form, group_families, hyphen_forms, papers_with
+from paper_trends.keywords import compute_trends
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
-from paper_trends.report.build import build_report, country_name
+from paper_trends.report.build import build_report, country_name, inst_rank_rows, inst_topic_rows
 from paper_trends.report.render import FULL, SHORT, TAGLINE, nav_for, render_explorer_page, render_page
 from paper_trends.store import filter_years, metadata_path, provenance_label, read_jsonl, read_provenance, write_jsonl
 from paper_trends.text import load_stopwords
@@ -361,19 +361,6 @@ def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, 
                           field=field_of(Path(path).stem), keep_common=keep_common)
 
 
-@st.cache_data(show_spinner=False)
-def cached_hyphen_forms(path: str, mtime: float, years: tuple[int, int], text: str):
-    return hyphen_forms(filter_years(load_records(path, mtime), years), text=text)
-
-
-@st.cache_data(show_spinner=t("Searching papers…"))
-def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str, topical_only: bool = True,
-                       n_max: int = 3, extra_stop: str = ""):
-    """Match counting options and case-aware acronym plurals (revision 3)."""
-    return papers_with(filter_years(load_records(path, mtime), years), term, text, topical_only=topical_only,
-                       n_max=n_max, stopwords=load_stopwords(extra_stop.split()))
-
-
 @st.cache_data(show_spinner=t("Fitting topic model…"))
 def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, n_topics: int, extra_stop: str):
     recs = filter_years(load_records(path, mtime), years)
@@ -394,11 +381,11 @@ def cached_resolve(text: str) -> dict | None:
 @st.cache_data(show_spinner=t("Writing the report…"))
 def cached_report_data(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
                        provenance: dict | None = None, default_span: int | None = None,
-                       calendar_year: int | None = None) -> dict:
+                       calendar_year: int | None = None, explore_term: str = "", explorer_full: bool = False) -> dict:
     """Share the same analysis between languages (report data revision 1)."""
     recs = load_records(path, mtime)
     return build_report(recs, name=name, slug=slug, years=years, stopwords=load_stopwords(extra_stop.split()),
-                     provenance=provenance, default_span=default_span)
+                     provenance=provenance, default_span=default_span, explore_term=explore_term, explorer_full=explorer_full)
 
 
 @st.cache_data(show_spinner=False)
@@ -415,8 +402,9 @@ def cached_explorer_html(path: str, mtime: float, years: tuple[int, int], name: 
                          provenance: dict | None = None, default_span: int | None = None,
                          calendar_year: int | None = None, lang: str = "en", initial_term: str = "") -> str:
     """Focused time-window workspace, sharing exactly the report's analysis data."""
-    r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year)
-    return render_explorer_page(r, lang=lang, initial_term=initial_term)
+    r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year,
+                           initial_term, True)
+    return render_explorer_page(r, lang=lang, initial_term=r["explore_term"])
 
 
 @st.cache_data(show_spinner=t("Ranking…"))
@@ -437,18 +425,6 @@ def source_line() -> None:
 
 def figure_head(title: str, sub: str | None = None) -> None:
     st.markdown(f'<div class="pt-fig"><span class="headline">{escape(t(title))}</span>' + (f'<span class="sub">{escape(t(sub))}</span>' if sub else "") + "</div>", unsafe_allow_html=True)
-
-
-def small_multiples(items: list[dict], years: list[int], color: str, per_row: int = 4) -> None:
-    """items: {term, early, late, series}. Same layout as the report's rising/fading grids."""
-    ymax = max((pt["share"] for it in items for pt in it["series"]), default=0.1) * 1.15
-    for i in range(0, len(items), per_row):
-        cols = st.columns(per_row)
-        for col, it in zip(cols, items[i : i + per_row]):
-            with col:
-                st.markdown(f'<div class="pt-sm" style="border-top-color: {color}"><p class="term">{escape(it["term"])}</p>'
-                            f'<p class="move">{it["early"]:.1%} → <span style="color: {color}; font-weight: 600">{it["late"]:.1%}</span></p></div>', unsafe_allow_html=True)
-                vl(charts.small_multiple(it["series"], years, ymax, color), key=f"sm-{color}-{it['term']}")
 
 
 def ranking_rows(rk, keys: list[str], value: str = "papers") -> list[dict]:
@@ -549,14 +525,18 @@ show_options = st.query_params.get("options") == "1"
 
 def link(**changes: str | None) -> str:
     """Current URL with some query parameters changed; None removes one."""
-    params = {k: v for k, v in st.query_params.to_dict().items()}
+    params = {k: st.query_params.get_all(k) for k in st.query_params}
     params["lang"] = LANG
     for k, v in changes.items():
         if v is None:
             params.pop(k, None)
         else:
             params[k] = v
-    return "?" + urlencode(params) if params else "?"
+    # Bound widgets update browser history independently of Python query params.
+    # Links rendered in this run must use the actual slider value immediately.
+    if params.get("period") in ("custom", ["custom"]) and "years" in st.session_state:
+        params["years"] = list(st.session_state["years"])
+    return "?" + urlencode(params, doseq=True) if params else "?"
 
 
 def links_row(items: list[tuple[str, str, bool]]) -> str:
@@ -649,6 +629,17 @@ periods = {
 if period_key not in periods:
     period_key = "10"
 mode = "Explore" if view_key == "explore" else "Report"
+controls_slot = st.empty()
+if period_key == "custom" and len(all_years) > 1:
+    with st.container(key="custom_period"):
+        years = st.slider(t("Years"), all_years[0], all_years[-1], fallback,
+                          label_visibility="collapsed", key="years", bind="query-params")
+elif period_key == "custom":
+    years = fallback
+else:
+    years = periods[period_key][1]
+# Render links after bound widgets have synchronized the URL, including both range endpoints.
+masthead_slot.markdown(masthead(True), unsafe_allow_html=True)
 row = (
     f'<div class="pt-controls"><span class="lbl">{t("Period")}</span>'
     + links_row([(lbl, link(period=k), k == period_key) for k, (lbl, _) in periods.items()])
@@ -657,14 +648,7 @@ row = (
     + '<span class="lbl gap"></span>' + links_row([("Options", link(options="1"), show_options)])
     + "</div>"
 )
-st.markdown(row, unsafe_allow_html=True)
-if period_key == "custom" and len(all_years) > 1:
-    with st.container(key="custom_period"):
-        years = st.slider(t("Years"), all_years[0], all_years[-1], (all_years[0], all_years[-1]), label_visibility="collapsed")
-elif period_key == "custom":
-    years = fallback
-else:
-    years = periods[period_key][1]
+controls_slot.markdown(row, unsafe_allow_html=True)
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime
 meta_path = metadata_path(Path(path))
 provenance = cached_provenance(path, mtime, meta_path.stat().st_mtime_ns if meta_path.exists() else None)
@@ -704,7 +688,7 @@ st.markdown(
     f'<div class="pt-head"><div class="kicker">{t("Explore")} · {years[0]}–{years[1]}</div><h1>{escape(display_name)}</h1>{full_name}'
     f'<div class="meta"><span><b>{len(recs):,}</b> {t("papers")}</span><span><b>{years[1] - years[0] + 1}</b> {t("editions")}</span>'
     f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b> {t("with abstracts")}</span></div></div>'
-    + '<div class="pt-controls pt-sections">' + links_row([(lbl, link(section=None if k == "trends" else k, term=None), k == section) for k, lbl in SECTIONS]) + "</div>",
+    + '<div class="pt-controls pt-sections">' + links_row([(lbl, link(section=None if k == "trends" else k), k == section) for k, lbl in SECTIONS]) + "</div>",
     unsafe_allow_html=True,
 )
 
@@ -722,55 +706,19 @@ if len(cov_y) < 2 and section == "compare":
     st.stop()
 
 if section == "trends":
+    # This search adds a phrase to the observatory; the observatory owns the one
+    # active term/window/rule used by its chart, complete evidence and CSV export.
+    def find_phrase():
+        phrase = st.session_state.get("phrase_search_input", "").strip()
+        if phrase:
+            st.query_params["term"] = phrase
+
+    with st.form("phrase_search", clear_on_submit=True):
+        phrase = st.text_input(t("Find another phrase"), placeholder=t("Type a two- or three-word phrase"), key="phrase_search_input")
+        st.form_submit_button(t("Explore phrase"), on_click=find_phrase)
     initial_term = st.query_params.get("term", "")
     st.iframe(cached_explorer_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
                                   date.today().year, LANG, initial_term), height="content")
-    h2("Explore any phrase", "Choose a suggested phrase or type a two- or three-word phrase. The chart and papers use the same period and counting rule as the report.")
-    text_mode = "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title"
-    kt = cached_keywords(path, mtime, years, text_mode, (2, 3), extra_stop, "topical", False)
-    forms = cached_hyphen_forms(path, mtime, years, text_mode)
-    show = lambda t: display_form(t, forms, kt.acronyms.surface if kt.acronyms else None)  # noqa: E731
-    rising_f = group_families(kt.rising(60, min_total=10), 10, kt.total) if len(cov_y) > 1 else []
-    falling_f = group_families(kt.falling(60, min_total=10), 10, kt.total) if len(cov_y) > 1 else []
-    rising = [h for h, _ in rising_f]
-    falling = [h for h, _ in falling_f]
-    options = kt.top_terms(500)
-    initial_key = next((term for term in options if term.lower() == initial_term.lower()), None)
-    default_terms = [initial_key] if initial_key else [term for term, *_ in rising[:3]] or options[:3]
-    selected = st.multiselect(t("Phrases to explore"), options, default=default_terms, format_func=show,
-                              accept_new_options=True, max_selections=4, select_all=False,
-                              placeholder=t("Choose or type a phrase"),
-                              key=f"trend_terms:{initial_term.strip().lower() or 'default'}", wrap=True)
-    option_by_lower = {term.lower(): term for term in options}
-    terms = list(dict.fromkeys(option_by_lower.get(str(term).strip().lower(), str(term).strip().lower()) for term in selected if str(term).strip()))
-    valid_terms = [term for term in terms if term in kt.doc_freq]
-    missing_terms = [term for term in terms if term not in kt.doc_freq]
-    if missing_terms:
-        st.caption(t("No matching two- or three-word phrase in this period: {terms}", terms=", ".join(missing_terms)))
-    if valid_terms:
-        figure_head("Share of papers mentioning the phrase", t("{start}–{end}; the number at the end of each line is the latest year", start=years[0], end=years[1]))
-        small_multiples([{"term": show(term), "early": kt.momentum(term)[0], "late": kt.momentum(term)[1], "series": [{"year": y, "share": kt.share(term, y), "papers": kt.doc_freq[term].get(y, 0)} for y in kt.years]} for term in valid_terms], kt.years, charts.RED)
-        source_line()
-    h2("Supporting papers")
-    pick_options = valid_terms
-    pick = st.selectbox(t("Term"), pick_options, key="kw_pick", format_func=show) if pick_options else None
-    if pick:
-        hits = cached_papers_with(path, mtime, years, pick, text_mode, True, 3, extra_stop)
-        note(t("{count:,} papers matching the selected counting rule, newest and most cited first.", count=len(hits)))
-        html_table(pd.DataFrame([{"year": rec.get("publication_year"), "title": rec.get("title"), "citations": rec.get("cited_by_count", 0), "doi": rec.get("doi")} for rec in hits]), links=["doi"], max_rows=40)
-    if len(cov_y) > 1:
-        h2("More trend candidates")
-        rise_col, fall_col = st.columns(2)
-        rise_col.markdown('<h3 class=\"pt-subhead\">' + t("Rising") + '</h3>', unsafe_allow_html=True)
-        with rise_col:
-            html_table(frames.movers_table(rising).assign(term=[show(term) for term, *_ in rising], also=[", ".join(show(x) for x in variants) for _, variants in rising_f]), pct=["early", "late", "delta"], signed=["delta"])
-        fall_col.markdown('<h3 class=\"pt-subhead\">' + t("Falling") + '</h3>', unsafe_allow_html=True)
-        with fall_col:
-            html_table(frames.movers_table(falling).assign(term=[show(term) for term, *_ in falling], also=[", ".join(show(x) for x in variants) for _, variants in falling_f]), pct=["early", "late", "delta"], signed=["delta"])
-        emerging = [head for head, _ in group_families(kt.emerging(45, min_total=10), 10, kt.total)]
-        if emerging:
-            h2("Emerging")
-            html_table(pd.DataFrame([(show(term), *rest) for term, *rest in emerging], columns=["term", "first seen", "early", "late"]), pct=["early", "late"])
 
 if section == "topics":
     o1, o2 = st.columns([1, 1])
@@ -814,6 +762,32 @@ if section == "institutions":
     vl(charts.ranked_bars(rows_r, value=sort_by, show_change=len(cov_y) > 1), key=f"rank-{entity}-{sort_by}")
     source_line()
     html_table(table.assign(**({entity: table[entity].map(country_name)} if entity == "country" else {})))
+    if entity == "institution" and st.toggle(t("More institution analysis"), key="institution_details"):
+        detail_keys = keys[:8]
+        st.caption("以下分析展示当前排名的前 8 家机构。" if LANG == "zh" else "The analyses below show up to eight institutions from the current ranking.")
+        if len(rk.years) > 1 and detail_keys:
+            figure_head("Institution rank over time", "Ranks use a centered three-year paper count among the displayed institutions, regardless of the table sort order.")
+            rank_rows = inst_rank_rows(rk, detail_keys, rk.years)
+            vl(charts.bump_chart(rank_rows, rk.years, len(detail_keys)), key="institution-rank-history")
+            with st.expander(t("Institution rank over time")):
+                html_table(pd.DataFrame(rank_rows)[["name", "year", "rank", "papers"]], max_rows=None)
+        figure_head("Institution research profiles", "Each row shows the topic mix among an institution's papers with topic assignments. Parent roll-up follows the switch above.")
+        try:
+            institution_topics = cached_topics(path, mtime, years, "nmf", 8, extra_stop)
+        except InsufficientTopicData as exc:
+            st.info(t(str(exc)))
+        else:
+            ordered = institution_topics.ordered()
+            if ordered and detail_keys:
+                mix = inst_topic_rows(recs, institution_topics, rk, detail_keys, ordered, roll_up=roll_up)
+                labels = [topic.label for topic in ordered[:len(charts.TOPIC_COLORS)]]
+                if len(ordered) > len(charts.TOPIC_COLORS):
+                    labels.append("Other")
+                vl(charts.inst_topic_heatmap(mix, [rk.names[k] for k in detail_keys], labels), key="institution-topic-mix")
+                with st.expander(t("Institution research profiles")):
+                    html_table(pd.DataFrame(mix), pct=["share"], max_rows=None)
+            else:
+                st.info(t("No topic data is available for the selected papers."))
     if len(cov_y) < 2:
         st.info(t("Changes in share need at least two years."))
         st.stop()
@@ -884,11 +858,11 @@ if section == "papers":
     d1.download_button(t("Full corpus (JSONL)"), lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
     d2.download_button(
         t("Keyword table (CSV)"),
-        lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract", (1, 3), extra_stop)),
+        lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title", (2, 3), extra_stop)),
         file_name=f"{slug}_keywords.csv", mime="text/csv", key="dl_keywords",
     )
     d3.download_button(
         t("Institution ranking (CSV)"),
-        lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution")),
+        lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution", True)),
         file_name=f"{slug}_institutions.csv", mime="text/csv", key="dl_institutions",
     )

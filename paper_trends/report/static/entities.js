@@ -51,7 +51,7 @@
       + blk(L("Topics it belongs to", "相关研究主题"), t.topics.length ? bars(t.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), 1) : '<span class="ent-meta">—</span>')
       + blk(L("Often appears together with", "常见共现词"), t.co.length ? t.co.map(([o, lift, n]) => termChip(o, `${n} ${L("papers", "篇论文")} · ${lift}×`)).join("") : '<span class="ent-meta">' + L("No strong co-occurrence.", "暂无明显共现关系。") + '</span>')
       + blk(L("Most cited papers", "被引次数最多的论文"), t.papers.map(paper).join(""))
-      + ((window.explorePhrase || window.EXPLORE_URL) && E.explorer?.terms.some(x => x.label === t.term) ? `<button type="button" class="obs-profile-link" data-obs-phrase="${esc(t.term)}">${L("Explore this phrase over time →", "探索这个关键词的历年变化 →")}</button>` : "");
+      + ((window.EXPLORE_URL || (window.explorePhrase && E.explorer?.terms.some(x => x.label === t.term))) ? `<button type="button" class="obs-profile-link" data-obs-phrase="${esc(t.term)}">${L("Explore this phrase over time →", "探索这个关键词的历年变化 →")}</button>` : "");
   }
   function renderInst(id) {
     const i = E.insts[id];

@@ -9,6 +9,9 @@
 <body class="embedded explorer-only">
 <main class="page embedded explorer-page">
 {% include "explorer.html.j2" %}
+{% if not entities or not entities.get('explorer') or not entities.explorer.terms %}
+<p>{{ _('No phrases are available in this period. Try another period or search for a two- or three-word phrase.') }}</p>
+{% endif %}
 </main>
 <script>
 window.REPORT_LANG = {{ lang|tojson }};

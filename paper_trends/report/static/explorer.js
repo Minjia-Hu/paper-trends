@@ -30,7 +30,23 @@
     const clean = String(doi || "").replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "");
     return /^10\.\d{4,9}\/\S+$/i.test(clean) ? "https://doi.org/" + encodeURI(clean).replace(/["<>]/g, encodeURIComponent) : null;
   }
-  const api = { count, aggregate, series, rankContext, examples, advance, doiUrl };
+  function results(data, term, state, order = "newest") {
+    return (term.matches || []).filter(([y, role]) => y >= state.lo && y <= state.hi && role <= MODES[state.mode])
+      .map(([, role, id]) => ({ ...data.results[id], role }))
+      .sort((a, b) => order === "cited" ? b.citations-a.citations || b.year-a.year : b.year-a.year || b.citations-a.citations);
+  }
+  function resultsCsv(data, term, state, order = "newest") {
+    const cell = value => {
+      let s = String(value ?? "");
+      // Treat paper metadata as text when opened by a spreadsheet.
+      if (/^[=+@\-\t\r\n]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const rows = [["term", "counting_rule", "from_year", "to_year", "year", "title", "citations", "doi", "id"]];
+    for (const p of results(data, term, state, order)) rows.push([term.label, state.mode, data.years[state.lo], data.years[state.hi], p.year, p.title, p.citations, p.doi, p.id]);
+    return "\uFEFF" + rows.map(row => row.map(cell).join(",")).join("\r\n");
+  }
+  const api = { count, aggregate, series, rankContext, examples, advance, doiUrl, results, resultsCsv };
   if (typeof module !== "undefined" && module.exports) { module.exports = api; return; }
   const root = document.getElementById("observatory"), data = window.ENTITIES && window.ENTITIES.explorer;
   if (!root || !data || !data.terms.length) return;
@@ -42,9 +58,10 @@
   const colors = { title: "#1F4E79", topical: "#E3120B", any: "#8A877F" };
   const requested = String(window.EXPLORER_TERM || "").trim().toLowerCase();
   const requestedTerm = data.terms.findIndex(t => t.key.toLowerCase() === requested || t.label.toLowerCase() === requested);
-  let state = { lo: Math.max(0, data.years.length - 3), hi: data.years.length - 1,
+  let state = { lo: 0, hi: data.years.length - 1,
     term: requestedTerm >= 0 ? requestedTerm : 0, mode: data.text_mode === "title" ? "title" : "topical" };
-  let timer = null, shown = 6;
+  let timer = null, shown = 6, page = 0;
+  const pageSize = 20;
   for (const id of ["from", "to"]) { $(id).min = 0; $(id).max = data.years.length - 1; $(id).disabled = data.years.length < 2; }
   $("play").disabled = data.years.length < 2;
   root.querySelectorAll("[data-rule]").forEach(button => { button.disabled = !modes.includes(button.dataset.rule); });
@@ -95,6 +112,21 @@
     $("more").hidden = selected.length <= shown;
     $("more").textContent = `${L(`Show more examples (${Math.min(shown, selected.length)} of ${selected.length})`, `显示更多示例（已显示 ${Math.min(shown, selected.length)} / ${selected.length}）`)}`;
   }
+  function fullResults(term) {
+    if (!$("results")) return;
+    const rows = results(data, term, state, $("sort").value), pages = Math.max(1, Math.ceil(rows.length/pageSize));
+    page = Math.min(page, pages-1);
+    $("results-count").textContent = `(${rows.length.toLocaleString()})`;
+    const rule = {title: L("Title only", "仅标题"), topical: L("Title or repeated", "标题或摘要重复提及"), any: L("Any mention", "任意提及")}[state.mode];
+    $("results-scope").textContent = `${term.label} · ${data.years[state.lo]}–${data.years[state.hi]} · ${rule} · ` + L("Same filters as the chart. CSV includes every matching paper, across all pages.", "与图表使用相同条件。CSV 包含所有页的匹配论文。");
+    $("results-body").innerHTML = rows.slice(page*pageSize, (page+1)*pageSize).map(p => {
+      const url = doiUrl(p.doi);
+      return `<tr><td>${p.year}</td><td>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(p.title)} ↗</a>` : esc(p.title)}</td><td>${p.citations.toLocaleString()}</td></tr>`;
+    }).join("") || `<tr><td colspan="3">${L("No matching papers.", "没有匹配论文。")}</td></tr>`;
+    $("page").textContent = L(`Page ${page+1} of ${pages}`, `第 ${page+1} / ${pages} 页`);
+    $("prev").disabled = page === 0; $("next").disabled = page >= pages-1;
+    $("download").disabled = !rows.length;
+  }
   function render() {
     const focusedRank = document.activeElement?.dataset.term;
     const term = data.terms[state.term], result = aggregate(data, term, state);
@@ -120,9 +152,9 @@
     $("ranking").innerHTML = ranking.map(t => `<button type="button" class="obs-rank" data-term="${t.id}" aria-pressed="${t.id===state.term}"><span>${esc(t.label)}</span><b>${pct(t.share)}</b><i style="width:${100*t.total/(ranking[0]?.total || 1)}%"></i></button>`).join("") || '<p class="obs-caption">' + L("No matching phrases in this window.", "当前时段没有匹配关键词。") + '</p>';
     if (focusedRank != null) root.querySelector(`[data-term="${Number(focusedRank)}"]`)?.focus({ preventScroll: true });
     $("shortlist").textContent = `${L(`Ranked within ${data.terms.length} phrases drawn from the report’s rising, fading and frequent terms. Counts use your selected rule.`, `从报告的上升词、下降词和高频词中选出 ${data.terms.length} 个候选词，按当前时段和计数规则排名。`)}`;
-    bars("institutions", term.institutions); bars("topics", term.topics); papers(term, result.total);
+    bars("institutions", term.institutions); bars("topics", term.topics); papers(term, result.total); fullResults(term);
   }
-  function update(patch) { stop(); Object.assign(state, patch); shown = 6; render(); }
+  function update(patch) { stop(); Object.assign(state, patch); shown = 6; page = 0; render(); }
   $("from").addEventListener("input", e => { const lo = +e.target.value; update({ lo, hi: Math.max(lo, state.hi) }); });
   $("to").addEventListener("input", e => { const hi = +e.target.value; update({ hi, lo: Math.min(hi, state.lo) }); });
   $("term").addEventListener("change", e => update({ term: +e.target.value }));
@@ -133,6 +165,19 @@
     if (phrase) update({ term: +phrase.dataset.term });
   });
   $("more").addEventListener("click", () => { shown += 6; papers(data.terms[state.term], aggregate(data, data.terms[state.term], state).total); });
+  if ($("results")) {
+    $("sort").addEventListener("change", () => { page = 0; fullResults(data.terms[state.term]); });
+    $("prev").addEventListener("click", () => { page--; fullResults(data.terms[state.term]); });
+    $("next").addEventListener("click", () => { page++; fullResults(data.terms[state.term]); });
+    $("download").addEventListener("click", () => {
+      stop();
+      const term = data.terms[state.term];
+      const url = URL.createObjectURL(new Blob([resultsCsv(data, term, state, $("sort").value)], {type: "text/csv;charset=utf-8"}));
+      const a = document.createElement("a"); a.href = url;
+      a.download = `papers_${term.key.replace(/[^a-z0-9]+/gi, "_")}_${data.years[state.lo]}-${data.years[state.hi]}_${state.mode}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+  }
   $("play").addEventListener("click", () => {
     if (timer) return stop();
     // A full-period window cannot move; play single-year frames in that case.

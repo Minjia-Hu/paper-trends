@@ -265,3 +265,10 @@ html:lang(zh) .obs-rule { flex-wrap: wrap; }
 html:lang(zh) .kicker, html:lang(zh) .obs-eyebrow, html:lang(zh) .obs-section-label { letter-spacing: .08em; }
 html:lang(zh) .source::before { content: "来源："; }
 .page.language-switch { padding-top: 12px; padding-bottom: 0; text-align: right; font-size: 13px; }
+.obs-results { margin: 24px 0; border-top: 1px solid var(--rule, #dedbd4); padding-top: 18px; }
+.obs-results summary { cursor: pointer; font-weight: 600; }
+.obs-results .table-wrap { overflow-x: auto; }
+.obs-results-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.obs-results-table th, .obs-results-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #dedbd4; vertical-align: top; }
+.obs-results-table td:nth-child(2) { overflow-wrap: anywhere; }
+.obs-results .obs-transport { flex-wrap: wrap; align-items: center; gap: 10px; }

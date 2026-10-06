@@ -12,6 +12,18 @@ def language(value=None, accept_language=""):
 
 
 ZH = {
+    "Title": "论文标题", "Citations": "被引次数",
+    "No phrases are available in this period. Try another period or search for a two- or three-word phrase.": "当前时段没有可展示的关键词。可更换时段，或搜索由两三个英文单词组成的关键词。",
+    "Find another phrase": "查找其他关键词",
+    "Type a two- or three-word phrase": "输入由两三个英文单词组成的关键词，如 co-packaged optics",
+    "Explore phrase": "查看趋势",
+    "All matching papers & export": "全部匹配论文与导出",
+    "Previous page": "上一页", "Next page": "下一页",
+    "Institution research profiles": "机构研究方向",
+    "Institution rank over time": "机构排名变化",
+    "More institution analysis": "深入分析机构",
+    "Ranks use a centered three-year paper count among the displayed institutions, regardless of the table sort order.": "按居中的三年发文量计算所展示机构之间的排名，不受上方表格排序方式影响。",
+    "Each row shows the topic mix among an institution's papers with topic assignments. Parent roll-up follows the switch above.": "每行展示一家机构已分配主题的论文构成；是否合并上级机构，与上方开关保持一致。",
     "Publication trends for any academic conference": "从会议论文中追踪研究趋势",
     "All conferences →": "全部会议 →", "Publication trends": "论文趋势",
     "papers": "篇论文", "editions": "届会议", "with abstracts": "含摘要",

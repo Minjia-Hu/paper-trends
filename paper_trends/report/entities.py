@@ -30,7 +30,8 @@ def _nested(a: str, b: str) -> bool:
 
 def build_entities(recs: list[Record], kt: KeywordTrends, tt: TopicTrends, inst: Ranking, show: Callable[[str], str],
                    *, n_terms: int = N_TERMS, n_insts: int = N_INSTS,
-                   required_terms: Iterable[str] = (), explore_terms: Iterable[str] = ()) -> dict[str, Any]:
+                   required_terms: Iterable[str] = (), explore_terms: Iterable[str] = (),
+                   explorer_full: bool = False) -> dict[str, Any]:
     years = kt.years
     N = len(recs)
     split = years[len(years) // 2]
@@ -46,7 +47,7 @@ def build_entities(recs: list[Record], kt: KeywordTrends, tt: TopicTrends, inst:
     inst_id = {k: i for i, k in enumerate(top_insts)}
     topics = tt.ordered()
     topic_pos = {t.id: i for i, t in enumerate(topics)}
-    explorer = ExplorerBuilder(recs, kt, tt, inst, show, explore_terms)
+    explorer = ExplorerBuilder(recs, kt, tt, inst, show, explore_terms, full_results=explorer_full)
 
     # ---- per paper: phrases it is about, its institutions, its topic ---------------------
     paper_terms: list[list[int]] = []

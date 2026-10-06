@@ -1,8 +1,10 @@
 """Smoke-test the Streamlit app with a tiny synthetic corpus via streamlit.testing."""
 
 import json
+import re
 from html import escape
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -11,6 +13,65 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 
 THERMAL = "thermal resistance heat sink cooling junction temperature heat flux"
 BONDING = "hybrid bonding copper pad pitch dielectric bond interface void"
+
+
+def _iframe(at):
+    return next(e.proto.srcdoc for e in at if e.type == "iframe")
+
+
+def _explorer(at):
+    return json.loads(re.search(r"window.ENTITIES = (.*);", _iframe(at))[1])["explorer"]
+
+
+def test_custom_period_survives_report_explore_and_new_session(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_corpus(tmp_path / "data" / "ectc.jsonl")
+    app = str(Path(__file__).resolve().parents[1] / "app.py")
+    at = AppTest.from_file(app, default_timeout=120)
+    at.query_params.update(conference="ectc", period="custom")
+    at.run()
+    at.slider(key="years").set_value((2017, 2020)).run()
+    assert not at.exception
+    target = json.loads(re.search(r"window.EXPLORE_URL = (.*);", _iframe(at))[1])
+    params = parse_qs(urlparse(target).query)
+    assert params["years"] == ["2017", "2020"]
+    fresh = AppTest.from_file(app, default_timeout=120)
+    fresh.query_params.update(params)
+    fresh.run()
+    assert not fresh.exception
+    assert fresh.slider(key="years").value == (2017, 2020)
+    assert _explorer(fresh)["years"] == [2017, 2018, 2019, 2020]
+
+
+def test_deep_link_normalizes_hyphenated_phrase_and_keeps_full_evidence(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "data" / "ectc.jsonl"
+    _write_corpus(path)
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    for rec in records[:5]:
+        rec["title"] = "Co-packaged optics"
+    path.write_text("\n".join(json.dumps(r) for r in records))
+    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
+    at.query_params.update(conference="ectc", view="explore", term="CO-PACKAGED optics")
+    at.run()
+    assert not at.exception
+    data = _explorer(at)
+    assert json.loads(re.search(r"window.EXPLORER_TERM = (.*);", _iframe(at))[1]) == "co packaged optics"
+    term = data["terms"][0]
+    assert term["key"] == "co packaged optics"
+    assert sum(sum(row) for row in term["counts"]) == len(term["matches"]) == 5
+    assert {data["results"][i]["id"] for _, _, i in term["matches"]} == {r["id"] for r in records[:5]}
+    # An unfound phrase stays selected as an empty result, never an unrelated fallback.
+    at.query_params["term"] = "nonexistent phrase"
+    at.run()
+    assert not at.exception
+    assert _explorer(at)["terms"][0]["key"] == "nonexistent phrase"
+    assert _explorer(at)["terms"][0]["matches"] == []
+    at.text_input(key="phrase_search_input").set_value("hybrid bonding")
+    next(b for b in at.button if b.label == "Explore phrase").click().run()
+    assert not at.exception
+    assert _explorer(at)["terms"][0]["key"] == "hybrid bonding"
+    assert any("term=hybrid+bonding" in m.value and "section=institutions" in m.value for m in at.markdown)
 
 
 def _write_corpus(path: Path) -> None:
@@ -54,12 +115,11 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch, lang):
     assert not at.exception, at.exception
     assert len(at.tabs) == 0 and not at.title  # sections are links, header is HTML
     assert any('id="observatory"' in e.proto.srcdoc for e in at if e.type == "iframe")
-    assert any(("上升" if lang == "zh" else "Rising") in m.value for m in at.markdown)
-    copy = "\n".join(m.value for m in at.markdown)
-    assert ("个百分点" if lang == "zh" else " pp") in copy
+    explorer = next(e.proto.srcdoc for e in at if e.type == "iframe")
+    assert 'id="obs-results"' in explorer
+    assert not at.multiselect  # One active phrase/rule/window, all inside the observatory.
     if lang == "zh":
-        assert "被引次数" in copy and "相关论文" in copy
-        assert "papers matching" not in copy and "the number at the end" not in copy
+        assert "全部匹配论文与导出" in explorer and "当前结果（CSV）" in explorer
     for section in ("trends", "topics", "institutions", "compare", "papers"):  # every section must render
         at.query_params["section"] = section
         at.run()
@@ -68,6 +128,10 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch, lang):
             assert any(("共同上升的关键词" if lang == "zh" else "Rising everywhere") in m.value for m in at.markdown)
         if section == "institutions" and lang == "zh":
             assert any("机构排名 · 按论文数" in m.value for m in at.markdown)
+        if section == "institutions":
+            at.toggle(key="institution_details").set_value(True).run()
+            assert not at.exception, at.exception
+            assert any(("机构研究方向" if lang == "zh" else "Institution research profiles") in m.value for m in at.markdown)
         if section == "papers" and lang == "zh":
             assert json.loads(at.dataframe[-1].proto.columns)["citations"]["label"] == "被引次数"
 

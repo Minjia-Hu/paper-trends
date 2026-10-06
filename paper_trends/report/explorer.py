@@ -14,11 +14,13 @@ MAX_TERMS = 20
 
 
 class ExplorerBuilder:
-    def __init__(self, records, kt, tt, inst, show, terms):
+    def __init__(self, records, kt, tt, inst, show, terms, *, full_results=False):
         self.records, self.kt, self.tt, self.inst = records, kt, tt, inst
         self.years = list(range(kt.years[0], kt.years[-1] + 1))
         self.year_index = {y: i for i, y in enumerate(self.years)}
-        self.chosen = list(dict.fromkeys(t for t in terms if t in kt.doc_freq))[:MAX_TERMS]
+        self.chosen = list(dict.fromkeys(terms))[:MAX_TERMS]
+        self.full_results = full_results
+        self.matches = {t: [] for t in self.chosen}
         self.counts = {t: [[0, 0, 0] for _ in self.years] for t in self.chosen}
         self.labels = {t: show(t) for t in self.chosen}
         self.insts = {t: defaultdict(lambda: defaultdict(lambda: [0, 0, 0])) for t in self.chosen}
@@ -34,6 +36,8 @@ class ExplorerBuilder:
             if term not in roles:
                 continue
             role = ROLES[roles[term]]
+            if self.full_results:
+                self.matches[term].append([year, role, i])
             self.counts[term][year][role] += 1
             for key in institutions:
                 self.insts[term][key][year][role] += 1
@@ -47,6 +51,8 @@ class ExplorerBuilder:
     def finish(self):
         used = sorted({i for buckets in self.examples.values() for ids in buckets.values() for i in ids})
         index = {old: new for new, old in enumerate(used)}
+        result_ids = sorted({i for matches in self.matches.values() for _, _, i in matches})
+        result_index = {old: new for new, old in enumerate(result_ids)}
         topic_names = {t.id: t.label for t in self.tt.topics}
 
         def rows(table):
@@ -61,12 +67,19 @@ class ExplorerBuilder:
                 "topics": [{"name": topic_names[k], "rows": rows(counts)}
                            for k, counts in sorted(self.topics[term].items()) if k in topic_names],
                 "examples": [[year, role, index[i]] for (year, role), ids in sorted(self.examples[term].items()) for i in ids],
+                **({"matches": [[year, role, result_index[i]] for year, role, i in self.matches[term]]}
+                   if self.full_results else {}),
             })
         return {
             "years": self.years,
             "papers_per_year": [self.kt.papers_per_year.get(y, 0) for y in self.years],
             "abstracts_per_year": [sum(bool(r.get("abstract")) for r in self.records if r["publication_year"] == y) for y in self.years],
             "text_mode": self.kt.text_mode, "terms": terms, "samples_per_bucket": SAMPLES_PER_BUCKET,
+            # Full evidence stores only listing metadata; abstracts stay in bounded examples.
+            **({"results": [{"id": self.records[i].get("id") or "", "title": self.records[i].get("title") or "Untitled",
+                             "year": self.records[i]["publication_year"], "doi": self.records[i].get("doi") or "",
+                             "citations": self.records[i].get("cited_by_count") or 0} for i in result_ids]}
+               if self.full_results else {}),
             "papers": [{"title": self.records[i].get("title") or "Untitled",
                         "abstract": self.records[i].get("abstract") or "",
                         "year": self.records[i]["publication_year"],

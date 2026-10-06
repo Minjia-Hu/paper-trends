@@ -19,7 +19,7 @@ for y, roles in [(2018, ['title']*2+['repeated']*2+['once']*2+['none']*2), (2020
           'abstract':'Hybrid bonding improves hybrid bonding.' if role=='repeated' else 'Hybrid bonding is used.' if role=='once' else 'Thermal resistance heat sink cooling.',
           'doi':'javascript:alert(1)' if i==0 else f'10.1109/test.{y}.{i}', 'cited_by_count':i,
           'authorships':[{'institutions':[{'id':'I1','name':'Lab Alpha'}]},{'institutions':[{'id':'I1','name':'Lab Alpha'}]}]})
-print(render_explorer_page(build_report(records,name='Test conference',slug='test',years=(2018,2020),n_topics=2)))
+print(render_explorer_page(build_report(records,name='Test conference',slug='test',years=(2018,2020),n_topics=2,explorer_full=True)))
 `], { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   html = result.stdout;
@@ -49,6 +49,8 @@ test('changing counting rules and time updates real explorer DOM, evidence and i
     win.document.querySelector('[data-rule="title"]').click();
     assert.equal(get('share').textContent, '18.8%');
     assert.equal(get('matches').textContent, '3 of 16 records');
+    assert.equal(get('results-count').textContent, '(3)');
+    assert.equal(get('results-body').querySelectorAll('tr').length, 3);
     assert.equal(get('papers').querySelectorAll('article').length, 3);
     assert.equal(get('institutions').querySelector('b').textContent, '3');
     assert.equal([...get('topics').querySelectorAll('b')].reduce((n, e) => n + Number(e.textContent), 0), 3);
@@ -58,18 +60,24 @@ test('changing counting rules and time updates real explorer DOM, evidence and i
     assert.ok(abstract.querySelector('p').textContent.length > 0);
     win.document.querySelector('[data-rule="any"]').click();
     assert.equal(get('share').textContent, '62.5%');
+    assert.equal(get('results-count').textContent, '(10)');
+    assert.equal(get('results-body').querySelectorAll('tr').length, 10);
     assert.equal(get('more').hidden, false);
     get('more').click();
     assert.equal(get('papers').querySelectorAll('article').length, 10);
     input('from', 2);
     assert.equal(get('share').textContent, '50.0%');
     assert.equal(get('period').textContent, '2020');
+    assert.equal(get('results-count').textContent, '(4)');
+    assert.ok([...get('results-body').querySelectorAll('tr')].every(e => e.textContent.includes('2020')));
     assert.equal(get('papers').querySelectorAll('article').length, 4);
     assert.ok([...get('papers').querySelectorAll('.obs-paper-meta')].every(e => e.textContent.includes('2020')));
     input('from', 1); input('to', 1);
     assert.equal(get('share').textContent, '—');
     assert.ok(get('papers').textContent.includes('No matching papers'));
     assert.equal(get('ranking').querySelectorAll('button').length, 0);
+    assert.equal(get('results-count').textContent, '(0)');
+    assert.equal(get('download').disabled, true);
     get('reset').click();
     assert.equal(get('matches').textContent, '10 of 16 records');
     assert.equal(win.document.querySelector('#probe'), null);
@@ -101,6 +109,57 @@ test('Chinese interactions keep counts and original evidence while updating tran
     win.openEntity('term', 'hybrid bonding');
     assert.match(win.document.querySelector('#ent-body').textContent, /篇匹配论文/);
     assert.equal(win.document.querySelector('#ent-close').textContent, '关闭 ✕');
+  } finally { dom.window.close(); }
+});
+
+test('complete evidence paginates and exports all filtered rows, not just the visible page or samples', { skip: !JSDOM }, () => {
+  const { dom, win, get, input } = mount(data => {
+    const term = data.terms.find(t => t.key === 'hybrid bonding');
+    for (let i = 0; i < 25; i++) {
+      term.matches.push([0, 0, data.results.length]);
+      data.results.push({ id: `extra${i}`, year: 2018, title: `Extra evidence ${i}`, citations: i, doi: '' });
+    }
+    term.counts[0][0] += 25;
+    data.papers_per_year[0] += 25;
+  });
+  try {
+    get('results').querySelector('summary').click();
+    assert.equal(get('results').open, true);
+    assert.equal(get('matches').textContent, '31 of 41 records');
+    assert.equal(get('results-count').textContent, '(31)');
+    assert.equal(get('results-body').querySelectorAll('tr').length, 20);
+    get('next').click();
+    assert.equal(get('results-body').querySelectorAll('tr').length, 11);
+    assert.equal(get('page').textContent, 'Page 2 of 2');
+    let csv, downloaded;
+    win.Blob = class { constructor(parts) { csv = parts.join(''); } };
+    win.URL.createObjectURL = () => 'blob:test';
+    win.URL.revokeObjectURL = () => {};
+    win.HTMLAnchorElement.prototype.click = function () { downloaded = this.download; };
+    get('download').click();
+    assert.equal(csv.split('\r\n').length, 32); // header + all 31 papers
+    assert.match(downloaded, /hybrid_bonding_2018-2020_topical\.csv/);
+    assert.match(csv, /Extra evidence 24/);
+    input('from', 2);
+    win.document.querySelector('[data-rule="title"]').click();
+    assert.equal(get('results-count').textContent, '(1)');
+    get('download').click();
+    assert.equal(csv.split('\r\n').length, 2);
+    assert.match(csv, /"title","2020","2020"/);
+    assert.doesNotMatch(csv, /Extra evidence/);
+  } finally { dom.window.close(); }
+});
+
+test('report phrase links are available outside the observatory shortlist', { skip: !JSDOM }, () => {
+  const { dom, win } = mount();
+  try {
+    win.EXPLORE_URL = '?conference=test&period=custom&years=2018&years=2020&view=explore';
+    win.ENTITIES.explorer.terms = [];
+    let target;
+    win.navigateHost = url => { target = url; return true; };
+    win.openEntity('term', 'hybrid bonding');
+    win.document.querySelector('[data-obs-phrase]').click();
+    assert.equal(target, win.EXPLORE_URL + '&term=hybrid%20bonding');
   } finally { dom.window.close(); }
 });
 

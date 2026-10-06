@@ -42,6 +42,19 @@
       <h3>{{ _('Topics around this phrase') }}</h3><p class="obs-caption">{{ _('Dominant topics from the full-period model, counted within your window.') }}</p><div id="obs-topics"></div>
     </aside>
   </div>
+  {% if entities.explorer.results is defined %}
+  <details class="obs-results" id="obs-results">
+    <summary>{{ _('All matching papers & export') }} <span id="obs-results-count"></span></summary>
+    <p class="obs-caption" id="obs-results-scope"></p>
+    <div class="obs-transport">
+      <label for="obs-sort">{{ _('Sort papers') }}</label>
+      <select id="obs-sort"><option value="newest">{{ _('newest') }}</option><option value="cited">{{ _('cited') }}</option></select>
+      <button type="button" id="obs-download">{{ _('Current results (CSV)') }}</button>
+    </div>
+    <div class="table-wrap"><table class="obs-results-table"><thead><tr><th>{{ _('Year') }}</th><th>{{ _('Title') }}</th><th>{{ _('Citations') }}</th></tr></thead><tbody id="obs-results-body"></tbody></table></div>
+    <div class="obs-transport"><button type="button" id="obs-prev">{{ _('Previous page') }}</button><span id="obs-page" aria-live="polite"></span><button type="button" id="obs-next">{{ _('Next page') }}</button></div>
+  </details>
+  {% endif %}
   <p class="obs-foot">{{ _('Title and repetition are clues, not topic labels. Repeated background mentions can still count. Use Report for the full-period summary.') if standalone_explorer else _('Title and repetition are clues, not topic labels. Repeated background mentions can still count. The report below keeps its full-period scope.') }}</p>
   <noscript><p>{{ _('This explorer needs JavaScript. Use Report for the full-period summary.') if standalone_explorer else _('This explorer needs JavaScript. The full-period report is available below.') }}</p></noscript>
 </section>

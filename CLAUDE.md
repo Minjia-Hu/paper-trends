@@ -176,10 +176,19 @@ papers. It tracks up to 20 phrases over every calendar year, keeping gaps at zer
 denominator (the frontend renders missing shares, not 0%). Institutional counts dedupe
 co-authors and use all institutions, not just the legacy panel's top-60 set. Topic
 assignments are fitted once for the full report. Only evidence examples are capped at
-three per phrase/year/role. `static/explorer.js` owns the local time/rule state and stops
+three per phrase/year/role. Explore opts into `explorer_full` to include every matching
+paper's listing metadata and role-separated IDs; abstracts remain sampled. The full
+evidence table (20 rows per page), counts and CSV use this same local selection, with no
+second native keyword filter. The phrase-search form adds an explicit term to the
+observatory, normalized with the corpus acronym map; rare and empty results stay explicit.
+`static/explorer.js` owns the local time/rule state and stops
 playback on manual edits, hidden pages and page exit. `explorer_page.html.j2` is the
 standalone Streamlit iframe; the narrative report deliberately excludes the observatory.
-Report links may open Explore with `term=` while preserving conference and period. No new
+Report links may open Explore with `term=` while preserving conference and period.
+Custom ranges bind the `years` slider to query params; links must serialize both endpoints
+with `get_all` and `urlencode(..., doseq=True)`, using the live slider value on reruns.
+Institution rank history and topic mix are available behind a native toggle in Explore;
+both respect the parent roll-up setting. No new
 frontend runtime dependencies are required.
 
 **Resolution strategy in `fetch.py`** — this is the non-obvious part:

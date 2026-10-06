@@ -13,7 +13,7 @@ from ..coverage import coverage_details, default_period
 from ..keywords import KeywordTrends, compute_trends, display_form, group_families, hyphen_forms
 from ..rank import compute_ranking, entities_of
 from ..store import Record, filter_years, provenance_label
-from ..text import STOPWORDS
+from ..text import STOPWORDS, paper_tokens
 from ..topics import InsufficientTopicData, TopicTrends, compute_nmf
 from .charts import TOPIC_COLORS
 from .entities import build_entities
@@ -74,7 +74,7 @@ def map_lines(rows: list[dict[str, Any]], years: list[int], k: int = 4) -> dict[
     return {"0": line("share"), **{str(y): line(f"s{y}") for y in years}}
 
 
-def inst_topic_rows(records: list[Record], tt, inst, inst_keys: list[str], topics: list) -> list[dict[str, Any]]:
+def inst_topic_rows(records: list[Record], tt, inst, inst_keys: list[str], topics: list, *, roll_up: bool = True) -> list[dict[str, Any]]:
     """Share of each institution's papers whose dominant topic is each topic (rows sum to
     one). Topics beyond the coloured ones are folded into "Other", as in the streamgraph."""
     n_colored = len(TOPIC_COLORS)
@@ -85,7 +85,7 @@ def inst_topic_rows(records: list[Record], tt, inst, inst_keys: list[str], topic
         topic = tt.assignments.get(i)
         if topic is None:
             continue
-        for k in entities_of(r, "institution", roll_up=True):
+        for k in entities_of(r, "institution", roll_up=roll_up):
             if k in pos:
                 counts[pos[k]][label_of[topic]] += 1
     columns = [t.label for t in topics[:n_colored]] + (["Other"] if len(topics) > n_colored else [])
@@ -157,7 +157,8 @@ def growth_sentence(papers: dict[int, int]) -> str:
 
 def build_report(records: list[Record], *, name: str, slug: str, years: tuple[int, int] | None = None,
                  n_topics: int = 8, n_multiples: int = 8, stopwords: frozenset[str] = STOPWORDS,
-                 provenance: dict | None = None, default_span: int | None = None) -> dict[str, Any]:
+                 provenance: dict | None = None, default_span: int | None = None,
+                 explore_term: str = "", explorer_full: bool = False) -> dict[str, Any]:
     if years is None:
         default_span = default_span or 10
         years = default_period(records, default_span)
@@ -194,6 +195,9 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     forms = hyphen_forms(recs, text=text_mode)
     surface = kt.acronyms.surface if kt.acronyms else {}
     show = lambda t: display_form(t, forms, surface)  # noqa: E731  display form only; counts stay keyed by the plain form
+    # A displayed spelling (hyphens, case, acronym expansion) resolves to the same
+    # counting key. Explicit searches may include rare phrases excluded from rankings.
+    requested = " ".join(paper_tokens(explore_term, None, kt.acronyms, stopwords, kt.n_max)[0])
 
     try:
         tt = compute_nmf(recs, n_topics=n_topics, stopwords=stopwords)
@@ -277,11 +281,13 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "entities": build_entities(recs, kt, tt, inst, show, required_terms=[
             term for row, variants in rising + falling + emerging for term in [row[0], *variants]
         ], explore_terms=[
+            *([requested] if requested else []),
             *[row[0] for row, _ in rising[:6]],
             *[row[0] for row, _ in emerging[:4]],
             *[row[0] for row, _ in falling[:4]],
             *kt.top_terms(20),
-        ]),
+        ], explorer_full=explorer_full),
+        "explore_term": requested,
         "name": name,
         "slug": slug,
         "years": ys,

@@ -96,8 +96,8 @@ venues) before you fetch. **Report** is a concise, conclusion-first briefing for
 selected period: summary, leading phrase changes, topic mix, and publishing geography.
 **Explore** is the working surface: change time and counting rules, inspect supporting
 papers, analyse any two- or three-word phrase, study topics and institutions, compare
-conferences, and export filtered papers. Both views share the same period and analysis
-rules. Fetched data is cached under `data/`; a DOI prefix for a custom venue and extra
+conferences, and export filtered papers. Explore starts with the report's period and
+counting rule; its filters apply to the curve, evidence and CSV together. Fetched data is cached under `data/`; a DOI prefix for a custom venue and extra
 stopwords live under **Options**.
 
 The default report period is the last ten years ending before the current calendar
@@ -129,14 +129,18 @@ proceedings. See [coverage and freshness behavior](docs/data-coverage.md).
 The **Trends & evidence** section in Explore starts with a field observatory. It lets you
 play or select a time window and switch between title mentions,
 title-or-repeated mentions, and any mention. The phrase curve, matching-paper counts,
-phrase shortlist, institutions, topics and paper examples update together without a
-server request. Open an example's abstract or follow its DOI to inspect the evidence.
-Report phrases link into Explore with the selected period and phrase preserved.
+phrase shortlist, institutions, topics, paper examples and complete evidence listing update
+together without a server request. Open an example's abstract or follow its DOI to inspect
+the evidence. Expand **All matching papers & export** to page through all matches or export
+them as CSV. Report phrases link into Explore with the selected period and phrase preserved,
+including custom year ranges.
 
 Counts cover every matching record; examples contain at most three highest-cited papers
 per phrase/year/mention role. The shortlist contains up to 20 rising, fading, emerging
-and frequent phrases. The separate free-phrase control searches the larger eligible
-phrase vocabulary. Title-only corpora disable abstract rules. See
+and frequent phrases. **Find another phrase** adds a typed phrase to this same workspace;
+hyphenated display names resolve to their counting keys, and rare phrases remain searchable.
+**More institution analysis** restores rank history and institution/topic profiles on demand,
+respecting parent roll-up. Title-only corpora disable abstract rules. See
 [interactive exploration behavior and tests](docs/interactive-report.md).
 
 The home page presents a curated set of reports in two levels. **Semiconductor &

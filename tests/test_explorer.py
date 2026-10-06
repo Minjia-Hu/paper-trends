@@ -7,7 +7,7 @@ from paper_trends.text import term_mentions
 from paper_trends.topics import Topic, TopicTrends
 
 
-def make_explorer(text="title+abstract"):
+def make_explorer(text="title+abstract", full_results=False):
     records = []
     for role in ("title", "repeated", "once"):
         for i in range(5):
@@ -21,7 +21,7 @@ def make_explorer(text="title+abstract"):
     tt = TopicTrends(kt.years, kt.papers_per_year, [Topic(0, "Packaging", [])], {}, "nmf",
                      assignments={i: 0 for i in range(len(records))})
     inst = compute_ranking(records, "institution", roll_up=True)
-    builder = ExplorerBuilder(records, kt, tt, inst, str, ["hybrid bonding"])
+    builder = ExplorerBuilder(records, kt, tt, inst, str, ["hybrid bonding"], full_results=full_results)
     for i, r in enumerate(records):
         builder.add(i, term_mentions(r["title"], r["abstract"] if text != "title" else None, 2, 3, acronyms=kt.acronyms))
     return builder.finish(), kt
@@ -47,3 +47,25 @@ def test_title_only_explorer_cannot_silently_use_abstract_evidence():
     assert data["terms"][0]["counts"] == [[5, 0, 0], [0, 0, 0], [0, 0, 0]]
     assert len(data["papers"]) == 3
     assert sum(row[0] for row in data["terms"][0]["counts"]) == kt.total("hybrid bonding")
+
+
+def test_full_evidence_covers_every_counted_paper_beyond_sample_cap():
+    data, _ = make_explorer(full_results=True)
+    term = data["terms"][0]
+    assert len(data["papers"]) == 9
+    assert len(data["results"]) == len(term["matches"]) == 15
+    assert len({data["results"][i]["id"] for _, _, i in term["matches"]}) == 15
+    for year, counts in enumerate(term["counts"]):
+        for role, count in enumerate(counts):
+            assert sum(y == year and r == role for y, r, _ in term["matches"]) == count
+
+
+def test_institution_topic_mix_respects_parent_roll_up():
+    from paper_trends.report.build import inst_topic_rows
+    records = [{"publication_year": 2020, "authorships": [{"institutions": [
+        {"id": "child", "name": "Lab", "root_id": "parent", "root_name": "University"}]}]}]
+    tt = TopicTrends([2020], {2020: 1}, [Topic(0, "Packaging", [])], {0: {2020: 1}}, "nmf", assignments={0: 0})
+    for roll_up, expected in [(True, "University"), (False, "Lab")]:
+        rk = compute_ranking(records, "institution", roll_up=roll_up)
+        rows = inst_topic_rows(records, tt, rk, rk.top(10), tt.ordered(), roll_up=roll_up)
+        assert rows == [{"name": expected, "topic": "Packaging", "papers": 1, "share": 1.0}]
