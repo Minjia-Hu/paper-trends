@@ -3,7 +3,7 @@
 Publication-trend analysis for **any academic conference**, built on the free, CC0-licensed
 [OpenAlex](https://openalex.org) API.
 
-Give it a conference name and it fetches every paper the venue has published, then
+Give it a conference name and it retrieves matching paper metadata from OpenAlex, then
 reports keyword trends, topic evolution, and institution / author / country rankings.
 
 First showcase: **ECTC (IEEE Electronic Components and Technology Conference), 2016–2026**.
@@ -50,6 +50,13 @@ open site/ectc.html
 uv run streamlit run app.py
 ```
 
+The app supports **中文 / English** in the page header. It follows the browser's
+preferred language by default; use `?conference=ectc&lang=zh` for a shareable Chinese
+report. Narrative, controls and chart tooltips are translated; paper titles,
+abstracts, technical phrases and institution names stay in their original language.
+Both languages share the same analysis. Static report generation also writes
+`*.zh.html` and `index.zh.html` alongside the English pages.
+
 Or skip the command line: `uv run streamlit run app.py`, pick a preset or type a venue,
 and press **Fetch**.
 
@@ -94,13 +101,61 @@ side — tables, a term drill-down to the underlying papers, and cross-conferenc
 comparison. Fetched data is cached under `data/`; a DOI prefix for a custom venue and
 extra stopwords live under **Options**.
 
+The default report period is the last ten years ending before the current calendar
+year. It also skips trailing years with fewer than 20% of the preceding three observed
+editions' typical paper count, or delayed abstracts at a venue that normally has them.
+This is a conservative heuristic, not proof that OpenAlex's coverage is complete.
+**All** / **Custom** include the excluded years. Venues with consistently few abstracts
+retain their historical years and use titles for phrase analysis. The CLI report uses
+the same default when `--years` is omitted; explicit ranges override it.
+
+Empty periods display an explanation. Single-year reports show counts and topic mix
+without claims of growth or decline; topics are omitted if there is too little usable
+text. Phrase detail panels use the same text and counting settings as the report, and
+every phrase or variant displayed in its trend lists has a panel. The report date is
+the generation date, not the date its cached data was fetched.
+
+Reports also show **Data fetched**, separately from the report date. New CLI/app fetches
+save a UTC completion timestamp in `<corpus>.jsonl.meta.json`, bound to the corpus bytes
+by SHA-256. Missing, malformed or mismatched provenance displays **unknown**; copying or
+editing a file does not invent a new fetch date. Keep the sidecar when moving a corpus.
+
+The report explains excluded current/future editions, unusually sparse trailing editions
+and delayed abstracts. Selected years with no cached records remain visible in the
+coverage table. Abstract coverage below 90% is called out by year; below 60% overall,
+phrase trends use titles only (topics still use available titles and abstracts).
+These checks describe the local OpenAlex snapshot, not completeness against official
+proceedings. See [coverage and freshness behavior](docs/data-coverage.md).
+
+At the top of each report, the **field observatory** lets you play or select a time
+window and switch between title mentions, title-or-repeated mentions, and any mention.
+The phrase curve, matching-paper counts, phrase shortlist, institutions, topics and paper
+examples update together without a server request. Open an example's abstract or follow
+its DOI to inspect the evidence. Eligible phrase drawers link back to this explorer.
+The full-period report remains below, with its scope explicitly labelled.
+
+Counts cover every matching record; examples contain at most three highest-cited papers
+per phrase/year/mention role. The shortlist contains up to 20 rising, fading, emerging
+and frequent phrases, not the entire vocabulary. Title-only reports disable abstract
+rules. See [interactive report behavior and tests](docs/interactive-report.md).
+
 The home page lists the presets that come ready-made, grouped by field: **semiconductor
 packaging** (ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE), **devices & circuits** (IEDM,
-ISSCC, VLSI Symposium, IMW), **computer vision** (CVPR), **speech** (Interspeech) and
-**robotics** (ICRA). They are examples, not the scope — the mix leans towards
+ISSCC, VLSI Symposium, IMW), **computer vision** (CVPR), **speech** (Interspeech),
+**robotics** (ICRA), **signal processing** (ICASSP), **biomedical engineering** (EMBC),
+**security** (IEEE S&P) and **communications** (GLOBECOM). They are examples, not the scope — the mix leans towards
 semiconductors because that is where the maintainer works. Each preset is a conference
 name plus the DOI prefix(es) its papers carry, so any venue indexed by OpenAlex can be
 added the same way, or simply typed into the search box.
+
+Coverage varies by venue and year; a successful name match is not proof of a complete
+corpus. The [candidate venue audit](docs/venue-audit-2026-10-05.md) records prefix
+collisions, changing prefixes, and gaps found before expanding the presets.
+
+The four additions have cached 2016–2025 corpora and report pages. GLOBECOM uses both
+`10.1109/glocom` (early years) and `10.1109/globecom`; IEEE S&P uses `10.1109/sp` with
+the DOI boundary check that excludes unrelated conferences and workshops. Search
+`S&P`, `IEEE S&P`, `IEEE SP` or `sp` to open the same security preset.
 
 ![The app's home page: a search box for any venue, and the ready-made conferences grouped by field](docs/screenshot-app.png)
 
@@ -114,7 +169,8 @@ uv run python -m paper_trends fetch "Electronic Components and Technology Confer
     --doi-prefix 10.1109/ectc --years 2016-2026 --name ectc
 ```
 
-This writes one paper per line to `data/ectc.jsonl` and prints a per-year coverage table:
+This writes one paper per line to `data/ectc.jsonl`, records fetch provenance in
+`data/ectc.jsonl.meta.json`, and prints a per-year coverage table:
 
 ```
   year   papers  abstracts  coverage
@@ -132,6 +188,12 @@ Each record contains: `id`, `doi`, `title`, `publication_year`, `abstract` (plai
 `authorships` (authors, institutions, countries, raw affiliation strings),
 `cited_by_count`, `source_id`, `source_name`.
 
+Fetches deduplicate OpenAlex IDs and DOIs. If several IDs share a DOI, one record is
+kept, preferring usable text and authorship metadata, then the higher citation count;
+citations are not added across duplicates. Records without a DOI are not merged by
+title alone. Proceedings front matter and identifiable textless catalog entries are
+excluded.
+
 ### Keyword trends
 
 ```bash
@@ -141,26 +203,34 @@ uv run python -m paper_trends keywords data/ectc.jsonl --years 2016-2025 --ngram
 Phrases are word sequences from titles and abstracts (OpenAlex has no full text). A few
 rules keep the lists about the conference rather than about academic prose:
 
-- **A paper counts only when it is about the phrase**: the phrase is in the title or
-  mentioned more than once. A method used in passing (*finite element* appears once in
-  65 % of the papers that mention it) or a motivation sentence (“with the rise of
-  artificial intelligence…”) does not count; *hybrid bonding* is repeated in 83 % of the
-  papers that mention it. The rule was chosen by checking each kind of mention against
-  the title — see `paper-trends validate`. `--count any` counts every mention instead.
+- **A paper counts when the phrase is in its title or repeated in its abstract**, after
+  acronym normalization. This is a relevance heuristic, not a topic label: repeated
+  background or application mentions can still count. `paper-trends validate` compares
+  abstract roles with title mentions; it is not a ground-truth accuracy benchmark.
+  `--count any` counts every mention instead.
 - **Acronyms are read as their phrase.** When the corpus defines one (“redistribution
   layer (RDL)”), later *RDL*s count as repeats; a long form that cannot be a phrase
   (*through-silicon via*, *fan-out wafer-level packaging*) is folded into the acronym
   instead (*TSV*, *FOWLP*).
+  Definitions in the paper override the corpus majority. Undefined uses can still be
+  ambiguous. Plurals retain case evidence: *loss* is not treated as plural *LoS*, while
+  explicitly written *LoSs* and *MBSs* still fold. Lower-case `ss` endings are not guessed.
 - **Fragments are folded into the phrase they belong to**: *level packaging* only ever
   occurs inside *wafer-level packaging* and *panel-level packaging*, *scanning electron*
   inside *scanning electron microscopy*. `--keep-subphrases` shows them.
 - **One phrase per family** in the rising, falling and emerging lists: *wafer hybrid
   bonding* and *hybrid bonding process* are listed under *hybrid bonding* rather than
   taking three slots.
-- **Phrases common to three or more other fields are hidden** (*high performance*, *low
-  cost*, *next generation*…), judged against a small table of seven fields that ships with
-  the package. `--keep-common` shows them; `paper-trends background data/*.jsonl` rebuilds
-  the table from your own corpora.
+- **Reviewed boilerplate phrases are hidden only with cross-field evidence**: exact
+  phrases in `background.BOILERPLATE` (*high performance*, *low cost*, *next generation*…)
+  must also appear in at least 1% of papers in three other fields. Cross-field technical
+  phrases (*deep learning*, *neural networks*, *energy consumption*) remain eligible;
+  *high performance computing* does not inherit the exclusion of *high performance*.
+  `--keep-common` restores boilerplate. `paper-trends background data/*.jsonl` rebuilds
+  the frequency table; it does not change the reviewed phrase list.
+
+See [the five-conference trend audit](docs/trend-audit-2026-10-05.md) for count checks,
+filter changes, paper examples and known acronym limitations.
 
 ECTC 2016–2025, share of papers, first vs. second half of the period:
 
@@ -245,10 +315,10 @@ iedm     0.0%   0.0%   0.9%   1.2%   1.7%   2.7%   2.2%   4.8%   6.5%   8.7%
 isscc    0.5%   0.0%   1.4%   2.4%   3.2%   4.2%   5.5%   6.1%   6.0%   7.0%
 ```
 
-*Artificial intelligence* here is not name-dropping: a paper counts only when it is in
-the title or repeated, and papers write “artificial intelligence (AI)” once and *AI*
-thereafter, which the acronym rule reads as repeats. Packaging, devices and circuits all
-turned towards AI hardware from 2023.
+*Artificial intelligence* includes expanded *AI* mentions. The counts show increasing
+use of the vocabulary in these corpora, but cannot distinguish AI methods from AI-driven
+hardware applications or repeated background mentions. Inspect the backing papers before
+interpreting a phrase as the paper's research subject.
 
 The app has a **Compare** tab that plots the same terms across any fetched conferences,
 and the Keywords tab lists the papers behind any term.

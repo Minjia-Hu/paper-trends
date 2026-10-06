@@ -30,7 +30,7 @@ STOPWORDS: frozenset[str] = frozenset(
     """.split()
 )
 
-_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9\.]*[a-z0-9]|[a-z0-9]")
+_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9\.]*[a-z0-9]|[a-z0-9]", re.I)
 
 # IEEE abstracts in OpenAlex often contain inline LaTeX, e.g. "5$\mu \mathrm{m}$".
 _LATEX_UM = re.compile(r"\\mu\s*\\mathrm\{m\}|\\mu\s*m\b")
@@ -64,19 +64,19 @@ _URL_RE = re.compile(r"(?:https?://|www\.)\S+|\b\S+\.(?:com|org|io|net|edu)(?:/\
 _UNITS = frozenset("nm um mm cm m ghz mhz khz hz db dbm mw kw w ma mv v ms ns ps fs gb mb kb gbps mbps bit bits".split())
 
 
-def tokenize(text: str | None) -> list[str]:
-    """Lower-case word tokens; hyphens split, internal dots kept (e.g. '2.5d'), a number
-    joined to the unit that follows it ('28nm')."""
+def tokenize(text: str | None, *, preserve_case: bool = False) -> list[str]:
+    """Word tokens, lower-case by default; preserve_case keeps evidence for acronym
+    plurals. Hyphens split, internal dots stay, and number/unit pairs join ('28nm')."""
     if not text:
         return []
     if "\\" in text or "$" in text:
         text = clean_latex(text)
     text = _URL_RE.sub(" ", text)
     text = _FIG_REF_RE.sub(" ", text)
-    toks = _TOKEN_RE.findall(text.lower().translate(_DASHES))
+    toks = _TOKEN_RE.findall((text if preserve_case else text.lower()).translate(_DASHES))
     out: list[str] = []
     for tok in toks:
-        if out and tok in _UNITS and _is_number(out[-1]):
+        if out and tok.lower() in _UNITS and _is_number(out[-1]):
             out[-1] += tok
         else:
             out.append(tok)
@@ -163,7 +163,9 @@ class Acronyms:
         """Expand or contract acronyms; the defining occurrence right after the long form is
         dropped (it would otherwise double the phrase). Plurals ("TSVs") count."""
         if not self or not tokens:
-            return tokens
+            return [t.lower() for t in tokens]
+        surfaces = tokens
+        tokens = [t.lower() for t in tokens]
         out: list[str] = []
         i = 0
         while i < len(tokens):
@@ -172,20 +174,27 @@ class Acronyms:
                 if tokens[i : i + len(long_form)] == long_form:
                     out.append(acr)
                     i += len(long_form)
-                    if i < len(tokens) and tokens[i].rstrip("s") == acr:
+                    if i < len(tokens) and (tokens[i] == acr or _plural_base(tokens[i], surfaces[i]) == acr):
                         i += 1  # the "(TSV)" right after the long form
                     break
             else:
-                key = tok if tok in self.expand else (tok[:-1] if tok.endswith("s") and tok[:-1] in self.expand else None)
+                plural = _plural_base(tok, surfaces[i])
+                key = tok if tok in self.expand else (plural if plural in self.expand else None)
                 if key is not None:
                     if out[-len(self.expand[key]):] != self.expand[key]:  # "redistribution layer (rdl)" -> keep once
                         out.extend(self.expand[key])
-                elif tok.endswith("s") and tok[:-1] in self.short:
-                    out.append(tok[:-1])  # "tsvs" -> "tsv"
+                elif plural in self.short:
+                    out.append(plural)  # "tsvs" -> "tsv"
                 else:
                     out.append(tok)
                 i += 1
         return out
+
+
+def _plural_base(token: str, surface: str) -> str | None:
+    # Preserve case until this decision: MBSs and LoSs are explicit plurals, while
+    # loss / Loss / LOSS are not. With lower-case-only input prefer not to guess.
+    return token[:-1] if token.endswith("s") and (not token.endswith("ss") or surface.endswith("Ss")) else None
 
 
 def _match_long_form(acr: str, words: list[str]) -> list[str] | None:
@@ -261,7 +270,7 @@ def paper_tokens(title: str | None, abstract: str | None, acronyms: Acronyms | N
     am = paper_acronyms(title, abstract, acronyms, stopwords, n_max)
     if not am:
         return tokenize(title), tokenize(abstract)
-    return am.apply(tokenize(title)), am.apply(tokenize(abstract))
+    return am.apply(tokenize(title, preserve_case=True)), am.apply(tokenize(abstract, preserve_case=True))
 
 
 def phrase_roles(t_toks: list[str], a_toks: list[str], n_min: int = 1, n_max: int = 3,
@@ -281,11 +290,12 @@ def term_mentions(title: str | None, abstract: str | None, n_min: int = 1, n_max
     return phrase_roles(*paper_tokens(title, abstract, acronyms, stopwords, n_max), n_min, n_max, stopwords)
 
 
-def mention_role(title: str | None, abstract: str | None, term: str, acronyms: Acronyms | None = None) -> str | None:
+def mention_role(title: str | None, abstract: str | None, term: str, acronyms: Acronyms | None = None,
+                 *, n_max: int = 3, stopwords: frozenset[str] = STOPWORDS) -> str | None:
     """Role of one phrase in one paper, or None when it does not occur."""
-    am = paper_acronyms(title, abstract, acronyms)
-    t_toks, a_toks = (am.apply(tokenize(title)), am.apply(tokenize(abstract))) if am else (tokenize(title), tokenize(abstract))
-    want = am.apply(tokenize(term)) if am else tokenize(term)
+    am = paper_acronyms(title, abstract, acronyms, stopwords, n_max)
+    t_toks, a_toks = (am.apply(tokenize(title, preserve_case=True)), am.apply(tokenize(abstract, preserve_case=True))) if am else (tokenize(title), tokenize(abstract))
+    want = am.apply(tokenize(term, preserve_case=True)) if am else tokenize(term)
     n = len(want)
     if not n:
         return None

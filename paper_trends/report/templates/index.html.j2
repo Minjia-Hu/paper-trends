@@ -1,34 +1,34 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ "zh-CN" if lang == "zh" else "en" }}">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>paper-trends</title>
-{% if inline_css %}<style>{{ inline_css }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
+{% if inline_css %}<style>{{ inline_css|safe }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
 </head>
 <body>
-{% if not embedded %}<nav class="masthead"><div class="row"><a class="brand" href="index.html">paper-trends</a></div></nav>{% endif %}
+{% if not embedded %}<nav class="masthead"><div class="row"><a class="brand" href="{{ 'index.zh.html' if lang == 'zh' else 'index.html' }}">paper-trends</a><span class="all"><a href="index.zh.html">中文</a> · <a href="index.html">English</a></span></div></nav>{% endif %}
 <main class="page{{ ' embedded' if embedded else '' }}">
 <header class="title">
-  <div class="kicker">{{ tagline }}</div>
-  <h1>What a field talks about, year by year</h1>
-  <div class="meta"><span>Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes. Any conference indexed by OpenAlex gets the same page; these are the ones generated ahead of time.</span></div>
+  <div class="kicker">{{ _(tagline) }}</div>
+  <h1>{{ _('What a field talks about, year by year') }}</h1>
+  <div class="meta"><span>{{ '从 OpenAlex 收录的历年会议论文中，追踪关键词的起伏、主题的演进与发文版图。选择下方报告，或分析你关注的会议。' if lang == 'zh' else 'Conference papers indexed by OpenAlex, read as rising and fading phrases, topic shifts and who publishes. These reports are ready to explore; you can also analyse your own conference.' }}</span></div>
 </header>
 <div class="groups">
 {% for group, items in nav %}
 <section class="group">
-  <h2>{{ group }}</h2>
+  <h2>{{ _(group) }}</h2>
   <ul class="glance">
-  {% for slug, short, name, n in items %}<li><a href="{{ slug ~ '.html' }}"><em>{{ short }}</em> — {{ name }}</a> <span class="n">{{ "{:,}".format(n) }} papers</span></li>{% endfor %}
+  {% for slug, short, name, n in items %}<li><a href="{{ slug ~ ('.zh.html' if lang == 'zh' else '.html') }}"><em>{{ short }}</em> — {{ name }}</a> <span class="n">{{ "{:,}".format(n) }} {{ _('papers') }}</span></li>{% endfor %}
   </ul>
 </section>
 {% endfor %}
 </div>
 <section>
-  <h2>Your own conference</h2>
-  <p class="lede">Two commands give any conference indexed by OpenAlex a page like these:</p>
+  <h2>{{ _('Your own conference') }}</h2>
+  <p class="lede">{{ '用以下两条命令，为 OpenAlex 收录的会议生成同样的中英文报告：' if lang == 'zh' else 'Two commands give any conference indexed by OpenAlex a page like these:' }}</p>
   <pre class="code">uv run python -m paper_trends fetch "Design Automation Conference" --doi-prefix 10.1109/dac --years 2016-2026 --name dac
 uv run python -m paper_trends report data/dac.jsonl --years 2016-2025 --out site</pre>
-  <p class="lede">For live exploration — pick a term, see the papers behind it, compare venues — run the interactive app: <span class="mono">uv run streamlit run app.py</span>. Source and instructions: <a href="https://github.com/Minjia-Hu/paper-trends">github.com/Minjia-Hu/paper-trends</a>.</p>
+  <p class="lede">{{ '如需交互探索、阅读关键词对应论文或比较会议，启动应用：' if lang == 'zh' else 'For live exploration — pick a term, see the papers behind it, compare venues — run the interactive app:' }} <span class="mono">uv run streamlit run app.py</span>. {{ '代码与说明：' if lang == 'zh' else 'Source and instructions:' }} <a href="https://github.com/Minjia-Hu/paper-trends">github.com/Minjia-Hu/paper-trends</a>.</p>
 </section>
 </main>
 </body>

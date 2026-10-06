@@ -16,7 +16,7 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     r = resolve_venue(OpenAlex(), " ".join(args.text))
     if not r:
-        print("nothing found; try the full name as OpenAlex spells it, or pass --doi-prefix to fetch", file=sys.stderr)
+        print("could not identify this conference reliably; try its full name, or pass a known --doi-prefix to fetch", file=sys.stderr)
         return 1
     print(f"name:         {r['name']}")
     print(f"doi prefixes: {' '.join(r['doi_prefixes']) or '(none inferred)'}")

@@ -87,6 +87,7 @@ paper_trends/
   openalex.py  # API client: polite pool, cursor paging, retries, abstract reconstruction
   fetch.py     # conference -> works resolution, coverage table
   store.py     # JSONL read/write, year filtering (shared by all commands)
+  coverage.py  # conservative default report period; excludes current/incomplete trailing editions
   text.py      # tokenizer (strips inline LaTeX from IEEE abstracts), n-grams, stopwords
   keywords.py  # KeywordTrends: per-year counts of papers about a phrase, rising/falling/emerging
   background.py  # cross-field table of common phrases (resources/background.json) + builder
@@ -147,6 +148,36 @@ chart, a table next to every chart. Stacked areas need a fixed `order` across ye
 (sorting by value per year breaks the areas). To eyeball the UI, run the app headless on
 a spare port and screenshot tabs with Playwright (system `python3` has it with Chromium).
 
+**Report consistency**: app default periods and CLI reports without `--years` use
+`coverage.default_period`; All/Custom or explicit CLI years override the heuristic.
+Do not select years solely by abstract coverage: title-only venues still need their
+historical years. Single-year reports omit time comparisons; empty periods and
+`InsufficientTopicData` have explanatory UI states. Detail panels preserve the
+`KeywordTrends` text mode, n-gram bounds, stopwords and counting basis, and include
+every displayed trend phrase and variant even outside the frequent-term cap.
+Jinja HTML templates use autoescaping and `tojson` for inline data; only local CSS/JS
+assets are marked safe. `generated` is the report date, not a fetch timestamp.
+`store.read_provenance` verifies `<corpus>.jsonl.meta.json` against the corpus SHA-256;
+only successful fetch paths pass a timezone-aware `fetched_at` to `write_jsonl`.
+Legacy/malformed/mismatched metadata must show an unknown fetch time, never infer one
+from file mtime. App provenance cache keys include sidecar mtime; report cache keys
+include the verified provenance and default-period span.
+`coverage.period_decision` supplies both default years and exclusion reasons;
+`coverage_details` supplies visible abstract limitations and a gap-inclusive coverage
+table. Keep these descriptions shared between static reports and Explore. The 90%
+abstract-notice threshold is descriptive, not a measure of proceedings completeness.
+
+**Interactive report**: `report/explorer.py` accumulates exclusive title/repeated/once
+roles during the existing `build_entities` pass; do not estimate counts from sampled
+papers. It tracks up to 20 phrases over every calendar year, keeping gaps at zero
+denominator (the frontend renders missing shares, not 0%). Institutional counts dedupe
+co-authors and use all institutions, not just the legacy panel's top-60 set. Topic
+assignments are fitted once for the full report. Only evidence examples are capped at
+three per phrase/year/role. `static/explorer.js` owns the local time/rule state and stops
+playback on manual edits, hidden pages and page exit. This explorer and the explicitly
+labelled full-period report have separate scopes. Both static HTML and Streamlit embed
+the same template/CSS/JS; no new frontend runtime dependencies are required.
+
 **Resolution strategy in `fetch.py`** — this is the non-obvious part:
 
 1. Search OpenAlex `sources` by display name. Prefer sources whose *core name* equals
@@ -158,22 +189,33 @@ a spare port and screenshot tabs with Playwright (system `python3` has it with C
    matches these against lower-cased DOIs, so prefixes are lower-cased (`10.1109/ectc`).
    Each hit must then pass `doi_has_prefix`: prefix + optional conference number + "."
    — otherwise `10.1109/isca` returns 5k ISCAS papers and `10.1109/imw` returns IMWS-AMP.
-3. Union the results, de-duplicated by work id.
+3. Union the results, de-duplicated by work ID and DOI. `deduplicate_dois` retains one
+   record, preferring abstract/authorship availability then higher citations; never
+   sum duplicate citation counts or merge DOI-less records on title alone.
 
 `resolve_venue` (CLI `resolve`, app search box) turns an acronym or name into
 {name, doi_prefixes, source_ids, slug, n_papers, ambiguous}: acronyms are probed as
 `10.1109/<acr>` and `10.23919/<acr>` (≥ 50 papers 2016–2025) and the name is the most
 common decoration-stripped source name in a 60-paper sample; names go through
-`resolve_sources` with a prefix inferred from sampled DOIs (≥ 60 % agreement). Non-IEEE
-acronyms (NeurIPS) resolve to nothing — say so instead of guessing. The app maps typed
+`resolve_sources` with a prefix inferred from sampled DOIs (≥ 60 % agreement and
+accepted by `doi_has_prefix`). A short query that failed prefix probing may only match
+an exact source core name, such as Interspeech; do not fall back to substring matches
+like CHI → TAP CHI SINH HOC or ACL → Findings. Failure means the venue could not be
+identified reliably, not that OpenAlex has none of its papers. The app maps typed
 preset acronyms/slugs straight to `?conference=`.
+
+Before adding presets, consult `docs/venue-audit-2026-10-05.md` and its JSON snapshot.
+`scripts/audit_venues.py` repeats the cached coverage probes. DOI boundary checks do
+not disambiguate conferences sharing the same acronym (ICC, ICSE, ECCE); GLOBECOM
+needs both `glocom` and `globecom`. Grouped API counts are not clean corpus totals.
 
 Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
 **Presets** live in `app.py:PRESETS` (semiconductor packaging: ECTC, EPTC, ICEPT, ITherm,
 IRPS, EuroSimE; devices & circuits: IEDM, ISSCC, VLSI Symposium, IMW; computer vision:
-CVPR; speech: Interspeech; robotics: ICRA — the last three show generality), each with
+CVPR; speech: Interspeech; robotics: ICRA; signal processing: ICASSP; biomedical
+engineering: EMBC; security: IEEE S&P; communications: GLOBECOM), each with
 its DOI prefix list; `render.GROUPS` holds the same grouping for the home page and the
 static index, `background.FIELD_OF` the field used by the common-phrase filter (rebuild
 `resources/background.json` when a preset is added). VLSI
@@ -181,6 +223,9 @@ Symposium needs ten prefixes because IEEE (10.1109) and JSAP (10.23919) alternat
 publisher and the acronym changed (vlsit/vlsic → vlsitechnology/vlsicircuits →
 vlsitechnologyandcir). Venues that alternate IEEE/ACM DOIs by year (DAC, ICCAD) or whose
 prefix is a substring of a bigger venue's (ISCA/ISCAS) were deliberately left out.
+GLOBECOM uses both `10.1109/glocom` and `10.1109/globecom`. IEEE S&P's slug is `sp`;
+the search also accepts `S&P`, `IEEE S&P` and `IEEE SP`. All four new presets were
+fetched for 2016–2025; GLOBECOM's 2025 abstract coverage is lower than preceding years.
 
 The DOI fallback exists because **most ECTC years have no OpenAlex source at all** —
 only 2022 has a source record (S4363608088); other years carry just a
@@ -238,11 +283,12 @@ to misread as bugs:
   edge: RDL → redistribution layer, FO → fan out), otherwise the long form is contracted to
   the acronym (through silicon via → tsv, fan out wafer level packaging → fowlp; "via",
   "through", "out" are stopwords). The defining occurrence is dropped so it is not a
-  repeat; plurals fold. `Acronyms.surface` keeps the corpus casing for display
+  repeat; plurals fold with case evidence for `ss` endings (MBSs folds; loss does not
+  expand as plural LoS). Explicit definitions still match directly. `Acronyms.surface` keeps the corpus casing for display
   (`display_form` = `restore_hyphens` + `restore_case`). Consequence worth knowing: after
   "artificial intelligence (AI)" every later "AI" is a repeat, so AI now counts in ~2 % of
-  ECTC papers (10 % in 2025) and tops the ECTC/IEDM/ISSCC shared risers — a real trend,
-  not name-dropping, but it is what the rule does.
+  ECTC papers (10 % in 2025). Repeated application/background mentions also pass this
+  rule; counts alone do not prove that AI is the paper’s research subject.
 - **Fragments** (`fragment_share`, `KeywordTrends.inside`, `is_fragment`): a second pass
   over the stored token lists records, for every occurrence of a term with ≥ 10 mentions,
   the one-token-longer phrases to its left and right. Extensions carrying ≥ 10 % of the
@@ -256,22 +302,22 @@ to misread as bugs:
   the head; a longer member heads the family when it has ≥ 60 % of the shortest member's
   papers (high-bandwidth memory over high-bandwidth; not finite-element analysis over
   finite-element at 52 %). Callers ask for more rows than they show (`rising(k*4)`).
-- **Common phrases** (`background.py`, `resources/background.json`). A phrase used by
-  >= 1 % of the papers in 3+ *other fields* is hidden from `candidates()` (so from top,
-  rising, falling, emerging). Fields pool several venues (`FIELD_OF`) so ECTC/EPTC/ICEPT
-  do not vouch for each other; a venue's own field is excluded. A single lift ratio could
-  not separate boilerplate (*high performance*) from cross-field technical terms
-  (*3D integration*, *power delivery*); breadth across fields does. Rebuild the table with
-  `paper-trends background data/*.jsonl` after adding venues; it is CC0-derived and
-  committed. Tests on synthetic corpora pass `background=None`.
+- **Boilerplate** (`background.BOILERPLATE`, `resources/background.json`). Hide an exact
+  phrase only if it is in the reviewed boilerplate list AND is used by >= 1% of papers in
+  3+ other fields. Cross-field frequency is not a semantic test: deep learning, neural
+  networks, real time and energy consumption remain eligible. Exact matching preserves
+  high performance computing even when high performance is hidden. `KeywordTrends.common`
+  contains only exclusions; `--keep-common` restores them. Fields pool related venues;
+  own-field evidence is excluded. Rebuild the frequency table after adding corpora.
+  See `docs/trend-audit-2026-10-05.md` for the diagnostic review and limitations.
 - `STOPWORDS` in `text.py` is generic English + academic boilerplate + unit tokens only.
   Do not add domain words there; users pass `--stopwords file` for that. Test corpora must
   avoid stopwords inside the phrases they expect ("study", "paper" are stopwords) and
   repeat a phrase or put it in the title, or nothing is topical.
 
 These are data-driven heuristics without ground truth; `validate` is a sanity check, not a
-gold standard. Hand-labelling was discussed with the maintainer and not decided; do not
-present the rules as validated.
+gold standard. The five-conference audit adds targeted paper review and reproducible count checks, not
+a representative independently annotated benchmark; do not present the rules as validated.
 
 **Coverage differs a lot by venue.** IEEE venues with acronym DOIs (ECTC, ISSCC, CVPR,
 ICRA…) are complete. Interspeech (ISCA, `10.21437/interspeech`) has every paper but

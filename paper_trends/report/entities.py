@@ -7,14 +7,16 @@ from __future__ import annotations
 
 import math
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from typing import Any, Callable
 
 from ..keywords import KeywordTrends
 from ..rank import Ranking, entities_of
 from ..store import Record
-from ..text import STOPWORDS, TOPICAL_ROLES, term_mentions
+from ..text import TOPICAL_ROLES, term_mentions
 from ..topics import TopicTrends
 from ..viz import CATEGORICAL
+from .explorer import ExplorerBuilder
 
 N_TERMS, N_INSTS = 150, 60
 MIN_CO = 8        # papers two phrases must share before a co-occurrence is reported
@@ -27,27 +29,35 @@ def _nested(a: str, b: str) -> bool:
 
 
 def build_entities(recs: list[Record], kt: KeywordTrends, tt: TopicTrends, inst: Ranking, show: Callable[[str], str],
-                   *, n_terms: int = N_TERMS, n_insts: int = N_INSTS) -> dict[str, Any]:
+                   *, n_terms: int = N_TERMS, n_insts: int = N_INSTS,
+                   required_terms: Iterable[str] = (), explore_terms: Iterable[str] = ()) -> dict[str, Any]:
     years = kt.years
     N = len(recs)
     split = years[len(years) // 2]
 
     # ---- which phrases, which institutions, which topics -----------------------------
-    chosen = kt.top_terms(n_terms, min_total=5)
+    chosen = list(dict.fromkeys([
+        *kt.top_terms(n_terms, min_total=5),
+        *(t for t in required_terms if t in kt.doc_freq and kt.total(t)),
+    ]))
     chosen_set = set(chosen)
     term_id = {t: i for i, t in enumerate(chosen)}
     top_insts = inst.top(n_insts)
     inst_id = {k: i for i, k in enumerate(top_insts)}
     topics = tt.ordered()
     topic_pos = {t.id: i for i, t in enumerate(topics)}
+    explorer = ExplorerBuilder(recs, kt, tt, inst, show, explore_terms)
 
     # ---- per paper: phrases it is about, its institutions, its topic ---------------------
     paper_terms: list[list[int]] = []
     paper_insts: list[list[int]] = []
     paper_topic: list[int | None] = []
     for i, r in enumerate(recs):
-        roles = term_mentions(r.get("title"), r.get("abstract"), 2, 3, STOPWORDS, kt.acronyms)
-        paper_terms.append(sorted(term_id[t] for t, role in roles.items() if t in chosen_set and role in TOPICAL_ROLES))
+        roles = term_mentions(r.get("title"), r.get("abstract") if kt.text_mode != "title" else None,
+                              kt.n_min, kt.n_max, kt.stopwords, kt.acronyms)
+        explorer.add(i, roles)
+        paper_terms.append(sorted(term_id[t] for t, role in roles.items()
+                                  if t in chosen_set and (kt.basis == "any" or role in TOPICAL_ROLES)))
         paper_insts.append(sorted({inst_id[k] for k in entities_of(r, "institution", roll_up=True) if k in inst_id}))
         k = tt.assignments.get(i)
         paper_topic.append(topic_pos[k] if k is not None and k in topic_pos else None)
@@ -164,6 +174,7 @@ def build_entities(recs: list[Record], kt: KeywordTrends, tt: TopicTrends, inst:
     papers_out = [{"t": recs[i].get("title") or "", "y": recs[i].get("publication_year"),
                    "d": (recs[i].get("doi") or "").replace("https://doi.org/", ""), "c": cites[i], "tp": paper_topic[i]} for i in used]
     return {
+        "explorer": explorer.finish(),
         "years": years, "split": split, "n_papers": N,
         "terms": terms_out, "insts": insts_out, "topics": topics_out, "papers": papers_out,
         # lookups from the names printed on the page

@@ -6,6 +6,7 @@ import html
 import re
 import sys
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,10 @@ _NO_PAPER_RE = re.compile(r"not (?:been )?made available for publication|\[\d+ a
 # Machine-translated duplicates of real papers (J-GLOBAL's Japanese records, marked
 # "【Powered by NICT】"), indexed by OpenAlex as separate works without a DOI.
 _TRANSLATION_RE = re.compile(r"powered by nict", re.I)
+_PROCEEDINGS_RE = re.compile(
+    r"^\s*(?:proceedings (?:for|of) (?:the )?.*\b(?:conference|symposium|workshop)\b"
+    r"|.+\([a-z0-9&/-]+\),\s*\d{4}\s+(?:ieee|acm)\b.*\bconference on\s*$)", re.I,
+)
 
 
 def is_front_matter(work: dict[str, Any]) -> bool:
@@ -44,6 +49,8 @@ def is_front_matter(work: dict[str, Any]) -> bool:
     title = work.get("title") or ""
     if _FRONT_MATTER_RE.match(title) or _NO_PAPER_RE.search(title) or _TRANSLATION_RE.search(title):
         return True
+    if not work.get("doi") and not (work.get("abstract_inverted_index") or work.get("abstract")) and _PROCEEDINGS_RE.match(title):
+        return True  # unambiguously named, textless proceedings catalog entries
     inv = work.get("abstract_inverted_index") or {}
     if inv and len(inv) < 60:  # short blurbs only; a real abstract is longer
         return bool(_NO_PAPER_RE.search(" ".join(inv)))
@@ -209,12 +216,23 @@ def resolve_venue(client: OpenAlex, text: str, years: tuple[int, int] = (2016, 2
         # fall through: maybe it is a one-word name ("Interspeech")
 
     sources = resolve_sources(client, text)
+    if is_acronym:
+        # A short token is not enough to identify a source by substring: "CHI"
+        # also matches Vietnamese journals and "ACL" matches Findings. Preserve
+        # exact one-word venue names such as "Interspeech 2022"; otherwise ask for
+        # the full conference name instead of confidently resolving another venue.
+        sources = [s for s in sources if _core_name(s["display_name"]) == _core_name(text)]
     if not sources:
         return None
     ids = [s_["id"].rsplit("/", 1)[-1] for s_ in sources[:OR_LIMIT]]
     total = sum(client.count_by_year(f"primary_location.source.id:{'|'.join(ids)}{yf}").values())
     page = client.get("works", {"filter": f"primary_location.source.id:{'|'.join(ids)}{yf}", "select": "doi", "per-page": 60, "sample": 60, "seed": 7})
-    prefixes: Counter[str] = Counter(p for p in (_prefix_of(w.get("doi")) for w in page.get("results", [])) if p)
+    # Only infer a prefix that the fetcher's DOI boundary rule actually accepts.
+    # ACL's 10.18653/v1/... must not become 10.18653/v (all ACL Anthology venues).
+    prefixes: Counter[str] = Counter(
+        p for w in page.get("results", [])
+        if (p := _prefix_of(w.get("doi"))) and doi_has_prefix(w.get("doi"), p)
+    )
     doi_prefixes: list[str] = []
     if prefixes:
         pfx, n = prefixes.most_common(1)[0]
@@ -283,6 +301,32 @@ def to_record(work: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def deduplicate_dois(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One record per DOI, preferring usable text/authors, then the higher citation count.
+
+    OpenAlex sometimes assigns multiple work IDs to the same DOI. Keep one complete
+    record rather than adding their counts together. DOI-less records stay separate;
+    matching titles alone is not sufficient evidence that two papers are identical.
+    """
+    kept: list[dict[str, Any]] = []
+    positions: dict[str, int] = {}
+
+    def quality(r):
+        return bool(r.get("abstract")), bool(r.get("authorships")), r.get("cited_by_count") or 0
+
+    for r in records:
+        doi = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", (r.get("doi") or "").strip().lower())
+        if doi and doi in positions:
+            i = positions[doi]
+            if quality(r) > quality(kept[i]):
+                kept[i] = r
+        else:
+            if doi:
+                positions[doi] = len(kept)
+            kept.append(r)
+    return kept
+
+
 def fetch_conference(
     client: OpenAlex,
     query: str,
@@ -322,8 +366,9 @@ def fetch_conference(
                 continue
             seen[work["id"]] = to_record(work)
         log(f"[works] +{len(seen) - n_before:>5} new  (filter: {f[:90]}{'...' if len(f) > 90 else ''})")
-    records = sorted(seen.values(), key=lambda r: (r["publication_year"] or 0, r["id"]))
-    log(f"[works] {len(records)} unique works total; {skipped} front-matter items skipped; {other_venue} other-venue DOIs ignored")
+    records = sorted(deduplicate_dois(list(seen.values())), key=lambda r: (r["publication_year"] or 0, r["id"]))
+    log(f"[works] {len(records)} unique works total; {skipped} front-matter items skipped; "
+        f"{other_venue} other-venue DOIs ignored; {len(seen) - len(records)} duplicate DOI records merged")
     resolve_roots(client, records, log=log)
     return records
 
@@ -385,7 +430,7 @@ def main(argv: list[str] | None = None) -> int:
         years=parse_years(args.years),
         log=lambda m: print(m, file=sys.stderr),
     )
-    write_jsonl(records, out)
+    write_jsonl(records, out, fetched_at=datetime.now(timezone.utc))
     print(f"[done] wrote {len(records)} records -> {out}", file=sys.stderr)
     print()
     print(coverage_table(records, parse_years(args.years)))

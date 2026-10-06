@@ -133,3 +133,49 @@ def test_common_phrases_are_hidden_from_rankings():
     # only two other fields -> not common
     table["terms"]["high performance"].pop("thermal")
     assert not compute_trends(recs, text="title", n_min=2, n_max=2, min_total=1, field="packaging", background=table).common
+
+
+def test_cross_field_technology_is_not_boilerplate():
+    terms = ["deep learning", "neural networks", "reinforcement learning", "energy consumption",
+             "real time", "end to end", "high performance computing", "high performance"]
+    table = {"min_fields": 3, "terms": {
+        term: {"devices": .08, "circuits": .06, "thermal": .09} for term in terms}}
+    records = [_rec(2020, term) for term in terms] * 2
+    kt = compute_trends(records, n_min=2, n_max=3, background=table)
+    assert set(kt.common) == {"high performance"}
+    assert set(terms[:-1]) <= set(kt.candidates())
+    unfiltered = compute_trends(records, n_min=2, n_max=3, background=None)
+    assert kt.doc_freq == unfiltered.doc_freq  # filtering changes eligibility, never counts
+    assert kt.momentum("deep learning") == unfiltered.momentum("deep learning")
+    kt.keep_common = True
+    assert "high performance" in kt.candidates()
+
+
+def test_local_acronym_meaning_overrides_corpus_majority():
+    # Both meanings occur in the S&P audit. A minority definition must not be
+    # silently turned into the majority meaning by the corpus-wide map.
+    records = [_rec(2020, "x", "A man in the middle (MITM) attack. MITM attacks persist.")] * 5
+    records += [_rec(2021, "x", "A meet in the middle (MITM) attack. MITM attacks persist.")]
+    kt = compute_trends(records, n_min=1, n_max=4, min_total=1, background=None)
+    assert kt.acronyms.defs["mitm"][1] == ["man", "in", "the", "middle"]
+    assert kt.doc_freq["man in the middle"] == {2020: 5}
+    assert kt.doc_freq["meet in the middle"] == {2021: 1}
+
+
+def test_paper_lookup_uses_the_counting_normalization_options():
+    from paper_trends.keywords import papers_with
+    from paper_trends.text import load_stopwords
+
+    definitions = [_rec(2020, "Interconnect fabrication",
+                        "Redistribution layer (RDL) is added. RDL thickness matters.")] * 3
+    literal = [_rec(2021, "Layer uniformity")] * 2
+    records = definitions + literal
+    kt = compute_trends(records, n_min=1, n_max=1, background=None)
+    assert kt.total("layer") == 2
+    assert papers_with(records, "layer", n_max=1) == literal
+
+    records = definitions + [_rec(2021, "Redistribution layer uniformity")] * 2
+    stop = load_stopwords(["rdl"])
+    kt = compute_trends(records, n_min=2, n_max=3, stopwords=stop, background=None)
+    assert kt.total("redistribution layer") == 2
+    assert len(papers_with(records, "redistribution layer", stopwords=stop)) == 2

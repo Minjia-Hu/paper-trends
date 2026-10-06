@@ -8,11 +8,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader
 
-from ..store import parse_years, read_jsonl
+from ..store import parse_years, read_jsonl, read_provenance
 from . import charts
 from .build import build_report
+from ..i18n import language, tr, report_copy, chart_labels
 
 HERE = Path(__file__).parent
 TAGLINE = "Publication trends for any academic conference"
@@ -25,6 +26,10 @@ GROUPS = [
     ("Computer vision", ["cvpr"]),
     ("Speech", ["interspeech"]),
     ("Robotics", ["icra"]),
+    ("Signal processing", ["icassp"]),
+    ("Biomedical engineering", ["embc"]),
+    ("Security", ["sp"]),
+    ("Communications", ["globecom"]),
 ]
 FULL = {
     "ectc": "Electronic Components and Technology Conference",
@@ -40,9 +45,14 @@ FULL = {
     "cvpr": "Conference on Computer Vision and Pattern Recognition",
     "interspeech": "Interspeech",
     "icra": "International Conference on Robotics and Automation",
+    "icassp": "International Conference on Acoustics, Speech and Signal Processing",
+    "embc": "Annual International Conference of the IEEE Engineering in Medicine and Biology Society",
+    "sp": "IEEE Symposium on Security and Privacy",
+    "globecom": "Global Communications Conference",
 }
 SHORT = {"ectc": "ECTC", "eptc": "EPTC", "icept": "ICEPT", "itherm": "ITherm", "irps": "IRPS", "eurosime": "EuroSimE", "iedm": "IEDM",
-         "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech", "icra": "ICRA"}
+         "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech", "icra": "ICRA",
+         "icassp": "ICASSP", "embc": "EMBC", "sp": "IEEE S&P", "globecom": "GLOBECOM"}
 
 
 def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
@@ -55,10 +65,11 @@ def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
             specs[f"fig-{kind}-{i}"] = charts.small_multiple(t["series"], years, ymax, charts.RED if kind == "rise" else charts.BLUE)
     if r["emerging"]:
         specs["fig-emerging"] = charts.emerging_heatmap(r["emerging"], years)
-    specs["fig-topics"] = charts.streamgraph(r["topic_rows"], [t["label"] for t in r["topics"]], years)
+    if r["topics"] and len(years) > 1:
+        specs["fig-topics"] = charts.streamgraph(r["topic_rows"], [t["label"] for t in r["topics"]], years)
     specs["fig-map"] = charts.world_map(r["country_map"], years=years if r.get("map_lines") else None)
-    specs["fig-inst"] = charts.ranked_bars(r["institutions"])
-    specs["fig-country"] = charts.ranked_bars(r["countries"])
+    specs["fig-inst"] = charts.ranked_bars(r["institutions"], show_change=len(years) > 1)
+    specs["fig-country"] = charts.ranked_bars(r["countries"], show_change=len(years) > 1)
     if r.get("inst_topic"):
         specs["fig-heat"] = charts.inst_topic_heatmap(r["inst_topic"], r["inst_topic_insts"], r["inst_topic_topics"])
     if r.get("inst_ranks"):
@@ -79,27 +90,29 @@ def nav_for(available: dict[str, dict]) -> list[tuple[str, list]]:
 
 
 def _env() -> Environment:
-    return Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=select_autoescape(["html"]))
+    return Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=True)
 
 
 def _css() -> str:
     return (HERE / "static" / "report.css").read_text(encoding="utf-8")
 
 
-def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False) -> str:
+def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False, lang: str = "en") -> str:
     """HTML for one report. `embedded=True` inlines the CSS (for a Streamlit iframe);
     `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`)."""
+    lang = language(lang)
     return _env().get_template("report.html.j2").render(
-        r=r, nav=nav or [], tagline=TAGLINE, specs_json=json.dumps(figure_specs(r)), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
+        r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), nav=nav or [], tagline=TAGLINE, specs=chart_labels(figure_specs(r), lang), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
         embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
-        entities_json=json.dumps(r.get("entities") or None, ensure_ascii=False).replace("</", "<\\/"),
-        map_lines_json=json.dumps(r.get("map_lines") or {}, ensure_ascii=False).replace("</", "<\\/"),
+        entities=r.get("entities"), map_lines=r.get("map_lines") or {},
         entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
+        explorer_js=(HERE / "static" / "explorer.js").read_text(encoding="utf-8"),
     )
 
 
-def render_index(nav_full: list, *, embedded: bool = False, app_links: bool = False) -> str:
-    return _env().get_template("index.html.j2").render(nav=nav_full, tagline=TAGLINE, embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links)
+def render_index(nav_full: list, *, embedded: bool = False, app_links: bool = False, lang: str = "en") -> str:
+    lang = language(lang)
+    return _env().get_template("index.html.j2").render(nav=nav_full, lang=lang, _=lambda s: tr(s, lang), tagline=TAGLINE, embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links)
 
 
 def render_site(reports: list[dict[str, Any]], out: Path) -> None:
@@ -110,8 +123,10 @@ def render_site(reports: list[dict[str, Any]], out: Path) -> None:
     nav_short = [(g, [(s, short) for s, short, _, _ in items]) for g, items in nav_full]
     for r in reports:
         (out / f"{r['slug']}.html").write_text(render_page(r, nav_short), encoding="utf-8")
+        (out / f"{r['slug']}.zh.html").write_text(render_page(r, nav_short, lang="zh"), encoding="utf-8")
         (out / f"{r['slug']}.json").write_text(json.dumps({k: v for k, v in r.items() if k not in ("topic_rows", "entities")}, ensure_ascii=False), encoding="utf-8")
     (out / "index.html").write_text(render_index(nav_full), encoding="utf-8")
+    (out / "index.zh.html").write_text(render_index(nav_full, lang="zh"), encoding="utf-8")
     shutil.copy(HERE / "static" / "report.css", out / "report.css")
 
 
@@ -132,7 +147,12 @@ def main(argv: list[str] | None = None) -> int:
         slug = path.stem
         name = args.name[i] if i < len(args.name) else FULL.get(slug, slug.upper())
         print(f"[report] {slug}: analysing…", file=sys.stderr)
-        reports.append(build_report(read_jsonl(path), name=name, slug=slug, years=yrs, n_topics=args.n_topics))
+        try:
+            reports.append(build_report(read_jsonl(path), name=name, slug=slug, years=yrs, n_topics=args.n_topics,
+                                        provenance=read_provenance(path)))
+        except ValueError as exc:
+            print(f"[report] {slug}: {exc}", file=sys.stderr)
+            return 2
     render_site(reports, args.out)
     print(f"[report] wrote {len(reports)} page(s) + index.html -> {args.out}/", file=sys.stderr)
     return 0

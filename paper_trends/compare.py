@@ -12,7 +12,7 @@ from .text import STOPWORDS
 
 
 def trends_for(corpora: dict[str, list[Record]], **kwargs) -> dict[str, KeywordTrends]:
-    """Trends per corpus. Phrases common to many fields are kept here (unlike in a single
+    """Trends per corpus. Boilerplate phrases are kept here (unlike in a single
     conference's rankings): what venues share is exactly what a comparison is after."""
     from .background import field_of
 

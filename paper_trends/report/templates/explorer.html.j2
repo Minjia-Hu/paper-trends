@@ -1,0 +1,49 @@
+{% if entities and entities.get('explorer') and entities.explorer.get('terms') %}
+<section class="observatory" id="observatory" aria-labelledby="obs-heading">
+  <div class="obs-mast">
+    <div><p class="obs-eyebrow">{{ _('The field, in motion') }}</p><h2 id="obs-heading">{{ _('Follow a change.') }}<br><em>{{ _('Question the evidence.') }}</em></h2>
+    <p class="obs-intro">{{ _('Move through time. Change what counts. Read the papers behind the curve.') }}</p></div>
+    <div class="obs-period"><span>{{ _('YOUR TIME WINDOW') }}</span><strong id="obs-period">{{ r.years[0] }}—{{ r.years[-1] }}</strong><span id="obs-denominator"></span></div>
+  </div>
+  <div class="obs-timeline">
+    <div class="obs-transport"><button type="button" id="obs-play" aria-pressed="false">{{ _('▶ Play years') }}</button><button type="button" id="obs-reset">{{ _('Full period') }}</button></div>
+    <div class="obs-sliders">
+      <label for="obs-from">{{ _('From') }} <output id="obs-from-value"></output><input id="obs-from" type="range" step="1" aria-label="{{ _('First year of exploration window') }}"></label>
+      <label for="obs-to">{{ _('To') }} <output id="obs-to-value"></output><input id="obs-to" type="range" step="1" aria-label="{{ _('Last year of exploration window') }}"></label>
+    </div>
+  </div>
+  <div class="obs-workspace">
+    <div class="obs-focus">
+      <div class="obs-section-label">{{ _('01 / Follow a phrase') }}</div>
+      <label class="obs-select-label" for="obs-term">{{ _('Phrase to explore') }}</label><select id="obs-term">
+        {% for term in entities.explorer.terms %}<option value="{{ loop.index0 }}">{{ term.label }}</option>{% endfor %}
+      </select>
+      <div class="obs-reading"><strong id="obs-share">—</strong><div><span id="obs-matches"></span><small id="obs-change"></small></div></div>
+      <div id="obs-chart" role="img" aria-label="{{ _('Annual phrase shares under three counting rules') }}"></div>
+      <div class="obs-rule" role="group" aria-label="{{ _('Counting rule') }}">
+        <button type="button" data-rule="title" aria-pressed="false"><i class="obs-dot title"></i>{{ _('Title only') }}</button>
+        <button type="button" data-rule="topical" aria-pressed="true"><i class="obs-dot topical"></i>{{ _('Title or repeated') }}</button>
+        <button type="button" data-rule="any" aria-pressed="false"><i class="obs-dot any"></i>{{ _('Any mention') }}</button>
+      </div>
+      <p class="obs-caption" id="obs-rule-note"></p>
+      <p class="obs-caption" id="obs-coverage"></p>
+    </div>
+    <aside class="obs-pulse"><div class="obs-section-label">{{ _('02 / Explore the window') }}</div>
+      <h3>{{ _('In the conversation') }}</h3><p class="obs-caption">{{ _('Click a phrase to follow its trajectory.') }}</p>
+      <div id="obs-ranking"></div><p class="obs-caption" id="obs-shortlist"></p>
+    </aside>
+  </div>
+  <div class="obs-evidence">
+    <div class="obs-paper-column"><div class="obs-section-label">{{ _('03 / Read the evidence') }}</div>
+      <h3>{{ _('What do these papers actually say?') }}</h3><p class="obs-caption" id="obs-sample-note"></p>
+      <div id="obs-papers"></div><button type="button" id="obs-more" hidden>{{ _('Show more examples') }}</button>
+    </div>
+    <aside class="obs-context"><h3>{{ _('Who is working on this?') }}</h3><p class="obs-caption">{{ _('Matching papers in your window. A paper can credit multiple institutions.') }}</p><div id="obs-institutions"></div>
+      <h3>{{ _('Topics around this phrase') }}</h3><p class="obs-caption">{{ _('Dominant topics from the full-period model, counted within your window.') }}</p><div id="obs-topics"></div>
+    </aside>
+  </div>
+  <p class="obs-foot">{{ _('Title and repetition are clues, not topic labels. Repeated background mentions can still count. The report below keeps its full-period scope.') }}</p>
+  <noscript><p>{{ _('This explorer needs JavaScript. The full-period report is available below.') }}</p></noscript>
+</section>
+<div class="obs-divider"><span>{{ _('The full-period report') }}</span><span>{{ r.year_range[0] }}—{{ r.year_range[1] }}</span></div>
+{% endif %}

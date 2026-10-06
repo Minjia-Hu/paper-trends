@@ -71,6 +71,10 @@ def _doc_text(rec: Record) -> str:
 # ---- NMF ----------------------------------------------------------------------
 
 
+class InsufficientTopicData(ValueError):
+    """The selected papers do not contain enough usable text to fit topics."""
+
+
 def make_label(terms: list[str], n: int = 3) -> str:
     """Label from the top terms, preferring phrases: a single word is skipped when one of
     the top terms is a phrase containing it ('wafer', 'level' -> 'wafer level')."""
@@ -101,7 +105,7 @@ def compute_nmf(
     doc_idx = [i for i, r in enumerate(records) if r.get("publication_year") and (r.get("abstract") or r.get("title"))]
     docs = [records[i] for i in doc_idx]
     if len(docs) < 2:
-        raise ValueError("Need at least two papers with text to fit topics.")
+        raise InsufficientTopicData("Need at least two papers with text to fit topics.")
     texts = [_doc_text(r) for r in docs]
     # scale the pruning thresholds down for small corpora so the vocabulary never empties
     min_df = max(1, min(min_df, len(docs) // 50))
@@ -121,7 +125,10 @@ def compute_nmf(
     try:
         vec, X = vectorize(min_df, max_df)
     except ValueError:  # "After pruning, no terms remain" on tiny/homogeneous corpora
-        vec, X = vectorize(1, 1.0)
+        try:
+            vec, X = vectorize(1, 1.0)
+        except ValueError as exc:
+            raise InsufficientTopicData("No usable vocabulary remains after text filtering.") from exc
     n_topics = min(n_topics, X.shape[1])
     model = NMF(n_components=n_topics, init="nndsvda" if n_topics <= min(X.shape) else "random", random_state=seed, max_iter=400)
     W = model.fit_transform(X)  # docs x topics

@@ -32,15 +32,20 @@ class KeywordTrends:
     basis: str = "topical"
     # term -> year -> papers mentioning the term in any role (>= doc_freq)
     mention_freq: dict[str, dict[int, int]] = field(default_factory=dict)
-    # term -> other fields in which it is common; such terms are hidden from rankings
+    # Reviewed boilerplate -> other fields supporting its exclusion from rankings.
     common: dict[str, list[str]] = field(default_factory=dict)
     keep_common: bool = False
+    # Preserve the counting inputs for report drill-downs.
+    text_mode: str = "title+abstract"
+    n_min: int = 1
+    n_max: int = 3
+    stopwords: frozenset[str] = STOPWORDS
 
     def mentions(self, term: str) -> int:
         return sum(self.mention_freq.get(term, self.doc_freq[term]).values())
 
     def topical_share(self, term: str) -> float:
-        """Of the papers mentioning the term, how many are about it."""
+        """Share of mentioning papers with a title mention or repeated abstract mentions."""
         m = self.mentions(term)
         return self.total(term) / m if m else 0.0
 
@@ -212,16 +217,18 @@ def _pooled_share(kt: KeywordTrends, term: str, years: list[int]) -> float:
 
 
 def papers_with(records: list[Record], term: str, text: str = "title+abstract", topical_only: bool = True,
-                acronyms: Acronyms | None = None, n_max: int = 3) -> list[Record]:
+                acronyms: Acronyms | None = None, n_max: int = 3,
+                stopwords: frozenset[str] = STOPWORDS) -> list[Record]:
     """Papers counted for `term`, newest and most cited first. With `topical_only` (the
     default, matching the counts) a paper that mentions the phrase just once is left out.
     `acronyms` should be the map the counts were made with (`KeywordTrends.acronyms`); it
     is rebuilt from the records when not given."""
     if acronyms is None:
-        acronyms = corpus_acronyms(records, n_max)
+        acronyms = corpus_acronyms(records, n_max, stopwords)
     hits = []
     for r in records:
-        role = mention_role(r.get("title"), r.get("abstract") if text != "title" else None, term, acronyms)
+        role = mention_role(r.get("title"), r.get("abstract") if text != "title" else None, term, acronyms,
+                            n_max=n_max, stopwords=stopwords)
         if role and (role in TOPICAL_ROLES or not topical_only):
             hits.append(r)
     hits.sort(key=lambda r: (-(r.get("publication_year") or 0), -(r.get("cited_by_count") or 0)))
@@ -295,8 +302,8 @@ def compute_trends(
 ) -> KeywordTrends:
     """Per-year paper counts for every n-gram.
 
-    basis       "topical" counts a paper for a phrase only when the paper is about it (in the
-                title, or mentioned more than once); "any" counts every mention.
+    basis       "topical" counts a paper when the phrase is in its title or repeated in
+                its abstract; this is a relevance heuristic. "any" counts every mention.
     field       the corpus' own field (see background.FIELD_OF), left out when judging
                 whether a phrase is common across fields.
     background  the cross-field table; "default" loads the one shipped with the package,
@@ -333,6 +340,8 @@ def compute_trends(
     common = {}
     if table:
         for t in counted:
+            if t not in bg.BOILERPLATE:
+                continue
             fields = bg.common_fields(t, field, table)
             if len(fields) >= table.get("min_fields", bg.MIN_FIELDS):
                 common[t] = fields
@@ -348,6 +357,10 @@ def compute_trends(
         keep_common=keep_common,
         inside=inside,
         acronyms=acronyms,
+        text_mode=text,
+        n_min=n_min,
+        n_max=n_max,
+        stopwords=stopwords,
     )
 
 
@@ -413,8 +426,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--counts", action="store_true", help="show raw paper counts instead of share")
     p.add_argument("--keep-subphrases", action="store_true", help="do not hide terms that are mostly part of longer terms")
     p.add_argument("--count", choices=["topical", "any"], default="topical",
-                   help="topical (default): count a paper only when it is about the phrase; any: count every mention")
-    p.add_argument("--keep-common", action="store_true", help="do not hide phrases that are common to three or more other fields")
+                   help="topical (default): title mention or repeated abstract mentions; any: count every mention")
+    p.add_argument("--keep-common", action="store_true", help="include reviewed boilerplate phrases otherwise hidden using cross-field evidence")
     p.add_argument("--field", help="the conference's field, excluded from the cross-field check (default: from the file name)")
     p.add_argument("--csv", type=Path, help="also write the top terms table to CSV")
     args = p.parse_args(argv)
@@ -440,7 +453,7 @@ def main(argv: list[str] | None = None) -> int:
     top = [h[0] for h, _ in group_families([(t,) for t in kt.top_terms(args.top * 2)], args.top, kt.total)]
     print(f"{len(records)} papers, {kt.years[0]}-{kt.years[-1]}, text={args.text}, ngram={n_min}-{n_max}, count={kt.basis}")
     hidden = 0 if kt.keep_common else len(kt.common)
-    print(f"{hidden} phrases common to {bg.MIN_FIELDS}+ other fields hidden (--keep-common shows them)" if hidden else "")
+    print(f"{hidden} boilerplate phrases used in {bg.MIN_FIELDS}+ other fields hidden (--keep-common shows them)" if hidden else "")
     if kt.acronyms:
         print(f"{len(kt.acronyms.defs)} acronyms read as their long form (or the long form as the acronym: {', '.join(sorted(kt.acronyms.surface[a] for a in list(kt.acronyms.short)[:5]))}…)\n")
     print(render_top_table(kt, top, as_share=not args.counts, show=show))

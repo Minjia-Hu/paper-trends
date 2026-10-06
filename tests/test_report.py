@@ -1,5 +1,8 @@
 import json
 from pathlib import Path
+import re
+
+import pytest
 
 from paper_trends.report.build import build_report, growth_sentence
 from paper_trends.report.render import figure_specs, render_site
@@ -41,6 +44,17 @@ def test_build_and_render(tmp_path):
     html = (tmp_path / "test.html").read_text()
     assert "Test Conf" in html and "fig-topics" in html and "report.css" in html
     assert (tmp_path / "index.html").exists() and (tmp_path / "report.css").exists()
+
+
+def test_render_legacy_entities_without_explorer():
+    from paper_trends.report.render import render_page
+
+    report = build_report(_corpus(), name="Legacy Conf", slug="legacy", years=(2016, 2023), n_topics=2)
+    assert 'id="observatory"' in render_page(report, embedded=True)
+    del report["entities"]["explorer"]
+    html = render_page(report, embedded=True)
+    assert "Legacy Conf" in html and 'id="fig-papers"' in html
+    assert 'id="observatory"' not in html
 
 
 def test_coverage_note():
@@ -125,3 +139,111 @@ def test_rendered_page_carries_the_panel(tmp_path):
     assert "window.ENTITIES = {" in html and "ent-drawer" in html
     assert 'data-ent="term"' in html and 'data-ent="topic"' in html
     assert "openEntity" in html and "<\\/" not in html[:200]
+
+
+def test_report_escapes_markup_and_roundtrips_inline_json():
+    from html.parser import HTMLParser
+    from paper_trends.report.render import render_index, render_page
+
+    payload = '</script><script id="review-probe">alert(1)</script><img src=x onerror="alert(1)"> & "'
+    recs = _corpus()
+    recs[0]["title"] = payload
+    for rec in recs:
+        rec["authorships"][0]["institutions"][0]["root_name"] = payload
+    r = build_report(recs, name=payload, slug="test", n_topics=2)
+    html = render_page(r, embedded=True, app_links=True)
+
+    class Tags(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.tags = []
+        def handle_starttag(self, tag, attrs):
+            self.tags.append((tag, dict(attrs)))
+
+    parser = Tags()
+    parser.feed(html)
+    assert sum(tag == "script" for tag, _ in parser.tags) == 6  # three CDN scripts + three trusted inline scripts
+    assert not any(tag == "img" or "onerror" in attrs or attrs.get("id") == "review-probe" for tag, attrs in parser.tags)
+    assert '&lt;/script&gt;' in html
+    specs = json.loads(re.search(r"const specs = (.*?);\n", html).group(1))
+    assert specs["fig-inst"]["data"]["values"][0]["name"] == payload
+    entities = json.loads(re.search(r"window.ENTITIES = (.*?);\n", html).group(1))
+    assert entities["insts"][0]["name"] == payload
+    assert '.ent-drawer' in html and 'if (!E) return;' in html  # trusted CSS / JS remain executable
+    index = render_index([("More", [("test", "TEST", payload, 80)])], embedded=True)
+    assert payload not in index and '&lt;/script&gt;' in index
+    assert 'Data fetched: unknown' in html and 'report generated ' in html
+
+
+def test_panel_uses_the_same_title_only_counts_as_the_report():
+    records = [{
+        "id": f"W{i}", "publication_year": 2020 + i % 2,
+        "title": "hybrid bonding" if i < 5 else "acoustic sensing",
+        "abstract": "hybrid bonding improves hybrid bonding" if i in (5, 6, 7) else None,
+        "authorships": [{"institutions": [{"id": "I1", "name": "Lab", "country": "US"}]}],
+    } for i in range(10)]
+    r = build_report(records, name="Sparse abstracts", slug="test", n_topics=2)
+    assert r["text_mode"] == "title"
+    e = r["entities"]
+    term = next(t for t in e["terms"] if t["term"] == "hybrid bonding")
+    assert term["total"] == 5
+    assert term["insts"] == [[0, 5]]
+    assert all(e["papers"][i]["t"] == "hybrid bonding" for i in term["papers"])
+
+
+def test_report_distinguishes_fetch_time_generation_and_missing_years():
+    from paper_trends.report.render import render_page
+    provenance = {"fetched_at": "2020-01-02T03:04:00+00:00", "status": "verified"}
+    r = build_report(_corpus(), name="Test", slug="test", years=(2015, 2023), n_topics=2,
+                     provenance=provenance)
+    html = render_page(r)
+    assert "Data fetched: 2020-01-02 03:04 UTC" in html
+    assert f"report generated {r['generated']}" in html
+    assert "No cached records for 2015" in html and "No cached records</td>" in html
+    assert "Selected period: 2015–2023" in html
+    assert "completeness against the official proceedings" in html
+
+
+def test_all_displayed_phrases_get_panels_even_outside_top_terms(monkeypatch):
+    from paper_trends.report import build
+    from paper_trends.report.entities import build_entities
+
+    # Simulate a page whose selected risers/fallers fall below the panel's frequency cap.
+    def without_popular_terms(*args, **kwargs):
+        return build_entities(*args, n_terms=0, **kwargs)
+    monkeypatch.setattr(build, "build_entities", without_popular_terms)
+    r = build_report(_corpus(), name="Test", slug="test", n_topics=2)
+    displayed = {t for section in ("rising", "falling", "emerging") for row in r[section]
+                 for t in [row["term"], *row["variants"]]}
+    assert displayed and displayed <= set(r["entities"]["term_index"])
+
+
+@pytest.mark.parametrize("records", [[], [{"title": "Undated"}]])
+def test_empty_reports_explain_missing_data(records):
+    with pytest.raises(ValueError, match="No papers with a publication year"):
+        build_report(records, name="Empty", slug="empty")
+
+
+def test_empty_period_cli_returns_a_clear_error(tmp_path, capsys):
+    from paper_trends.report.render import main
+    from paper_trends.store import write_jsonl
+    corpus = tmp_path / "test.jsonl"
+    write_jsonl(_corpus(), corpus)
+    assert main([str(corpus), "--years", "2000-2001", "--out", str(tmp_path / "site")]) == 2
+    assert "No papers" in capsys.readouterr().err
+    assert not (tmp_path / "site").exists()
+
+
+@pytest.mark.parametrize("records", [
+    [{"publication_year": 2020, "title": "hybrid bonding"}],
+    [{"publication_year": 2020, "title": "the and of"}] * 3,
+    [{"publication_year": 2020, "title": "hybrid bonding"}] * 20,
+])
+def test_single_year_and_small_corpora_render_without_false_trends(records):
+    from paper_trends.report.render import render_page
+    r = build_report(records, name="Small", slug="small")
+    html = render_page(r)
+    assert not r["has_trends"] and not r["rising"] and not r["falling"] and not r["inst_ranks"]
+    assert "Only one year" in html and 'id="rising"' not in html
+    assert "2020–2019" not in html and "up from 0.0% to 0.0%" not in html
+    assert "fig-topics" not in figure_specs(r)

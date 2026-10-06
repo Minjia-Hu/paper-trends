@@ -165,13 +165,14 @@ def streamgraph(rows: list[dict], topics: list[str], years: list[int]) -> dict[s
     return spec
 
 
-def ranked_bars(rows: list[dict], value: str = "papers", highlight: int = 3) -> dict[str, Any]:
+def ranked_bars(rows: list[dict], value: str = "papers", highlight: int = 3, *, show_change: bool = True) -> dict[str, Any]:
     """Horizontal bars, top `highlight` in red, value and share-change labelled at the end."""
     data = []
     for i, r in enumerate(rows):
         d = r["delta"]
         arrow = "▲" if d > 0.002 else ("▼" if d < -0.002 else "•")
-        data.append({**r, "rank": i, "label": f"{r[value]:,}  {arrow} {abs(d):.1%}", "hi": i < highlight})
+        label = f"{r[value]:,}" + (f"  {arrow} {abs(d):.1%}" if show_change else "")
+        data.append({**r, "rank": i, "label": label, "hi": i < highlight})
     spec = _base(22 * len(rows) + 10, {"left": 4, "right": 110, "top": 4, "bottom": 4})
     spec["data"] = {"values": data}
     # explicit order: a field-based sort is dropped when Streamlit re-serialises the data
@@ -180,7 +181,7 @@ def ranked_bars(rows: list[dict], value: str = "papers", highlight: int = 3) -> 
     spec["layer"] = [
         {"mark": {"type": "bar", "height": 14, "cornerRadiusEnd": 2},
          "encoding": {"y": enc_y, "x": enc_x, "color": {"field": "hi", "type": "nominal", "scale": {"domain": [True, False], "range": [RED, GREY]}},
-                      "tooltip": [{"field": "name"}, {"field": "papers"}, {"field": "early", "format": ".1%", "title": "early share"}, {"field": "late", "format": ".1%", "title": "late share"}]}},
+                      "tooltip": [{"field": "name"}, {"field": "papers"}] + ([{"field": "early", "format": ".1%", "title": "early share"}, {"field": "late", "format": ".1%", "title": "late share"}] if show_change else [])}},
         {"mark": {"type": "text", "align": "left", "dx": 6, "fontSize": 12, "color": MUTED},
          "encoding": {"y": enc_y, "x": enc_x, "text": {"field": "label"}}},
     ]

@@ -92,6 +92,30 @@ def test_acronyms_expand_or_contract_consistently():
     assert mention_role("x", abstract, "RDL") == "repeated"
 
 
+def test_loss_is_not_a_plural_of_los():
+    from paper_trends.text import Acronyms, paper_tokens
+
+    definitions = {"los": ("LoS", ["line", "of", "sight"]),
+                   "rdl": ("RDL", ["redistribution", "layer"])}
+    for n_max in (1, 3):  # protect both contracted and expanded acronym paths
+        am = Acronyms(definitions, n_max=n_max)
+        title, abstract = paper_tokens("A loss function", "LoS links. RDLs connect chips.", am, n_max=n_max)
+        assert title == ["a", "loss", "function"]
+        assert "los" in abstract if n_max == 1 else abstract[:3] == ["line", "of", "sight"]
+        assert "rdl" in abstract if n_max == 1 else "redistribution" in abstract
+        assert am.apply(tokenize("line of sight loss"))[-1] == "loss"
+        assert am.apply(tokenize("line of sight (LoS)")) == (
+            ["los"] if n_max == 1 else ["line", "of", "sight"])
+        title, _ = paper_tokens("LoSs incur loss. Loss and LOSS functions.", None, am, n_max=n_max)
+        assert title.count("loss") == 3
+        assert title[0] == ("los" if n_max == 1 else "line")
+
+    from paper_trends.text import term_mentions
+    roles = term_mentions("Emergency infrastructure",
+                          "Movable base stations (MBS) connect devices. Multiple MBSs process data.", 2, 3)
+    assert roles["base stations"] == "repeated"
+
+
 def test_extension_pairs_tell_fragments_from_phrases():
     from paper_trends.text import extension_pairs, tokenize
 

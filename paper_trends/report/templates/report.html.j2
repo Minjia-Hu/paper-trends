@@ -1,52 +1,64 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ "zh-CN" if lang == "zh" else "en" }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ r.name }} · paper-trends</title>
 <meta name="description" content="How {{ r.name }} changed {{ r.year_range[0] }}–{{ r.year_range[1] }}: rising and fading topics, new vocabulary, who publishes. Built from OpenAlex.">
-{% if inline_css %}<style>{{ inline_css }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
+{% if inline_css %}<style>{{ inline_css|safe }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
 <script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
 </head>
 <body class="{{ 'embedded' if embedded else '' }}">
 {% if nav %}<nav class="masthead"><div class="row">
-  <a class="brand" href="{{ './' if app_links else 'index.html' }}"{{ ' target="_top"' if app_links else '' }}>paper-trends</a>
-  <span class="tagline">{{ tagline }}</span>
-  <a class="all" href="{{ './' if app_links else 'index.html' }}"{{ ' target="_top"' if app_links else '' }}>All conferences →</a>
+  <a class="brand" href="{{ '?lang=' ~ lang if app_links else ('index.zh.html' if lang == 'zh' else 'index.html') }}"{% if app_links %} target="_top"{% endif %}>paper-trends</a>
+  <span class="tagline">{{ _(tagline) }}</span>
+  <a class="all" href="{{ '?lang=' ~ lang if app_links else ('index.zh.html' if lang == 'zh' else 'index.html') }}"{% if app_links %} target="_top"{% endif %}>{{ _('All conferences →') }}</a>
 </div></nav>{% endif %}
+{% if not embedded %}<div class="page language-switch"><a href="{{ r.slug }}.zh.html" lang="zh-CN">中文</a> · <a href="{{ r.slug }}.html" lang="en">English</a></div>{% endif %}
 
 <main class="page{{ ' embedded' if embedded else '' }}">
 <header class="title">
-  <div class="kicker">Publication trends · {{ r.year_range[0] }}–{{ r.year_range[1] }}</div>
+  <div class="kicker">{{ _('Publication trends') }} · {{ r.year_range[0] }}–{{ r.year_range[1] }}</div>
   <h1>{{ r.name }}</h1>
   <div class="meta">
-    <span><b>{{ "{:,}".format(r.n_papers) }}</b> papers</span>
-    <span><b>{{ r.years|length }}</b> editions</span>
-    <span><b>{{ "%.0f"|format(r.abstract_coverage * 100) }}%</b> with abstracts</span>
-    <span>data from OpenAlex, fetched {{ r.generated }}</span>
+    <span><b>{{ "{:,}".format(r.n_papers) }}</b> {{ _('papers') }}</span>
+    <span><b>{{ r.years|length }}</b> {{ _('editions') }}</span>
+    <span><b>{{ "%.0f"|format(r.abstract_coverage * 100) }}%</b> {{ _('with abstracts') }}</span>
+    <span>{{ _('data from OpenAlex · report generated') }} {{ r.generated }}</span>
+    <span>{{ r.data_fetched_label }}</span>
   </div>
 </header>
+<p class="source">{{ r.data_coverage.selection }} {{ r.data_coverage.caveat }}</p>
+{% if r.data_coverage.exclusions %}
+<details><summary>{{ _('Why some years are not used by default') }}</summary>
+  <ul>{% for row in r.data_coverage.exclusions %}<li>{{ row.message }}</li>{% endfor %}</ul>
+  <p>{{ _('Explicit year selections can include these editions; their counts may be incomplete.') }}</p>
+</details>
+{% endif %}
+{% for note in r.data_coverage.notices %}<p class="lede">{{ note }}</p>{% endfor %}
+{% for note in r.analysis_notes %}<p class="lede">{{ note }}</p>{% endfor %}
+{% include "explorer.html.j2" %}
 
 <section id="glance">
-  <h2>At a glance</h2>
+  <h2>{{ _('At a glance') }}</h2>
   <ul class="glance">{% for s in r.glance %}<li>{{ s }}</li>{% endfor %}</ul>
   <figure style="max-width: 520px; margin-top: 28px">
-    <figcaption><span class="headline">Papers per year</span><span class="sub">{{ r.growth_sentence[0]|upper }}{{ r.growth_sentence[1:] }}; abstract coverage {{ "%.0f"|format(r.abstract_coverage * 100) }}%{{ r.coverage_note }}.</span></figcaption>
+    <figcaption><span class="headline">{{ _('Papers per year') }}</span><span class="sub">{{ r.growth_sentence[0]|upper }}{{ r.growth_sentence[1:] }}{{ '；' if lang == 'zh' else '; ' }}{{ _('abstract coverage') }} {{ "%.0f"|format(r.abstract_coverage * 100) }}%{{ r.coverage_note }}{{ '。' if lang == 'zh' else '.' }}</span></figcaption>
     <div class="viz" id="fig-papers"></div>
   </figure>
 </section>
 
-<section id="rising">
-  <h2>What is rising</h2>
-  <p class="lede">Share of papers that are <em>about</em> the phrase: it is in the title or used more than once{{ " (titles only: OpenAlex lacks most abstracts for this venue)" if r.text_mode == "title" else "" }}; a single mention does not count. One phrase per family — variants such as “wafer hybrid bonding” are listed under it. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).</p>
+{% if r.has_trends %}<section id="rising">
+  <h2>{{ _('What is rising') }}</h2>
+  <p class="lede">{% if lang == 'zh' %}按符合以下规则的论文占比统计：{{ '关键词出现在标题中（该会议摘要较少）' if r.text_mode == 'title' else '关键词出现在标题中，或在摘要中至少出现两次' }}。每组相关词形展示一个代表词，其他变体列于下方。按前半时段（{{ r.year_range[0] }}–{{ r.split_year - 1 }}）到后半时段（{{ r.split_year }}–{{ r.year_range[1] }}）的占比增幅排名。{% else %}Share of papers matching the counting rule: {{ "the phrase appears in the title (abstracts are sparse for this venue)" if r.text_mode == "title" else "the phrase appears in the title or more than once in the abstract" }}. One phrase per family — variants such as “wafer hybrid bonding” are listed under it. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).{% endif %}</p>
   <div class="grid">
   {% for t in r.rising %}
     <figure>
       <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="up">{{ "%.1f"|format(t.late*100) }}%</span></p>
-      {% if t.variants %}<p class="variants">also {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+      {% if t.variants %}<p class="variants">{{ _('also') }} {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
       <div class="viz" id="fig-rise-{{ loop.index }}"></div>
     </figure>
   {% endfor %}
@@ -55,14 +67,14 @@
 </section>
 
 <section id="fading">
-  <h2>What is fading</h2>
-  <p class="lede">The same measure for the phrases losing the most share. A fading phrase is often a technique that became standard and stopped being worth mentioning. Click any phrase, institution or topic on this page to see who writes about it, what it travels with and the papers behind it.</p>
+  <h2>{{ _('What is fading') }}</h2>
+  <p class="lede">{{ _('The same measure for the phrases losing the most share. A falling share measures a change in vocabulary, not necessarily a decline in the technique’s use. Click any phrase, institution or topic on this page to see who writes about it, what it travels with and the papers behind it.') }}</p>
   <div class="grid">
   {% for t in r.falling %}
     <figure class="fading">
       <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="down">{{ "%.1f"|format(t.late*100) }}%</span></p>
-      {% if t.variants %}<p class="variants">also {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+      {% if t.variants %}<p class="variants">{{ _('also') }} {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
       <div class="viz" id="fig-fall-{{ loop.index }}"></div>
     </figure>
   {% endfor %}
@@ -70,41 +82,42 @@
   <p class="source">OpenAlex · paper-trends</p>
 </section>
 
-<section id="vocabulary">
-  <h2>New vocabulary</h2>
-  <p class="lede">Phrases that were almost absent before {{ r.split_year }} and now appear in at least one paper in a hundred. ✚ marks the first year a phrase shows up.</p>
+{% if r.emerging %}<section id="vocabulary">
+  <h2>{{ _('New vocabulary') }}</h2>
+  <p class="lede">{% if lang == 'zh' %}这些词在 {{ r.split_year }} 年前几乎未出现，后半时段的论文占比达到至少 1%。✚ 标记首次出现的年份。{% else %}Phrases that were almost absent before {{ r.split_year }} and now appear in at least one paper in a hundred. ✚ marks the first year a phrase shows up.{% endif %}</p>
   <figure style="max-width: 760px">
     <div class="viz" id="fig-emerging"></div>
     <p class="source">OpenAlex · paper-trends</p>
   </figure>
-</section>
+</section>{% endif %}
+{% endif %}
 
-<section id="topics">
-  <h2>How the field's topics shifted</h2>
+{% if r.topics %}<section id="topics">
+  <h2>{{ _("How the field's topics shifted") if r.has_trends else _("Topics in the selected year") }}</h2>
   <p class="lede">{{ r.topic_sentence }}</p>
-  <figure class="wide">
-    <figcaption><span class="headline">Share of papers by dominant topic</span><span class="sub">Topics fitted with NMF on titles and abstracts; each paper assigned to its strongest topic. Smaller topics folded into “Other”.</span></figcaption>
+  {% if r.has_trends %}<figure class="wide">
+    <figcaption><span class="headline">{{ _('Share of papers by dominant topic') }}</span><span class="sub">{{ _('Topics fitted with NMF on titles and abstracts; each paper assigned to its strongest topic. Smaller topics folded into “Other”.') }}</span></figcaption>
     <div class="viz" id="fig-topics"></div>
     <p class="source">OpenAlex · paper-trends</p>
-  </figure>
+  </figure>{% endif %}
   <ul class="topic-list">
   {% for t in r.topics %}
-    <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><b class="ent" data-ent="topic" data-name="{{ t.label }}">{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} papers)</span></li>
+    <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><b class="ent" data-ent="topic" data-name="{{ t.label }}">{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} {{ _('papers') }})</span></li>
   {% endfor %}
   </ul>
-</section>
+</section>{% endif %}
 
 <section id="who">
-  <h2>Who publishes</h2>
-  <p class="lede">Papers with at least one author at the institution (a paper counts once per institution; subsidiaries and institutes are credited to their parent). The arrow is the change in share of papers between the two halves of the period.</p>
+  <h2>{{ _('Who publishes') }}</h2>
+  <p class="lede">{{ _('Papers with at least one author at the institution (a paper counts once per institution; subsidiaries and institutes are credited to their parent).') }}{% if r.has_trends %} {{ _('The arrow is the change in share of papers between the two halves of the period.') }}{% endif %}</p>
   <figure class="wide" style="margin-bottom: 36px">
-    <figcaption><span class="headline">Where the papers come from</span><span class="sub">Share of papers with at least one author in the country. Countries without a paper are left blank. Single years are three-year rolling shares, so the picture moves rather than jumps.</span></figcaption>
+    <figcaption><span class="headline">{{ _('Where the papers come from') }}</span><span class="sub">{{ _('Share of papers with at least one author in the country. Countries without a paper are left blank.') }}{% if r.map_lines %} {{ _('Single years are three-year rolling shares, so the picture moves rather than jumps.') }}{% endif %}</span></figcaption>
     {% if r.map_lines %}
     <div class="map-ctl" id="map-ctl">
       <a href="#" data-year="0" class="on" id="map-all">{{ r.year_range[0] }}–{{ r.year_range[1] }}</a>
-      <input type="range" id="map-range" min="{{ r.year_range[0] }}" max="{{ r.year_range[1] }}" step="1" value="{{ r.year_range[0] }}" aria-label="Year">
+      <input type="range" id="map-range" min="{{ r.year_range[0] }}" max="{{ r.year_range[1] }}" step="1" value="{{ r.year_range[0] }}" aria-label="{{ _('Year') }}">
       <span class="map-year" id="map-year">{{ r.year_range[0] }}</span>
-      <a href="#" id="map-play">▶ Play</a>
+      <a href="#" id="map-play">{{ _('▶ Play') }}</a>
       <span class="map-line" id="map-line">{{ r.map_lines["0"] }}</span>
     </div>
     {% endif %}
@@ -112,25 +125,25 @@
   </figure>
   <div class="two">
     <figure>
-      <figcaption><span class="headline">Institutions</span></figcaption>
+      <figcaption><span class="headline">{{ _('Institutions') }}</span></figcaption>
       <div class="viz" id="fig-inst"></div>
     </figure>
     <figure>
-      <figcaption><span class="headline">Countries</span></figcaption>
+      <figcaption><span class="headline">{{ _('Countries') }}</span></figcaption>
       <div class="viz" id="fig-country"></div>
     </figure>
   </div>
   <p class="source">OpenAlex · paper-trends</p>
   {% if r.inst_ranks %}
   <figure class="wide" style="margin-top: 44px">
-    <figcaption><span class="headline">{{ r.inst_rank_sentence }}</span><span class="sub">Rank among the ten most prolific institutions, on a three-year rolling count of papers. Red lines climbed three places or more, blue lines slipped.</span></figcaption>
+    <figcaption><span class="headline">{{ r.inst_rank_sentence }}</span><span class="sub">{{ _('Rank among the ten most prolific institutions, on a three-year rolling count of papers. Red lines climbed three places or more, blue lines slipped.') }}</span></figcaption>
     <div class="viz" id="fig-bump"></div>
     <p class="source">OpenAlex · paper-trends</p>
   </figure>
   {% endif %}
   {% if r.inst_topic %}
   <figure class="wide" style="margin-top: 36px">
-    <figcaption><span class="headline">{{ r.inst_topic_sentence }}</span><span class="sub">Share of each institution's papers whose dominant topic is the column; each row sums to 100 %. Dark cells are specialities.</span></figcaption>
+    <figcaption><span class="headline">{{ r.inst_topic_sentence }}</span><span class="sub">{{ _("Share of each institution's papers whose dominant topic is the column; each row sums to 100 %. Dark cells are specialities.") }}</span></figcaption>
     <div class="viz" id="fig-heat"></div>
     <p class="source">OpenAlex · paper-trends</p>
   </figure>
@@ -138,22 +151,27 @@
 </section>
 
 <footer class="about" id="about">
-  <h2>About the data</h2>
-  <p>Metadata for every {{ r.name }} paper from {{ r.year_range[0] }} to {{ r.year_range[1] }} was pulled from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0). Front matter such as title pages and session overviews is removed. Phrases are word sequences taken from titles and abstracts; OpenAlex has no full text. A paper counts for a phrase when it is about it — the phrase is in its title or mentioned more than once — so a sentence like “with the rise of artificial intelligence…” does not make a paper an AI paper, and a method used once does not become its subject. Acronyms the corpus defines (“redistribution layer (RDL)”) are read as the same phrase. Fragments that almost always sit inside a longer phrase (“level packaging”) are folded into it, and the lists show one phrase per family. {% if r.n_common_hidden %}{{ r.n_common_hidden }} phrases that are common in three or more other fields ({{ r.common_examples|join(", ") }}…) are left out of the rankings, because they say little about this conference in particular. {% endif %}“Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
-  <p>Topics come from non-negative matrix factorisation of TF-IDF vectors with a fixed seed, so they are reproducible; labels are the topic's top terms. Institution names and parent relationships are OpenAlex's, which are good but not perfect.</p>
-  <details><summary>Coverage by year</summary>
-    <table><thead><tr><th>Year</th><th class="num">Papers</th><th class="num">With abstract</th></tr></thead><tbody>
-    {% for row in r.papers_per_year %}<tr><td>{{ row.year }}</td><td class="num">{{ row.papers }}</td><td class="num">{{ "%.0f"|format(row.abstracts / row.papers * 100) }}%</td></tr>{% endfor %}
+  <h2>{{ _('About the data') }}</h2>
+  {% if lang == 'zh' %}
+  <p>本报告使用 <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a>（CC0）收录的 {{ r.name }} 在 {{ r.year_range[0] }}–{{ r.year_range[1] }} 年的论文元数据，覆盖程度取决于其索引。已去除封面、会议议程等前置材料。关键词提取自标题和摘要，不涉及全文。{{ '由于收录的摘要较少，本报告关键词统计仅使用标题。' if r.text_mode == 'title' else '缩写归一化后，关键词出现在标题中，或在摘要中至少出现两次，即计入该论文。' }}{{ '标题中的提及只是相关性线索，并不一定代表论文的研究主题。' if r.text_mode == 'title' else '这种规则用于初步判断相关性，并不一定代表论文的研究主题；重复的背景或应用描述也可能被计入。' }}语料中明确定义的缩写（例如 redistribution layer / RDL）按同一词统计，几乎总是包含于长词中的片段会合并；每组词形展示一个代表词。{% if r.n_common_hidden %}已隐藏 {{ r.n_common_hidden }} 个经审核且出现在至少三个其他领域中的通用表达（{{ r.common_examples|join('、') }} 等），deep learning 等跨领域技术词仍参与排名。{% endif %}“上升”和“下降”比较前、后半时段分别汇总后的论文占比。论文标题、摘要、技术词及机构名称保留原文。</p>
+  {% else %}
+  <p>This report uses metadata for {{ r.name }} papers from {{ r.year_range[0] }} to {{ r.year_range[1] }} indexed by <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0); coverage depends on its indexing. Front matter such as title pages and session overviews is removed. Phrases are word sequences taken from titles and abstracts; OpenAlex has no full text. {{ 'This report counts title mentions only because abstracts are sparse.' if r.text_mode == 'title' else 'A paper counts when the phrase is in its title or appears more than once in its abstract after acronym normalization.' }} This is a relevance heuristic, not a topic label: repeated background or application mentions can still count. Acronyms the corpus defines (“redistribution layer (RDL)”) are read as the same phrase. Fragments that almost always sit inside a longer phrase (“level packaging”) are folded into it, and the lists show one phrase per family. {% if r.n_common_hidden %}{{ r.n_common_hidden }} phrases from a reviewed boilerplate list ({{ r.common_examples|join(", ") }}…) are left out of rankings when used in three or more other fields. Cross-field technical phrases, such as deep learning, remain eligible. {% endif %}“Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
+  {% endif %}
+  <p>{{ _("Topics come from non-negative matrix factorisation of TF-IDF vectors with a fixed seed, so they are reproducible; labels are the topic's top terms. Institution names and parent relationships are OpenAlex's, which are good but not perfect.") }}</p>
+  <details><summary>{{ _('Coverage by year') }}</summary>
+    <table><thead><tr><th>{{ _('Year') }}</th><th class="num">{{ _('Papers') }}</th><th class="num">{{ _('With abstract') }}</th></tr></thead><tbody>
+    {% for row in r.data_coverage.rows %}<tr><td>{{ row.year }}</td><td class="num">{{ row.papers if row.papers else _("No cached records") }}</td><td class="num">{{ "%.1f%%"|format(row.coverage * 100) if row.coverage is not none else "—" }}</td></tr>{% endfor %}
     </tbody></table>
   </details>
-  <p style="margin-top: 20px">Generated {{ r.generated }} by <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a>.</p>
+  <p style="margin-top: 20px">{% if lang == 'zh' %}由 <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a> 生成于 {{ r.generated }}。{% else %}Generated {{ r.generated }} by <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a>.{% endif %}</p>
 </footer>
 </main>
 
 <script>
-const specs = {{ specs_json }};
+const specs = {{ specs|tojson }};
 const opts = { actions: false, renderer: "svg" };
-window.ENTITIES = {{ entities_json }};
+window.REPORT_LANG = {{ lang|tojson }};
+window.ENTITIES = {{ entities|tojson }};
 window.VIEWS = {};
 const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts).then((res) => {
   window.VIEWS[id] = res.view;
@@ -169,12 +187,12 @@ const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec,
 (function () {
   const ctl = document.getElementById("map-ctl");
   if (!ctl) return;
-  const lines = {{ map_lines_json }};
+  const lines = {{ map_lines|tojson }};
   const range = document.getElementById("map-range"), all = document.getElementById("map-all"), play = document.getElementById("map-play");
   const yearEl = document.getElementById("map-year"), line = document.getElementById("map-line");
   const y0 = +range.min, y1 = +range.max;
   let timer = null;
-  function stop() { if (timer) { clearInterval(timer); timer = null; play.textContent = "▶ Play"; } }
+  function stop() { if (timer) { clearInterval(timer); timer = null; play.textContent = {{ _('▶ Play')|tojson }}; } }
   function set(y) {
     all.classList.toggle("on", y === 0); yearEl.classList.toggle("on", y !== 0);
     if (y) { range.value = y; yearEl.textContent = y; }
@@ -188,11 +206,12 @@ const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec,
     ev.preventDefault();
     if (timer) return stop();
     let y = all.classList.contains("on") || +range.value >= y1 ? y0 : +range.value + 1;
-    set(y); play.textContent = "❚❚ Pause";
+    set(y); play.textContent = {{ _('❚❚ Pause')|tojson }};
     timer = setInterval(() => { if (y >= y1) return stop(); set(++y); }, 900);
   });
 })();
 </script>
-<script>{{ entities_js }}</script>
+<script>{{ entities_js|safe }}</script>
+<script>{{ explorer_js|safe }}</script>
 </body>
 </html>

@@ -1,10 +1,12 @@
-"""Which phrases are common to many fields, so they say nothing about one conference?
+"""Cross-field frequency evidence for a conservative boilerplate filter.
 
 A small table of document frequencies per *field* (several venues pooled) ships with the
 package. A phrase is "common" for a conference when at least `MIN_FIELDS` other fields use
 it in >= `MIN_SHARE` of their papers: "high performance" reaches 1 % in devices, circuits,
 thermal and reliability; "hybrid bonding" in none. Same-field venues are pooled so that ECTC,
 EPTC and ICEPT do not vouch for each other's vocabulary being generic.
+Frequency alone does not imply boilerplate: technical phrases such as "deep learning"
+remain eligible. Only exact phrases in BOILERPLATE may be hidden by this evidence.
 
     paper-trends background data/*.jsonl        # rebuild paper_trends/resources/background.json
 """
@@ -29,6 +31,20 @@ MIN_FIELDS = 3       # ... and the phrase is common when this many other fields 
 STORE_SHARE = 0.005  # shares below this are not stored
 VENUE_CAP = 2500     # papers sampled per venue, so one large venue does not define its field
 
+# Explicit, reviewable phrases with little topical content on their own. This is a
+# conservative editorial heuristic, not a learned semantic classifier. Match the whole
+# phrase: "high performance computing" must not inherit "high performance"'s exclusion.
+# Technical properties (energy consumption, real time, high voltage, etc.) stay eligible.
+BOILERPLATE = frozenset({
+    "high performance", "better performance", "superior performance",
+    "excellent performance", "good performance", "improved performance",
+    "low cost", "cost effective", "high quality", "next generation",
+    "wide range", "wide variety", "large number", "great potential",
+    "promising candidate", "promising candidates", "recent years",
+    "significant improvement", "significant improvements",
+    "significantly improve", "significantly improves", "address this issue",
+})
+
 FIELD_OF = {
     "ectc": "packaging", "eptc": "packaging", "icept": "packaging",
     "itherm": "thermal", "eurosime": "thermal",
@@ -38,6 +54,10 @@ FIELD_OF = {
     "cvpr": "vision",
     "interspeech": "speech",
     "icra": "robotics",
+    "icassp": "signal_processing",
+    "embc": "biomedical_engineering",
+    "sp": "security",
+    "globecom": "communications",
 }
 
 

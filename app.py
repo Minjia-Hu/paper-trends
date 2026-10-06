@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import threading
+from datetime import date, datetime, timezone
+from html import escape
 from urllib.parse import urlencode
 from pathlib import Path
 
@@ -11,17 +13,19 @@ import pandas as pd
 import streamlit as st
 
 from paper_trends import compare, frames
+from paper_trends.i18n import language, tr, chart_labels, field_label
 from paper_trends.report import charts
 from paper_trends.background import MIN_FIELDS, field_of
+from paper_trends.coverage import coverage_details, default_period
 from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends, display_form, group_families, hyphen_forms, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report, country_map_rows, country_name, coverage_note, growth_sentence
 from paper_trends.report.render import FULL, SHORT, TAGLINE, nav_for, render_page
-from paper_trends.store import filter_years, read_jsonl, write_jsonl
+from paper_trends.store import filter_years, metadata_path, provenance_label, read_jsonl, read_provenance, write_jsonl
 from paper_trends.text import load_stopwords
-from paper_trends.topics import compute_nmf, compute_openalex
+from paper_trends.topics import InsufficientTopicData, compute_nmf, compute_openalex
 
 DATA_DIR = Path("data")
 PRESETS = {
@@ -72,10 +76,29 @@ PRESETS = {
     "Robotics · ICRA — International Conference on Robotics and Automation": {
         "query": "International Conference on Robotics and Automation", "doi_prefixes": ["10.1109/icra"], "slug": "icra",
     },
+    "Signal processing · ICASSP — International Conference on Acoustics, Speech and Signal Processing": {
+        "query": "International Conference on Acoustics Speech and Signal Processing", "doi_prefixes": ["10.1109/icassp"], "slug": "icassp",
+    },
+    "Biomedical engineering · EMBC — Engineering in Medicine and Biology Society": {
+        "query": "Annual International Conference of the IEEE Engineering in Medicine and Biology Society", "doi_prefixes": ["10.1109/embc"], "slug": "embc",
+    },
+    "Security · IEEE S&P — Symposium on Security and Privacy": {
+        "query": "Symposium on Security and Privacy", "doi_prefixes": ["10.1109/sp"], "slug": "sp", "aliases": ["S&P", "IEEE SP"],
+    },
+    "Communications · GLOBECOM — Global Communications Conference": {
+        "query": "Global Communications Conference", "doi_prefixes": ["10.1109/glocom", "10.1109/globecom"], "slug": "globecom",
+    },
 }
 FETCH_YEARS = (2016, 2026)
 
 st.set_page_config(page_title="paper-trends", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
+LANG = language(st.query_params.get("lang"), st.context.headers.get("Accept-Language", ""))
+
+
+def t(text: str, **values) -> str:
+    return tr(text, LANG, **values)
+
+
 st.markdown(
     """<style>
     @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
@@ -175,7 +198,12 @@ st.markdown(
     .pt-home h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; }
     .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 28px; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
     .pt-home h2 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
-    .pt-home .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 0 48px; max-width: 1120px; }
+    .pt-home .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 0 48px; max-width: 1120px; }
+    .pt-language { display: inline-flex; gap: 12px; white-space: nowrap; font-size: 13px; margin-left: auto; }
+    .pt-language a { color: #5C5C5C; text-decoration: none; padding: 5px 0; }
+    .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
+    .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
+    @media (max-width: 600px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } }
     .pt-home .group h2 { font-size: 24px; margin-top: 30px; }
     .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
@@ -192,24 +220,23 @@ st.markdown(
 
 def home_page(available: dict[str, dict]) -> str:
     parts = [
-        f'<div class="pt-home"><div class="kicker">{TAGLINE}</div>',
-        "<h1>What a field talks about, year by year</h1>",
-        '<p class="lede">Every paper of a conference from OpenAlex, read as rising and fading phrases, topic shifts and who publishes. '
-        "Type any conference into the search box, or open one of these.</p>",
+        f'<div class="pt-home" lang="{LANG}"><div class="kicker">{t(TAGLINE)}</div>',
+        f'<h1>{t("What a field talks about, year by year")}</h1>',
+        '<p class="lede">' + ('从 OpenAlex 收录的历年会议论文中，追踪关键词的起伏、主题的演进与发文版图。搜索一个会议，或从下方开始探索。' if LANG == 'zh' else 'Conference papers indexed by OpenAlex, read as rising and fading phrases, topic shifts and who publishes. Type any conference into the search box, or open one of these.') + '</p>',
         '<div class="groups">',
     ]
     for group, items in nav_for(available):
-        parts.append(f'<section class="group"><h2>{group}</h2><ul>')
+        parts.append(f'<section class="group"><h2>{t(group)}</h2><ul>')
         for slug_, short, name, n in items:
-            tail = f"{n:,} papers" if n else "not fetched yet — open to fetch"
-            parts.append(f'<li><a href="?conference={slug_}" target="_self"><em>{short}</em> — {name}</a><span class="n">{tail}</span></li>')
+            tail = f"{n:,} {t('papers')}" if n else ("尚未获取数据，点击获取" if LANG == 'zh' else "not fetched yet — open to fetch")
+            parts.append(f'<li><a href="?conference={escape(slug_)}&amp;lang={LANG}" target="_self"><em>{escape(short)}</em> — {escape(name)}</a><span class="n">{tail}</span></li>')
         parts.append("</ul></section>")
     parts.append("</div>")
-    parts.append(
+    parts.append('<h2>探索其他会议</h2><p>输入 OpenAlex 使用的会议英文名并按回车；若无法匹配，可在“选项”中添加 DOI 前缀。获取的数据会缓存，供后续使用。在会议页面切换到“探索”，可查看数据表、关键词对应论文，以及跨会议比较。</p></div>' if LANG == 'zh' else (
         "<h2>Your own conference</h2><p>Type any conference name in the search box above, as OpenAlex spells it, and press Enter; if the name "
         "does not match an OpenAlex source, add its DOI prefix under Options. Fetching takes a minute or two for most venues, and the data stays "
         "cached on this machine. On a conference page, switch the view to <b>Explore</b> for tables, the papers behind any term, and cross-conference comparison.</p></div>"
-    )
+    ))
     return "".join(parts)
 
 
@@ -217,8 +244,9 @@ def masthead(on_conference: bool) -> str:
     """Brand and tagline; on a conference page, a way back to the list. The conferences
     themselves live on the home page (the tool is for any venue, the presets are examples)."""
     # the home page says the tagline in its kicker, so the masthead carries it only elsewhere
-    rest = f'<span class="tagline">{TAGLINE}</span><a class="all" href="?" target="_self">All conferences →</a>' if on_conference else ""
-    return f'<nav class="pt-masthead"><a class="brand" href="?" target="_self">paper-trends</a>{rest}</nav>'
+    rest = f'<span class="tagline">{t(TAGLINE)}</span><a class="all" href="?lang={LANG}" target="_self">{t("All conferences →")}</a>' if on_conference else ""
+    languages = '<span class="pt-language" aria-label="Language / 语言">' + links_row([('中文', link(lang='zh'), LANG == 'zh'), ('English', link(lang='en'), LANG == 'en')]) + '</span>'
+    return f'<nav class="pt-masthead"><a class="brand" href="?lang={LANG}" target="_self">paper-trends</a>{rest}{languages}</nav>'
 
 # OpenAlex credentials: environment first, then Streamlit secrets (hosted demo).
 for _var in ("OPENALEX_MAILTO", "OPENALEX_API_KEY"):
@@ -273,10 +301,10 @@ def records_for(slug: str) -> list[dict] | None:
 def run_fetch(query: str, doi_prefixes: list[str], slug: str) -> None:
     lock = fetch_lock()
     if not lock.acquire(blocking=False):
-        st.warning("Another fetch is running on this server. Please retry in a minute.")
+        st.warning(t("Another fetch is running on this server. Please retry in a minute."))
         return
     try:
-        with st.status(f"Fetching “{query}” from OpenAlex…", expanded=True) as status:
+        with st.status(t("Fetching “{query}” from OpenAlex…", query=query), expanded=True) as status:
             lines: list[str] = []
             box = st.empty()
 
@@ -286,15 +314,15 @@ def run_fetch(query: str, doi_prefixes: list[str], slug: str) -> None:
 
             client = OpenAlex()
             records = fetch_conference(client, query, doi_prefix=doi_prefixes, years=FETCH_YEARS, log=log)
-            write_jsonl(records, corpus_path(slug))
-            status.update(label=f"Fetched {len(records)} papers → {corpus_path(slug)}", state="complete", expanded=False)
+            write_jsonl(records, corpus_path(slug), fetched_at=datetime.now(timezone.utc))
+            status.update(label=t("Fetched {count:,} papers → {path}", count=len(records), path=corpus_path(slug)), state="complete", expanded=False)
         st.code(coverage_table(records))
         load_records.clear()
         st.rerun()
     except OpenAlexError as e:
-        st.error(str(e))
+        st.error(t("Unable to fetch data from OpenAlex. Details: {error}", error=str(e)))
     except Exception as e:  # never dump a traceback (it would include request URLs) into the UI
-        st.error(f"Fetch failed: {type(e).__name__}. Check your network and try again in a minute.")
+        st.error(t("Fetch failed: {error}. Check your network and try again in a minute.", error=type(e).__name__))
     finally:
         lock.release()
 
@@ -302,9 +330,10 @@ def run_fetch(query: str, doi_prefixes: list[str], slug: str) -> None:
 # ---- cached analyses ---------------------------------------------------------------
 
 
-@st.cache_data(show_spinner="Counting keywords…")
+@st.cache_data(show_spinner=t("Counting keywords…"))
 def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, ngram: tuple[int, int], extra_stop: str,
                     basis: str = "topical", keep_common: bool = False):
+    """Count phrases with reviewed boilerplate and case-aware plurals (revision 5)."""
     recs = filter_years(load_records(path, mtime), years)
     stop = load_stopwords(extra_stop.split())
     return compute_trends(recs, text=text, n_min=ngram[0], n_max=ngram[1], stopwords=stop, basis=basis,
@@ -316,12 +345,15 @@ def cached_hyphen_forms(path: str, mtime: float, years: tuple[int, int], text: s
     return hyphen_forms(filter_years(load_records(path, mtime), years), text=text)
 
 
-@st.cache_data(show_spinner="Searching papers…")
-def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str, topical_only: bool = True, n_max: int = 3):
-    return papers_with(filter_years(load_records(path, mtime), years), term, text, topical_only=topical_only, n_max=n_max)
+@st.cache_data(show_spinner=t("Searching papers…"))
+def cached_papers_with(path: str, mtime: float, years: tuple[int, int], term: str, text: str, topical_only: bool = True,
+                       n_max: int = 3, extra_stop: str = ""):
+    """Match counting options and case-aware acronym plurals (revision 3)."""
+    return papers_with(filter_years(load_records(path, mtime), years), term, text, topical_only=topical_only,
+                       n_max=n_max, stopwords=load_stopwords(extra_stop.split()))
 
 
-@st.cache_data(show_spinner="Fitting topic model…")
+@st.cache_data(show_spinner=t("Fitting topic model…"))
 def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, n_topics: int, extra_stop: str):
     recs = filter_years(load_records(path, mtime), years)
     if method == "nmf":
@@ -329,22 +361,35 @@ def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, 
     return compute_openalex(recs, level="subfield" if method.endswith("subfield") else "topic")
 
 
-@st.cache_data(show_spinner="Looking the conference up in OpenAlex…", ttl=3600)
+@st.cache_data(show_spinner=t("Looking the conference up in OpenAlex…"), ttl=3600)
 def cached_resolve(text: str) -> dict | None:
+    """Use conservative short-name and DOI-prefix matching (resolver revision 2)."""
     try:
         return resolve_venue(OpenAlex(), text)
     except OpenAlexError as e:
         return {"error": str(e)}
 
 
-@st.cache_data(show_spinner="Writing the report…")
-def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str) -> str:
+@st.cache_data(show_spinner=t("Writing the report…"))
+def cached_report_data(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
+                       provenance: dict | None = None, default_span: int | None = None,
+                       calendar_year: int | None = None) -> dict:
+    """Share the same analysis between languages (report data revision 1)."""
     recs = load_records(path, mtime)
-    r = build_report(recs, name=name, slug=slug, years=years, stopwords=load_stopwords(extra_stop.split()))
-    return render_page(r, None, embedded=True, app_links=True)
+    return build_report(recs, name=name, slug=slug, years=years, stopwords=load_stopwords(extra_stop.split()),
+                     provenance=provenance, default_span=default_span)
 
 
-@st.cache_data(show_spinner="Ranking…")
+@st.cache_data(show_spinner=False)
+def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
+                       provenance: dict | None = None, default_span: int | None = None,
+                       calendar_year: int | None = None, lang: str = "en") -> str:
+    """Render a language-specific report without changing analysis (revision 12)."""
+    r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year)
+    return render_page(r, None, embedded=True, app_links=True, lang=lang)
+
+
+@st.cache_data(show_spinner=t("Ranking…"))
 def cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str, roll_up: bool = False):
     return compute_ranking(filter_years(load_records(path, mtime), years), entity, roll_up=roll_up)
 
@@ -353,15 +398,15 @@ def cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str,
 
 
 def vl(spec: dict, key: str | None = None) -> None:
-    st.vega_lite_chart(spec, width="stretch", theme=None, key=key)
+    st.vega_lite_chart(chart_labels(spec, LANG), width="stretch", theme=None, key=key)
 
 
 def source_line() -> None:
-    st.markdown('<p class="pt-source">Source: OpenAlex · paper-trends</p>', unsafe_allow_html=True)
+    st.markdown('<p class="pt-source">' + ('来源：' if LANG == 'zh' else 'Source: ') + 'OpenAlex · paper-trends</p>', unsafe_allow_html=True)
 
 
 def figure_head(title: str, sub: str | None = None) -> None:
-    st.markdown(f'<div class="pt-fig"><span class="headline">{title}</span>' + (f'<span class="sub">{sub}</span>' if sub else "") + "</div>", unsafe_allow_html=True)
+    st.markdown(f'<div class="pt-fig"><span class="headline">{escape(t(title))}</span>' + (f'<span class="sub">{escape(t(sub))}</span>' if sub else "") + "</div>", unsafe_allow_html=True)
 
 
 def small_multiples(items: list[dict], years: list[int], color: str, per_row: int = 4) -> None:
@@ -371,7 +416,7 @@ def small_multiples(items: list[dict], years: list[int], color: str, per_row: in
         cols = st.columns(per_row)
         for col, it in zip(cols, items[i : i + per_row]):
             with col:
-                st.markdown(f'<div class="pt-sm" style="border-top-color: {color}"><p class="term">{it["term"]}</p>'
+                st.markdown(f'<div class="pt-sm" style="border-top-color: {color}"><p class="term">{escape(it["term"])}</p>'
                             f'<p class="move">{it["early"]:.1%} → <span style="color: {color}; font-weight: 600">{it["late"]:.1%}</span></p></div>', unsafe_allow_html=True)
                 vl(charts.small_multiple(it["series"], years, ymax, color), key=f"sm-{color}-{it['term']}")
 
@@ -386,7 +431,7 @@ def ranking_rows(rk, keys: list[str], value: str = "papers") -> list[dict]:
 
 def html_table(df: pd.DataFrame, pct: list[str] | None = None, links: list[str] | None = None, max_rows: int | None = None, signed: list[str] | None = None) -> None:
     """A table in the report's style (hairline rows, small-caps header, tabular figures).
-    `pct` columns hold fractions and print as percentages; `signed` ones get a +/- sign;
+    `pct` columns hold fractions; signed changes print as percentage points;
     `links` columns hold URLs; numeric columns right-align."""
     import html as _html
 
@@ -394,14 +439,19 @@ def html_table(df: pd.DataFrame, pct: list[str] | None = None, links: list[str] 
     plain = {c for c in df.columns if any(w in str(c).lower() for w in ("year", "seen"))} | {c for c in df.columns if str(c).isdigit()}  # years: no thousands separator
     shown = df if max_rows is None else df.head(max_rows)
     numeric = {c for c in df.columns if c in pct or pd.api.types.is_numeric_dtype(df[c])}
-    head = "".join(f'<th class="{"num" if c in numeric else ""}">{_html.escape(str(c))}</th>' for c in df.columns)
+    head = "".join(f'<th class="{"num" if c in numeric else ""}">{_html.escape(field_label(str(c), LANG))}</th>' for c in df.columns)
     rows = []
     for _, r in shown.iterrows():
         cells = []
         for c in df.columns:
             v = r[c]
             if c in pct:
-                txt = ("" if pd.isna(v) else (f"{v:+.1%}" if c in signed else f"{v:.1%}"))
+                if pd.isna(v):
+                    txt = ""
+                elif c in signed:
+                    txt = f"{v * 100:+.1f}" + (" 个百分点" if LANG == "zh" else " pp")
+                else:
+                    txt = f"{v:.1%}"
             elif c in links and isinstance(v, str) and v:
                 txt = f'<a href="{_html.escape(v)}" target="_blank" rel="noopener">{_html.escape(v.replace("https://doi.org/", ""))}</a>'
             elif isinstance(v, float):
@@ -415,7 +465,8 @@ def html_table(df: pd.DataFrame, pct: list[str] | None = None, links: list[str] 
                 txt = _html.escape("" if v is None else str(v))
             cells.append(f'<td class="{"num" if c in numeric else ""}">{txt}</td>')
         rows.append("<tr>" + "".join(cells) + "</tr>")
-    more = f'<p class="pt-source">Showing {len(shown):,} of {len(df):,} rows.</p>' if max_rows is not None and len(df) > max_rows else ""
+    more_text = f'显示 {len(shown):,} / {len(df):,} 行。' if LANG == 'zh' else f'Showing {len(shown):,} of {len(df):,} rows.'
+    more = f'<p class="pt-source">{more_text}</p>' if max_rows is not None and len(df) > max_rows else ""
     st.markdown(f'<div class="pt-table-wrap"><table class="pt-table"><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>{more}', unsafe_allow_html=True)
 
 
@@ -442,13 +493,17 @@ masthead_slot = st.empty()  # filled after the search row is resolved, so a new 
 
 # search row: any conference in OpenAlex (the only Streamlit widget on the page)
 with st.container(key="controls_search"):
-    typed = st.text_input("Search", value=custom_q, placeholder="Any conference in OpenAlex — an acronym like DAC or ISCAS, or the name as OpenAlex spells it",
+    typed = st.text_input(t("Search"), value=custom_q, placeholder=t("Any conference in OpenAlex — an acronym like DAC or ISCAS, or the name as OpenAlex spells it"),
                           label_visibility="collapsed", key="search")
     if typed.strip() and typed.strip() != custom_q:
         # a new search replaces whatever was selected; update the URL in this run (no st.rerun —
         # a rerun issued right after changing query params can drop the URL update)
         st.query_params.clear()
-        shortcut = next((v["slug"] for k, v in PRESETS.items() if typed.strip().lower() in {v["slug"], k.split(" — ")[0].split("· ")[-1].lower(), v["query"].lower()}), None)
+        st.query_params["lang"] = LANG
+        shortcut = next((v["slug"] for k, v in PRESETS.items() if typed.strip().lower() in {
+            v["slug"], k.split(" — ")[0].split("· ")[-1].lower(), v["query"].lower(),
+            *(alias.lower() for alias in v.get("aliases", [])),
+        }), None)
         if shortcut:
             st.query_params["conference"] = shortcut
             wanted, custom_q, custom_prefix = shortcut, "", ""
@@ -465,6 +520,7 @@ show_options = st.query_params.get("options") == "1"
 def link(**changes: str | None) -> str:
     """Current URL with some query parameters changed; None removes one."""
     params = {k: v for k, v in st.query_params.to_dict().items()}
+    params["lang"] = LANG
     for k, v in changes.items():
         if v is None:
             params.pop(k, None)
@@ -475,7 +531,7 @@ def link(**changes: str | None) -> str:
 
 def links_row(items: list[tuple[str, str, bool]]) -> str:
     """items: (label, href, is_current)."""
-    return "".join(f'<a href="{h}" target="_self" class="{"current" if c else ""}">{l}</a>' for l, h, c in items)
+    return "".join(f'<a href="{escape(h)}" target="_self" class="{"current" if c else ""}">{escape(t(l))}</a>' for l, h, c in items)
 
 
 # options form (DOI prefix, stopwords, refresh) — shown only when asked for
@@ -484,16 +540,16 @@ doi_prefix_in = custom_prefix
 opt_refresh = False
 if show_options:
     with st.container(key="options_form"):
-        st.markdown('<div class="pt-options-head">Options <a href="' + link(options=None) + '" target="_self">close</a></div>', unsafe_allow_html=True)
+        st.markdown('<div class="pt-options-head">' + t('Options') + ' <a href="' + escape(link(options=None)) + '" target="_self">' + t('close') + '</a></div>', unsafe_allow_html=True)
         o1, o2 = st.columns([1, 1])
-        doi_prefix_in = o1.text_input("DOI prefix(es) for a custom conference, space-separated", value=custom_prefix, placeholder="10.1109/dac")
+        doi_prefix_in = o1.text_input(t("DOI prefix(es) for a custom conference, space-separated"), value=custom_prefix, placeholder="10.1109/dac")
         if doi_prefix_in.strip() != custom_prefix:
             st.query_params["prefix"] = doi_prefix_in.strip()
-        stop_in = o2.text_area("Extra stopwords, one per line", value=extra_stop, height=68, help="Words to ignore in keyword and topic analyses, e.g. your field's boilerplate.")
+        stop_in = o2.text_area(t("Extra stopwords, one per line"), value=extra_stop, height=68, help=t("Words to ignore in keyword and topic analyses, e.g. your field's boilerplate."))
         if stop_in != extra_stop:
             st.session_state["extra_stop_saved"] = stop_in
             extra_stop = stop_in
-        opt_refresh = st.button("Refresh data from OpenAlex", key="refresh_btn")
+        opt_refresh = st.button(t("Refresh data from OpenAlex"), key="refresh_btn")
 
 masthead_slot.markdown(masthead(bool(wanted or custom_q)), unsafe_allow_html=True)
 preset = next((v for v in PRESETS.values() if v["slug"] == wanted), None)
@@ -502,7 +558,7 @@ if preset:
 elif custom_q:
     resolved = cached_resolve(custom_q) or {}
     if "error" in resolved:
-        st.markdown(f'<div class="pt-note">{resolved["error"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="pt-note">{escape(t("Unable to look up this conference. Details: {error}", error=resolved["error"]))}</div>', unsafe_allow_html=True)
         resolved = {}
     query = resolved.get("name") or custom_q
     doi_prefixes = (doi_prefix_in or custom_prefix).split() or resolved.get("doi_prefixes", [])
@@ -518,69 +574,93 @@ if opt_refresh and slug:
 
 if not records:
     if slug and custom_q and not resolved:
-        st.markdown(f'<div class="pt-found"><div class="kicker">Not found</div><div class="name">{custom_q}</div>'
-                    f'<div class="meta">Nothing in OpenAlex matches this. Try the full name as OpenAlex spells it, or add the venue\'s DOI prefix under Options and fetch anyway.</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="pt-found"><div class="kicker">{t("Not found")}</div><div class="name">{escape(custom_q)}</div>'
+                    f'<div class="meta">{t("We could not identify this conference reliably. Try its full name, or add a known DOI prefix under Options.")}</div></div>', unsafe_allow_html=True)
         if doi_prefixes:
             with st.container(key="fetch_row"):
-                if st.button("Fetch by DOI prefix", key="fetch_prefix_btn"):
+                if st.button(t("Fetch by DOI prefix"), key="fetch_prefix_btn"):
                     run_fetch(query, doi_prefixes, slug)
     elif slug:
         if custom_q and resolved:
-            meta = f"About {resolved['n_papers']:,} papers since 2016" + (f" · DOI prefix {' '.join(resolved['doi_prefixes'])}" if resolved.get("doi_prefixes") else "") + " · not on this machine yet"
+            meta = t("About {count:,} papers since 2016", count=resolved['n_papers']) + ((" · DOI 前缀 " if LANG == 'zh' else " · DOI prefix ") + ' '.join(resolved['doi_prefixes']) if resolved.get("doi_prefixes") else "") + t(" · not on this machine yet")
             warn = ""
             if resolved.get("ambiguous"):
-                warn = '<div class="warn"><b>Shared prefix.</b> This DOI prefix is used by several venues: ' + "; ".join(f"{n} ({sh:.0%})" for n, sh in resolved["candidates"]) + ". The fetch will include all of them.</div>"
-            card = f'<div class="pt-found"><div class="kicker">Found in OpenAlex</div><div class="name">{resolved["name"]}</div><div class="meta">{meta}</div>{warn}</div>'
+                warn = '<div class="warn"><b>' + t("Shared prefix.") + '</b> ' + t("This DOI prefix is used by several venues: ") + "; ".join(f"{escape(n)} ({sh:.0%})" for n, sh in resolved["candidates"]) + t(". The fetch will include all of them.") + '</div>'
+            card = f'<div class="pt-found"><div class="kicker">{t("Found in OpenAlex")}</div><div class="name">{escape(resolved["name"])}</div><div class="meta">{escape(meta)}</div>{warn}</div>'
         else:
-            card = f'<div class="pt-found"><div class="kicker">Not fetched yet</div><div class="name">{query}</div><div class="meta">Not on this machine yet.</div></div>'
+            card = f'<div class="pt-found"><div class="kicker">{t("Not fetched yet")}</div><div class="name">{escape(query)}</div><div class="meta">{t("Not on this machine yet.")}</div></div>'
         st.markdown(card, unsafe_allow_html=True)
         with st.container(key="fetch_row"):
             b1, b2 = st.columns([1, 4])
-            if b1.button("Fetch from OpenAlex", key="fetch_btn"):
+            if b1.button(t("Fetch from OpenAlex"), key="fetch_btn"):
                 run_fetch(query, doi_prefixes, slug)
-            b2.markdown('<div style="font-family: IBM Plex Sans, system-ui, sans-serif; color: #8A877F; font-size: 13px; padding-top: 8px">One to fifteen minutes depending on the venue\'s size; the data is then cached on this machine.</div>', unsafe_allow_html=True)
+            b2.markdown('<div style="font-family: IBM Plex Sans, system-ui, sans-serif; color: #8A877F; font-size: 13px; padding-top: 8px">' + t("One to fifteen minutes depending on the venue's size; the data is then cached on this machine.") + '</div>', unsafe_allow_html=True)
     st.markdown(home_page(available), unsafe_allow_html=True)
     st.stop()
 
+@st.cache_data(show_spinner=False)
+def cached_provenance(path: str, mtime: float, metadata_mtime: int | None) -> dict:
+    return read_provenance(Path(path))
+
+
 # ---- controls row: period and view as links, not widgets ---------------------------
 all_years = sorted({r["publication_year"] for r in records if r.get("publication_year")})
-cov = frames.coverage_frame(records)
-good = cov[cov["coverage"] >= 0.5]["year"].tolist() or all_years
-last_good = good[-1]
+if not all_years:
+    st.info(t("No papers with a publication year are available in this corpus."))
+    st.stop()
+recommended = default_period(records)
+fallback = (all_years[0], all_years[-1])
 periods = {
-    "10": (f"Last 10 years", (max(good[0], last_good - 9), last_good)),
-    "5": ("Last 5 years", (max(good[0], last_good - 4), last_good)),
-    "all": (f"All {all_years[0]}–{all_years[-1]}", (all_years[0], all_years[-1])),
+    "10": ("Last 10 years", recommended or fallback),
+    "5": ("Last 5 years", default_period(records, 5) or fallback),
+    "all": (f"{'全部' if LANG == 'zh' else 'All'} {all_years[0]}–{all_years[-1]}", (all_years[0], all_years[-1])),
     "custom": ("Custom", None),
 }
 if period_key not in periods:
     period_key = "10"
 mode = "Explore" if view_key == "explore" else "Report"
 row = (
-    '<div class="pt-controls"><span class="lbl">Period</span>'
+    f'<div class="pt-controls"><span class="lbl">{t("Period")}</span>'
     + links_row([(lbl, link(period=k), k == period_key) for k, (lbl, _) in periods.items()])
-    + '<span class="lbl gap">View</span>'
+    + f'<span class="lbl gap">{t("View")}</span>'
     + links_row([("Report", link(view=None), mode == "Report"), ("Explore", link(view="explore"), mode == "Explore")])
     + '<span class="lbl gap"></span>' + links_row([("Options", link(options="1"), show_options)])
     + "</div>"
 )
 st.markdown(row, unsafe_allow_html=True)
-if period_key == "custom":
+if period_key == "custom" and len(all_years) > 1:
     with st.container(key="custom_period"):
-        years = st.slider("Years", all_years[0], all_years[-1], (all_years[0], all_years[-1]), label_visibility="collapsed")
+        years = st.slider(t("Years"), all_years[0], all_years[-1], (all_years[0], all_years[-1]), label_visibility="collapsed")
+elif period_key == "custom":
+    years = fallback
 else:
     years = periods[period_key][1]
-low = cov[(cov["year"] >= years[0]) & (cov["year"] <= years[1]) & (cov["coverage"] < 0.5)]["year"].tolist()
-if low:
-    st.markdown(f'<div class="pt-note">Abstracts are mostly missing for {", ".join(map(str, low))}; text analyses under-count those years.</div>', unsafe_allow_html=True)
-
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime
+meta_path = metadata_path(Path(path))
+provenance = cached_provenance(path, mtime, meta_path.stat().st_mtime_ns if meta_path.exists() else None)
+default_span = int(period_key) if period_key in {"10", "5"} else None
 recs = filter_years(records, years)
+if not recs:
+    st.info(t("No papers in the selected period. Choose another range."))
+    st.stop()
 cov_y = frames.coverage_frame(recs)
 
 if mode == "Report":
-    st.iframe(cached_report_html(path, mtime, years, query, slug, extra_stop), height="content")
+    st.iframe(cached_report_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
+                                date.today().year, LANG), height="content")
     st.stop()
+
+data_coverage = coverage_details(records, years, default_span=default_span)
+st.caption(t(provenance_label(provenance)))
+st.caption(t(data_coverage["selection"]))
+for message in data_coverage["notices"]:
+    st.caption(t(message))
+with st.expander(t("Data coverage and period details")):
+    st.caption(t(data_coverage["caveat"]))
+    for exclusion in data_coverage["exclusions"]:
+        st.write(t(exclusion["message"]))
+    st.dataframe(pd.DataFrame(data_coverage["rows"]), hide_index=True,
+                 column_config={c: field_label(c, LANG) for c in ("year", "papers", "abstracts", "coverage")})
 
 section = st.query_params.get("section", "overview")
 SECTIONS = [("overview", "Overview"), ("keywords", "Keywords"), ("topics", "Topics"), ("rankings", "Rankings"), ("compare", "Compare"), ("data", "Data")]
@@ -588,56 +668,61 @@ if section not in dict(SECTIONS):
     section = "overview"
 n_inst = len(cached_ranking(path, mtime, years, "institution").by_year)
 st.markdown(
-    f'<div class="pt-head"><div class="kicker">Explore · {years[0]}–{years[1]}</div><h1>{query}</h1>'
-    f'<div class="meta"><span><b>{len(recs):,}</b> papers</span><span><b>{years[1] - years[0] + 1}</b> editions</span>'
-    f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b> with abstracts</span><span><b>{n_inst:,}</b> institutions</span></div></div>'
+    f'<div class="pt-head"><div class="kicker">{t("Explore")} · {years[0]}–{years[1]}</div><h1>{escape(query)}</h1>'
+    f'<div class="meta"><span><b>{len(recs):,}</b> {t("papers")}</span><span><b>{years[1] - years[0] + 1}</b> {t("editions")}</span>'
+    f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b> {t("with abstracts")}</span><span><b>{n_inst:,}</b> {t("Institutions")}</span></div></div>'
     + '<div class="pt-controls pt-sections">' + links_row([(lbl, link(section=None if k == "overview" else k), k == section) for k, lbl in SECTIONS]) + "</div>",
     unsafe_allow_html=True,
 )
 
 
 def h2(text: str, lede: str | None = None) -> None:
-    st.markdown(f'<h2 class="pt-h2">{text}</h2>' + (f'<p class="pt-lede">{lede}</p>' if lede else ""), unsafe_allow_html=True)
+    st.markdown(f'<h2 class="pt-h2">{t(text)}</h2>' + (f'<p class="pt-lede">{t(lede)}</p>' if lede else ""), unsafe_allow_html=True)
 
 
 def note(text: str) -> None:
-    st.markdown(f'<p class="pt-lede">{text}</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="pt-lede">{t(text)}</p>', unsafe_allow_html=True)
 
 
 if section == "overview":
     rows_y = cov_y.to_dict("records")
     per_year = {r["year"]: r["papers"] for r in rows_y}
     with_abs = {r["year"]: r["abstracts"] for r in rows_y}
-    g = growth_sentence(per_year)
-    figure_head("Papers per year", f"{g[0].upper()}{g[1:]}; abstract coverage {cov_y['abstracts'].sum() / max(len(recs), 1):.0%}{coverage_note(per_year, with_abs)}.")
+    g = t(growth_sentence(per_year))
+    figure_head("Papers per year", t("{growth}; abstract coverage {coverage}{note}.", growth=g[0].upper() + g[1:],
+                                    coverage=f"{cov_y['abstracts'].sum() / max(len(recs), 1):.0%}", note=t(coverage_note(per_year, with_abs))))
     a, b = st.columns([1, 1])
     with a:
         vl(charts.trend_line(rows_y), key="ov-papers")
     rk_c = cached_ranking(path, mtime, years, "country")
     top_c = rk_c.top(12)
-    figure_head("Where the papers come from", f"Share of papers with at least one author in the country, {years[0]}–{years[1]}; countries without a paper are left blank")
+    figure_head("Where the papers come from", t("Share of papers with at least one author in the country, {start}–{end}; countries without a paper are left blank", start=years[0], end=years[1]))
     vl(charts.world_map(country_map_rows(rk_c, len(recs))), key="ov-map")
     a2, b2 = st.columns(2)
     with a2:
-        figure_head("Papers by country", "A paper counts once per country; the arrow is the change in share between the two halves of the period")
-        vl(charts.ranked_bars([{**r, "name": country_name(r["name"])} for r in ranking_rows(rk_c, top_c)]), key="ov-country")
+        figure_head("Papers by country", t("A paper counts once per country") + (t("; the arrow is the change in share between the two halves of the period") if len(cov_y) > 1 else ""))
+        vl(charts.ranked_bars([{**r, "name": country_name(r["name"])} for r in ranking_rows(rk_c, top_c)], show_change=len(cov_y) > 1), key="ov-country")
         source_line()
     with b2:
         figure_head("By year")
         html_table(frames.ranking_table(rk_c, top_c).assign(country=lambda d: d["country"].map(country_name)))
 
+if len(cov_y) < 2 and section in {"keywords", "compare"}:
+    st.info(t("Comparisons over time need at least two years. Open Data to see the papers in this period."))
+    st.stop()
+
 if section == "keywords":
     o1, o2, o3 = st.columns([1, 1, 2])
-    ngram = o1.selectbox("N-grams", ["1–3", "2–3", "1"], index=1)
-    text_mode = o2.selectbox("Text", ["title+abstract", "title"])
+    ngram = o1.selectbox(t("N-grams"), ["1–3", "2–3", "1"], index=1)
+    text_mode = o2.selectbox(t("Text"), ["title+abstract", "title"], format_func=t)
     ng = {"1–3": (1, 3), "2–3": (2, 3), "1": (1, 1)}[ngram]
     t1, t2 = st.columns([1, 1])
-    every = t1.toggle("Count every mention", value=False, help="Off (default): a paper counts only when it is about the phrase — it is in the title or mentioned more than once. On: a single mention anywhere counts, including 'with the rise of AI…' openings and methods used in passing.")
-    keep_common = t2.toggle("Include phrases common to other fields", value=False, help=f"Off (default): phrases used by {MIN_FIELDS} or more other fields (high performance, low cost, next generation…) are hidden because they say little about this conference.")
+    every = t1.toggle(t("Count every mention"), value=False, help=t("Off (default): a paper counts when the phrase is in its title or repeated in its abstract. This is a relevance heuristic; repeated background mentions can still count. On: any mention counts."))
+    keep_common = t2.toggle(t("Include boilerplate phrases"), value=False, help=t("Off (default): phrases on a reviewed boilerplate list (high performance, low cost, next generation…) are hidden when used by {fields} or more other fields. Cross-field technical phrases such as deep learning remain eligible.", fields=MIN_FIELDS))
     basis = "any" if every else "topical"
     kt = cached_keywords(path, mtime, years, text_mode, ng, extra_stop, basis, keep_common)
     if kt.common and not keep_common:
-        note(f"{len(kt.common)} phrases common to {MIN_FIELDS}+ other fields are hidden, e.g. " + ", ".join(sorted(kt.common, key=lambda t: -kt.mentions(t))[:6]) + ".")
+        note(t("{count} boilerplate phrases used in {fields}+ other fields are hidden, e.g. {examples}. Cross-field technical phrases remain eligible.", count=len(kt.common), fields=MIN_FIELDS, examples=", ".join(sorted(kt.common, key=lambda t: -kt.mentions(t))[:6])))
     forms = cached_hyphen_forms(path, mtime, years, text_mode)
     show = lambda t: display_form(t, forms, kt.acronyms.surface if kt.acronyms else None)  # noqa: E731
     rising_f = group_families(kt.rising(60, min_total=10), 15, kt.total)
@@ -645,16 +730,16 @@ if section == "keywords":
     rising = [h for h, _ in rising_f]
     falling = [h for h, _ in falling_f]
     default_terms = [t for t, *_ in rising[:5]]
-    terms = o3.multiselect("Plot terms", kt.top_terms(300), default=default_terms, format_func=show)
+    terms = o3.multiselect(t("Plot terms"), kt.top_terms(300), default=default_terms, format_func=show)
     if terms:
-        figure_head("Share of papers mentioning the phrase", f"{years[0]}–{years[1]}; the number at the end of each line is the latest year")
+        figure_head("Share of papers mentioning the phrase", t("{start}–{end}; the number at the end of each line is the latest year", start=years[0], end=years[1]))
         small_multiples([{"term": show(t), "early": kt.momentum(t)[0], "late": kt.momentum(t)[1], "series": [{"year": y, "share": kt.share(t, y), "papers": kt.doc_freq[t].get(y, 0)} for y in kt.years]} for t in terms], kt.years, charts.RED)
         source_line()
     r, f = st.columns(2)
-    r.markdown('<h2 class=\"pt-h2\">' + "Rising" + '</h2>', unsafe_allow_html=True)
+    r.markdown('<h2 class=\"pt-h2\">' + t("Rising") + '</h2>', unsafe_allow_html=True)
     with r:
         html_table(frames.movers_table(rising).assign(term=[show(t) for t, *_ in rising], also=[", ".join(show(x) for x in v) for _, v in rising_f]), pct=["early", "late", "delta"], signed=["delta"])
-    f.markdown('<h2 class=\"pt-h2\">' + "Falling" + '</h2>', unsafe_allow_html=True)
+    f.markdown('<h2 class=\"pt-h2\">' + t("Falling") + '</h2>', unsafe_allow_html=True)
     with f:
         html_table(frames.movers_table(falling).assign(term=[show(t) for t, *_ in falling], also=[", ".join(show(x) for x in v) for _, v in falling_f]), pct=["early", "late", "delta"], signed=["delta"])
     h2("Emerging")
@@ -663,10 +748,10 @@ if section == "keywords":
     note("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
     h2("Papers mentioning a term")
     pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
-    pick = st.selectbox("Term", pick_options, key="kw_pick", format_func=show) if pick_options else None
+    pick = st.selectbox(t("Term"), pick_options, key="kw_pick", format_func=show) if pick_options else None
     if pick:
-        hits = cached_papers_with(path, mtime, years, pick, text_mode, basis == "topical", ng[1])
-        note(f"{len(hits)} papers {'about' if basis == 'topical' else 'mentioning'} this phrase, newest and most cited first.")
+        hits = cached_papers_with(path, mtime, years, pick, text_mode, basis == "topical", ng[1], extra_stop)
+        note(t("{count:,} papers matching the selected counting rule, newest and most cited first.", count=len(hits)))
         html_table(pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits]), links=["doi"], max_rows=60)
     h2("Top terms by year")
     top = [h[0] for h, _ in group_families([(t,) for t in kt.top_terms(80)], 40, kt.total)]
@@ -675,41 +760,54 @@ if section == "keywords":
 
 if section == "topics":
     o1, o2 = st.columns([1, 1])
-    method = o1.selectbox("Method", ["nmf", "openalex", "openalex-subfield"], format_func=lambda m: {"nmf": "NMF on titles + abstracts", "openalex": "OpenAlex topic labels", "openalex-subfield": "OpenAlex subfields"}[m])
-    n_topics = o2.slider("Topics (NMF)", 6, 20, 10, disabled=method != "nmf")
-    tt = cached_topics(path, mtime, years, method, n_topics, extra_stop)
+    method = o1.selectbox(t("Method"), ["nmf", "openalex", "openalex-subfield"], format_func=lambda m: t({"nmf": "NMF on titles + abstracts", "openalex": "OpenAlex topic labels", "openalex-subfield": "OpenAlex subfields"}[m]))
+    n_topics = o2.slider(t("Topics (NMF)"), 6, 20, 10, disabled=method != "nmf")
+    try:
+        tt = cached_topics(path, mtime, years, method, n_topics, extra_stop)
+    except InsufficientTopicData as exc:
+        st.info(t(str(exc)))
+        st.stop()
     ordered = tt.ordered()
+    if not ordered:
+        st.info(t("No topic data is available for the selected papers."))
+        st.stop()
     topic_rows = [{"topic": t.label, "year": y, "share": tt.share(t.id, y)} for t in ordered for y in tt.years]
     figure_head("Share of papers by dominant topic", "Each paper assigned to its strongest topic; smaller topics folded into “Other”")
-    vl(charts.streamgraph(topic_rows, [t.label for t in ordered], tt.years), key="topics-stream")
+    if len(tt.years) > 1:
+        vl(charts.streamgraph(topic_rows, [t.label for t in ordered], tt.years), key="topics-stream")
     source_line()
     ttab = frames.topic_table(tt)
+    if len(tt.years) < 2:
+        ttab = ttab.drop(columns=["early", "late", "delta"], errors="ignore")
     html_table(ttab, pct=["early", "late", "delta"], signed=["delta"])
     if method == "nmf":
         note("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
 
 if section == "rankings":
     o1, o2, o3, o4 = st.columns([1, 1, 1, 1])
-    entity = o1.selectbox("Rank", ENTITIES, format_func=str.title)
-    sort_by = o2.selectbox("Sort by", ["papers", "citations"])
-    top_n = o3.slider("Show top", 10, 50, 20)
-    roll_up = o4.toggle("Roll up to parent institutions", value=True, disabled=entity != "institution",
-                        help="Credit the top-level parent from OpenAlex's lineage: A*STAR instead of IME, Chinese Academy of Sciences instead of its institutes.")
+    entity = o1.selectbox(t("Rank"), ENTITIES, format_func=lambda value: t(value) if LANG == 'zh' else value.title())
+    sort_by = o2.selectbox(t("Sort by"), ["papers", "citations"], format_func=lambda value: field_label(value, LANG))
+    top_n = o3.slider(t("Show top"), 10, 50, 20)
+    roll_up = o4.toggle(t("Roll up to parent institutions"), value=True, disabled=entity != "institution",
+                        help=t("Credit the top-level parent from OpenAlex's lineage: A*STAR instead of IME, Chinese Academy of Sciences instead of its institutes."))
     rk = cached_ranking(path, mtime, years, entity, roll_up and entity == "institution")
     keys = rk.top(top_n, by=sort_by)
     table = frames.ranking_table(rk, keys)
-    figure_head(f"Top {entity}s by {sort_by}", "Top three in red; the arrow is the change in share of papers between the two halves of the period")
+    figure_head(f"{t(entity)}排名 · 按{field_label(sort_by, LANG)}" if LANG == 'zh' else f"Top {entity}s by {sort_by}", "前三名标红；箭头表示前后半时段的论文占比变化" if LANG == 'zh' else "Top three in red; the arrow is the change in share of papers between the two halves of the period")
     rows_r = ranking_rows(rk, keys)
     if entity == "country":
         rows_r = [{**r, "name": country_name(r["name"])} for r in rows_r]
-    vl(charts.ranked_bars(rows_r, value=sort_by), key=f"rank-{entity}-{sort_by}")
+    vl(charts.ranked_bars(rows_r, value=sort_by, show_change=len(cov_y) > 1), key=f"rank-{entity}-{sort_by}")
     source_line()
     html_table(table.assign(**({entity: table[entity].map(country_name)} if entity == "country" else {})))
+    if len(cov_y) < 2:
+        st.info(t("Changes in share need at least two years."))
+        st.stop()
     r, f = st.columns(2)
-    r.markdown('<h2 class=\"pt-h2\">' + "Gaining share" + '</h2>', unsafe_allow_html=True)
+    r.markdown('<h2 class=\"pt-h2\">' + t("Gaining share") + '</h2>', unsafe_allow_html=True)
     with r:
         html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=True)), pct=["early", "late", "delta"], signed=["delta"])
-    f.markdown('<h2 class=\"pt-h2\">' + "Losing share" + '</h2>', unsafe_allow_html=True)
+    f.markdown('<h2 class=\"pt-h2\">' + t("Losing share") + '</h2>', unsafe_allow_html=True)
     with f:
         html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=False)), pct=["early", "late", "delta"], signed=["delta"])
     note("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
@@ -717,10 +815,10 @@ if section == "rankings":
 if section == "compare":
     note("Same terms, other conferences. Only conferences already fetched on this server are listed.")
     local = {k: v for k, v in PRESETS.items() if v["slug"] != slug and corpus_path(v["slug"]).exists()}
-    others = st.multiselect("Compare with", list(local), default=list(local)[:2], format_func=lambda k: k.split(" — ")[0])
+    others = st.multiselect(t("Compare with"), list(local), default=list(local)[:2], format_func=lambda k: " · ".join(t(part) for part in k.split(" — ")[0].split(" · ")))
     kt_here = cached_keywords(path, mtime, years, "title+abstract", (2, 3), extra_stop, "topical", True)   # comparisons keep cross-field phrases
     default_terms = [t for t, *_ in kt_here.rising(4, min_total=10)]
-    cmp_terms = st.multiselect("Terms", kt_here.top_terms(300), default=default_terms, key="cmp_terms")
+    cmp_terms = st.multiselect(t("Terms"), kt_here.top_terms(300), default=default_terms, key="cmp_terms")
     if others and cmp_terms:
         trends = {SHORT.get(slug, query): kt_here}
         for k in others:
@@ -745,21 +843,21 @@ if section == "compare":
             html_table(pd.DataFrame([{"term": t, **{n: d for n, d in ds.items()}} for t, ds in common]), pct=names, signed=names)
             note("Terms whose share rose in every selected conference, ranked by their smallest gain.")
     elif not others:
-        st.info("Fetch another preset conference to enable comparison.")
+        st.info(t("Fetch another preset conference to enable comparison."))
 
 if section == "data":
     size_mb = corpus_path(slug).stat().st_size / 1e6
-    note(f'Corpus <span class="mono">{corpus_path(slug)}</span> ({size_mb:.0f} MB) — one JSON record per paper: title, abstract, authorships, citations, OpenAlex topics.')
+    note(t('Corpus {path} ({size:.0f} MB) — one JSON record per paper: title, abstract, authorships, citations, OpenAlex topics.', path=f'<span class="mono">{escape(str(corpus_path(slug)))}</span>', size=size_mb))
     # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
     d1, d2, d3, _ = st.columns([1, 1, 1, 2])
-    d1.download_button("Corpus (JSONL)", lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
+    d1.download_button(t("Corpus (JSONL)"), lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
     d2.download_button(
-        "Keyword table (CSV)",
+        t("Keyword table (CSV)"),
         lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract", (1, 3), extra_stop)),
         file_name=f"{slug}_keywords.csv", mime="text/csv", key="dl_keywords",
     )
     d3.download_button(
-        "Institution ranking (CSV)",
+        t("Institution ranking (CSV)"),
         lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution")),
         file_name=f"{slug}_institutions.csv", mime="text/csv", key="dl_institutions",
     )
@@ -767,4 +865,5 @@ if section == "data":
         [{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in recs]
     ).sort_values(["year", "citations"], ascending=[False, False])
     figure_head("All papers in the period", "Newest and most cited first; sortable, scrollable")
-    st.dataframe(listing, hide_index=True, width="stretch", height=420, column_config={"doi": st.column_config.LinkColumn("doi")})
+    st.dataframe(listing, hide_index=True, width="stretch", height=420,
+                 column_config={**{c: field_label(c, LANG) for c in ("year", "title", "citations")}, "doi": st.column_config.LinkColumn(t("doi"))})

@@ -9,11 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from ..background import field_of
+from ..coverage import coverage_details, default_period
 from ..keywords import KeywordTrends, compute_trends, display_form, group_families, hyphen_forms
 from ..rank import compute_ranking, entities_of
-from ..store import Record, filter_years
+from ..store import Record, filter_years, provenance_label
 from ..text import STOPWORDS
-from ..topics import compute_nmf
+from ..topics import InsufficientTopicData, TopicTrends, compute_nmf
 from .charts import TOPIC_COLORS
 from .entities import build_entities
 
@@ -142,7 +143,7 @@ def coverage_note(papers: dict[int, int], with_abs: dict[int, int]) -> str:
 def growth_sentence(papers: dict[int, int]) -> str:
     ys = sorted(papers)
     if len(ys) < 3:
-        return ""
+        return "fewer than three years are available; growth is not estimated"
     first = sum(papers[y] for y in ys[:2]) / 2
     last = sum(papers[y] for y in ys[-2:]) / 2
     n = ys[-1] - ys[0] - 1
@@ -155,8 +156,14 @@ def growth_sentence(papers: dict[int, int]) -> str:
 
 
 def build_report(records: list[Record], *, name: str, slug: str, years: tuple[int, int] | None = None,
-                 n_topics: int = 8, n_multiples: int = 8, stopwords: frozenset[str] = STOPWORDS) -> dict[str, Any]:
-    recs = filter_years(records, years)
+                 n_topics: int = 8, n_multiples: int = 8, stopwords: frozenset[str] = STOPWORDS,
+                 provenance: dict | None = None, default_span: int | None = None) -> dict[str, Any]:
+    if years is None:
+        default_span = default_span or 10
+        years = default_period(records, default_span)
+    recs = [r for r in filter_years(records, years) if r.get("publication_year")]
+    if not recs:
+        raise ValueError("No papers with a publication year in the selected period.")
     per_year: Counter[int] = Counter()
     with_abs: Counter[int] = Counter()
     for r in recs:
@@ -167,20 +174,32 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
                 with_abs[y] += 1
     ys = sorted(per_year)
     y0, y1 = ys[0], ys[-1]
+    data_coverage = coverage_details(records, years or (y0, y1), default_span=default_span)
+    has_trends = len(ys) >= 2
+    analysis_notes = []
+    if not has_trends:
+        analysis_notes.append("Only one year is available. Rising, fading and other comparisons over time need at least two years.")
+    suggested = default_period(records)
+    if y1 >= date.today().year or (suggested and y1 > suggested[1]):
+        analysis_notes.append("The latest selected editions may be incompletely indexed. Counts and trends for these years are provisional.")
 
     coverage = sum(with_abs.values()) / max(len(recs), 1)
     # Venues whose abstracts OpenAlex mostly lacks (Interspeech) are analysed on titles only,
     # otherwise the years with abstracts would dominate every share.
     text_mode = "title+abstract" if coverage >= 0.6 else "title"
     kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=stopwords, field=field_of(slug))
-    rising = _families(kt.rising(n_multiples * 4, min_total=10), n_multiples, kt)
-    falling = _families(kt.falling(n_multiples * 4, min_total=10), n_multiples, kt)
-    emerging = _families(kt.emerging(30, min_total=10), 10, kt)
+    rising = _families(kt.rising(n_multiples * 4, min_total=10), n_multiples, kt) if has_trends else []
+    falling = _families(kt.falling(n_multiples * 4, min_total=10), n_multiples, kt) if has_trends else []
+    emerging = _families(kt.emerging(30, min_total=10), 10, kt) if has_trends else []
     forms = hyphen_forms(recs, text=text_mode)
     surface = kt.acronyms.surface if kt.acronyms else {}
     show = lambda t: display_form(t, forms, surface)  # noqa: E731  display form only; counts stay keyed by the plain form
 
-    tt = compute_nmf(recs, n_topics=n_topics, stopwords=stopwords)
+    try:
+        tt = compute_nmf(recs, n_topics=n_topics, stopwords=stopwords)
+    except InsufficientTopicData as exc:
+        tt = TopicTrends(ys, dict(per_year), [], {}, "nmf")
+        analysis_notes.append(f"Topics are unavailable: {exc}")
     topics = tt.ordered()
     for t in topics:  # display forms for labels and term lists (counts are keyed by topic id)
         t.label = " / ".join(show(x) for x in t.label.split(" / "))
@@ -190,7 +209,6 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         for y in tt.years:
             topic_rows.append({"topic": t.label, "rank": rank, "year": y, "share": tt.share(t.id, y), "papers": tt.by_year[t.id].get(y, 0)})
     topic_moves = sorted(((t.label, *tt.momentum(t.id)) for t in topics), key=lambda x: x[3])
-    loser, gainer = topic_moves[0], topic_moves[-1]
 
     inst = compute_ranking(recs, "institution", roll_up=True)
     country = compute_ranking(recs, "country")
@@ -198,13 +216,12 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     country_top = country.top(12)
     inst_mov = {k: inst.momentum(k) for k in inst_top}
     country_mov = {k: country.momentum(k) for k in country_top}
-    inst_gainer = max(inst.movers(1, 10, rising=True), default=None)
-    country_gainer = max(country.movers(1, 10, rising=True), default=None)
+    inst_gainer = max(inst.movers(1, 10, rising=True), default=None) if has_trends else None
+    country_gainer = max(country.movers(1, 10, rising=True), default=None) if has_trends else None
 
     top_rise = rising[0][0] if rising else None
-    glance = [
-        f"{name} published {len(recs):,} papers between {y0} and {y1}, {growth_sentence(per_year)}.",
-    ]
+    period = f"between {y0} and {y1}" if has_trends else f"in {y0}"
+    glance = [f"OpenAlex contains {len(recs):,} papers for {name} {period}; {growth_sentence(per_year)}."]
     if top_rise:
         t, e, l, _ = top_rise
         glance.append(f"The fastest-growing phrase is “{show(t)}”, up from {_pct(e)} to {_pct(l)} of papers.")
@@ -220,10 +237,13 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
     if emerging:
         glance.append("New vocabulary: " + ", ".join(show(row[0]) for row, _ in emerging[:4]) + ".")
 
-    topic_sentence = (
-        f"“{gainer[0]}” grew from {_pct(gainer[1])} to {_pct(gainer[2])} of papers, "
-        f"while “{loser[0]}” fell from {_pct(loser[1])} to {_pct(loser[2])}."
-    )
+    topic_sentence = "Topic mix in the selected year; no comparison over time is available."
+    if topic_moves and has_trends:
+        loser, gainer = topic_moves[0], topic_moves[-1]
+        topic_sentence = (
+            f"“{gainer[0]}” grew from {_pct(gainer[1])} to {_pct(gainer[2])} of papers, "
+            f"while “{loser[0]}” fell from {_pct(loser[1])} to {_pct(loser[2])}."
+        )
 
     # institution × topic: who specialises, measured against the conference as a whole
     heat_keys = inst_top[:12]
@@ -240,7 +260,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
                 heat_sentence = f"No leading institution specialises much; the most focused is {focus['name']}, {detail}."
     # ranks over time among the leading institutions
     rank_keys = inst_top[:10]
-    rank_rows = inst_rank_rows(inst, rank_keys, ys)
+    rank_rows = inst_rank_rows(inst, rank_keys, ys) if has_trends else []
     rank_sentence = ""
     if rank_rows:
         ends = {r["name"]: r for r in rank_rows if r["year"] == y1}
@@ -254,11 +274,23 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         rank_sentence = ("; ".join(bits) + ".") if bits else "The order of the leading institutions barely changed."
 
     return {
-        "entities": build_entities(recs, kt, tt, inst, show),
+        "entities": build_entities(recs, kt, tt, inst, show, required_terms=[
+            term for row, variants in rising + falling + emerging for term in [row[0], *variants]
+        ], explore_terms=[
+            *[row[0] for row, _ in rising[:6]],
+            *[row[0] for row, _ in emerging[:4]],
+            *[row[0] for row, _ in falling[:4]],
+            *kt.top_terms(20),
+        ]),
         "name": name,
         "slug": slug,
         "years": ys,
         "year_range": [y0, y1],
+        "has_trends": has_trends,
+        "analysis_notes": analysis_notes,
+        "data_coverage": data_coverage,
+        "data_provenance": provenance or {"fetched_at": None, "status": "unrecorded"},
+        "data_fetched_label": provenance_label(provenance),
         "n_papers": len(recs),
         "abstract_coverage": coverage,
         "text_mode": text_mode,
@@ -287,7 +319,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "inst_ranks": rank_rows,
         "inst_rank_sentence": rank_sentence,
         "country_map": (country_map := country_map_rows(country, len(recs), ys)),
-        "map_lines": map_lines(country_map, ys),
+        "map_lines": map_lines(country_map, ys) if has_trends else {},
         "countries": [
             {"name": country_name(country.names[k]), "papers": country.total(k), "early": country_mov[k][0], "late": country_mov[k][1], "delta": country_mov[k][2]}
             for k in country_top

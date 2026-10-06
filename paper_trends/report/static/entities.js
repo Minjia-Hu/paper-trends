@@ -1,6 +1,7 @@
 // Detail panel: phrases, institutions and topics open a drawer whose contents are clickable
 // too. Data is window.ENTITIES (built by report/entities.py); no libraries needed.
 (function () {
+  const L = (en, zh) => window.REPORT_LANG === "zh" ? zh : en;
   const E = window.ENTITIES;
   if (!E) return;
   const YEARS = E.years, RED = "#E3120B", BLUE = "#1F4E79", INK = "#1B1B1B", GREY = "#B8B5AE";
@@ -10,8 +11,8 @@
   // ---- markup
   document.body.insertAdjacentHTML("beforeend",
     '<div class="ent-scrim" id="ent-scrim"></div>' +
-    '<aside class="ent-drawer" id="ent-drawer" aria-hidden="true"><div class="bar"><button type="button" id="ent-back">← back</button>' +
-    '<button type="button" id="ent-close">close ✕</button></div><div class="crumbs" id="ent-crumbs"></div><div id="ent-body"></div></aside>');
+    '<aside class="ent-drawer" id="ent-drawer" aria-hidden="true"><div class="bar"><button type="button" id="ent-back">' + L("← back", "← 返回") + '</button>' +
+    '<button type="button" id="ent-close">' + L("close ✕", "关闭 ✕") + '</button></div><div class="crumbs" id="ent-crumbs"></div><div id="ent-body"></div></aside>');
   const drawer = document.getElementById("ent-drawer"), scrim = document.getElementById("ent-scrim"), body = document.getElementById("ent-body"), crumbs = document.getElementById("ent-crumbs");
   let stack = [];
   const label = (e) => e.t === "term" ? E.terms[e.id].term : e.t === "inst" ? E.insts[e.id].name : E.topics[e.id].label;
@@ -39,34 +40,35 @@
   const topicLink = (id) => `<span class="ent" data-ent="topic" data-id="${id}"><span class="ent-dot" style="background:${E.topics[id].color}"></span>${esc(E.topics[id].label)}</span>`;
   const blk = (tag, html) => `<div class="ent-blk"><span class="ent-tag">${tag}</span>${html}</div>`;
   const paper = (i) => { const p = E.papers[i]; const link = p.d ? `<a href="https://doi.org/${esc(p.d)}" target="_blank" rel="noopener">${esc(p.t)}</a>` : esc(p.t);
-    return `<div class="ent-paper">${link}<small>${p.y} · cited ${p.c}${p.tp != null ? " · " + esc(E.topics[p.tp].label) : ""}</small></div>`; };
-  const trend = (e, l, d) => `${pct(e)} → <b style="color:${d >= 0 ? RED : BLUE}">${pct(l)}</b>`;
+    return `<div class="ent-paper">${link}<small>${p.y} · ${L(`cited ${p.c}`, `被引 ${p.c} 次`)}${p.tp != null ? " · " + esc(E.topics[p.tp].label) : ""}</small></div>`; };
+  const trend = (e, l, d, current) => YEARS.length < 2 ? pct(current) : `${pct(e)} → <b style="color:${d >= 0 ? RED : BLUE}">${pct(l)}</b>`;
 
   function renderTerm(id) {
     const t = E.terms[id];
-    return `<div class="ent-kicker">Phrase</div><h2>${esc(t.term)}</h2><p class="ent-meta">${t.total} papers about it · first seen ${t.first} · ${trend(t.early, t.late, t.delta)} of papers</p>`
+    return `<div class="ent-kicker">${L("Phrase", "关键词")}</div><h2>${esc(t.term)}</h2><p class="ent-meta">${L(`${t.total} matching papers · first seen ${t.first} · share`, `${t.total} 篇匹配论文 · 首次出现于 ${t.first} 年 · 占比`)} ${trend(t.early, t.late, t.delta, t.series[0].s)}</p>`
       + lineSvg(t.series, "s", t.delta >= 0 ? RED : BLUE, pct)
-      + blk("Who writes about it", t.insts.length ? bars(t.insts.map(([i, n]) => [instLink(i), n]), t.insts[0][1]) : '<span class="ent-meta">No institution data.</span>')
-      + blk("Topics it belongs to", t.topics.length ? bars(t.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), 1) : '<span class="ent-meta">—</span>')
-      + blk("Often appears together with", t.co.length ? t.co.map(([o, lift, n]) => termChip(o, `${n} papers · ${lift}×`)).join("") : '<span class="ent-meta">No strong co-occurrence.</span>')
-      + blk("Most cited papers", t.papers.map(paper).join(""));
+      + blk(L("Who writes about it", "匹配论文来自哪些机构"), t.insts.length ? bars(t.insts.map(([i, n]) => [instLink(i), n]), t.insts[0][1]) : '<span class="ent-meta">' + L("No institution data.", "暂无机构数据。") + '</span>')
+      + blk(L("Topics it belongs to", "相关研究主题"), t.topics.length ? bars(t.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), 1) : '<span class="ent-meta">—</span>')
+      + blk(L("Often appears together with", "常见共现词"), t.co.length ? t.co.map(([o, lift, n]) => termChip(o, `${n} ${L("papers", "篇论文")} · ${lift}×`)).join("") : '<span class="ent-meta">' + L("No strong co-occurrence.", "暂无明显共现关系。") + '</span>')
+      + blk(L("Most cited papers", "被引次数最多的论文"), t.papers.map(paper).join(""))
+      + (E.explorer?.terms.some(x => x.label === t.term) ? `<button type="button" class="obs-profile-link" data-obs-phrase="${esc(t.term)}">${L("Explore this phrase over time →", "探索这个关键词的历年变化 →")}</button>` : "");
   }
   function renderInst(id) {
     const i = E.insts[id];
-    return `<div class="ent-kicker">Institution</div><h2>${esc(i.name)}</h2><p class="ent-meta">${i.total} papers · share ${trend(i.early, i.late, i.delta)}</p>`
+    return `<div class="ent-kicker">${L("Institution", "机构")}</div><h2>${esc(i.name)}</h2><p class="ent-meta">${i.total} ${L("papers · share", "篇论文 · 占比")} ${trend(i.early, i.late, i.delta, i.series[0].s)}</p>`
       + lineSvg(i.series, "n", INK, (v) => v)
-      + blk("Signature phrases (over-represented here)", i.terms.length ? i.terms.map(([t, lift, n]) => termChip(t, `${n} papers · ${lift}×`)).join("") : '<span class="ent-meta">Too few papers for a clear signature.</span>')
-      + blk("Topic mix", i.topics.length ? bars(i.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), i.topics[0][1]) : '<span class="ent-meta">—</span>')
-      + blk("Publishes most often with", i.collab.length ? bars(i.collab.map(([j, n]) => [instLink(j), n]), i.collab[0][1]) : '<span class="ent-meta">No frequent partner among the leading institutions.</span>')
-      + blk("Most cited papers", i.papers.map(paper).join(""));
+      + blk(L("Signature phrases (over-represented here)", "特色关键词（相对更常出现）"), i.terms.length ? i.terms.map(([t, lift, n]) => termChip(t, `${n} ${L("papers", "篇论文")} · ${lift}×`)).join("") : '<span class="ent-meta">' + L("Too few papers for a clear signature.", "论文太少，暂无法识别特色词。") + '</span>')
+      + blk(L("Topic mix", "主题分布"), i.topics.length ? bars(i.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), i.topics[0][1]) : '<span class="ent-meta">—</span>')
+      + blk(L("Publishes most often with", "主要合作机构"), i.collab.length ? bars(i.collab.map(([j, n]) => [instLink(j), n]), i.collab[0][1]) : '<span class="ent-meta">' + L("No frequent partner among the leading institutions.", "在主要机构中暂无高频合作方。") + '</span>')
+      + blk(L("Most cited papers", "被引次数最多的论文"), i.papers.map(paper).join(""));
   }
   function renderTopic(id) {
     const t = E.topics[id];
-    return `<div class="ent-kicker">Topic</div><h2><span class="ent-dot big" style="background:${t.color}"></span>${esc(t.label)}</h2><p class="ent-meta">${t.total} papers · ${trend(t.early, t.late, t.delta)} of papers</p>`
+    return `<div class="ent-kicker">${L("Topic", "主题")}</div><h2><span class="ent-dot big" style="background:${t.color}"></span>${esc(t.label)}</h2><p class="ent-meta">${t.total} ${L("papers", "篇论文")} · ${trend(t.early, t.late, t.delta, t.series[0].s)} ${L("of papers", "占比")}</p>`
       + lineSvg(t.series, "s", t.color, pct)
-      + blk("Key phrases", t.key_terms.length ? t.key_terms.map((k) => termChip(k)).join("") : `<span class="ent-meta">${t.terms.map(esc).join(", ")}</span>`)
-      + blk("Main institutions", t.insts.length ? bars(t.insts.map(([i, n]) => [instLink(i), n]), t.insts[0][1]) : '<span class="ent-meta">—</span>')
-      + blk("Most cited papers", t.papers.map(paper).join(""));
+      + blk(L("Key phrases", "主要关键词"), t.key_terms.length ? t.key_terms.map((k) => termChip(k)).join("") : `<span class="ent-meta">${t.terms.map(esc).join(", ")}</span>`)
+      + blk(L("Main institutions", "主要机构"), t.insts.length ? bars(t.insts.map(([i, n]) => [instLink(i), n]), t.insts[0][1]) : '<span class="ent-meta">—</span>')
+      + blk(L("Most cited papers", "被引次数最多的论文"), t.papers.map(paper).join(""));
   }
   // Inside a content-sized Streamlit iframe "fixed" means the top of a very tall frame, so
   // the panel is placed next to the click instead (body.embedded is set by the template).
@@ -93,6 +95,8 @@
   window.openEntity = (t, nameOrId) => open(t, typeof nameOrId === "number" ? nameOrId : byName[t][nameOrId]);
 
   document.addEventListener("click", (ev) => {
+    const explore = ev.target.closest("[data-obs-phrase]");
+    if (explore) { close(); window.explorePhrase?.(explore.dataset.obsPhrase); return; }
     const el = ev.target.closest("[data-ent]");
     if (el) { const id = el.dataset.id != null ? +el.dataset.id : byName[el.dataset.ent][el.dataset.name]; open(el.dataset.ent, id); return; }
     const c = ev.target.closest("#ent-crumbs span");

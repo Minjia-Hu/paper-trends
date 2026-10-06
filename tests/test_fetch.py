@@ -1,6 +1,27 @@
 from paper_trends.fetch import is_front_matter
 
 
+def test_cli_records_only_successful_fetch_provenance(tmp_path, monkeypatch):
+    import pytest
+    from paper_trends import fetch
+    from paper_trends.store import read_jsonl, read_provenance, metadata_path
+
+    path = tmp_path / "test.jsonl"
+    records = [{"id": "W1", "title": "Hybrid bonding", "publication_year": 2020}]
+    monkeypatch.setattr(fetch, "OpenAlex", lambda: object())
+    monkeypatch.setattr(fetch, "fetch_conference", lambda *a, **kw: records)
+    assert fetch.main(["Test conference", "--out", str(path)]) == 0
+    assert read_jsonl(path) == records and read_provenance(path)["status"] == "verified"
+    original_metadata = metadata_path(path).read_bytes()
+
+    def failed(*args, **kwargs):
+        raise RuntimeError("network unavailable")
+    monkeypatch.setattr(fetch, "fetch_conference", failed)
+    with pytest.raises(RuntimeError):
+        fetch.main(["Test conference", "--out", str(path)])
+    assert read_jsonl(path) == records and metadata_path(path).read_bytes() == original_metadata
+
+
 def test_front_matter_detection():
     assert is_front_matter({"title": "Title Page iii"})
     assert is_front_matter({"title": "ECTC 2023 Program Committee"})
@@ -105,3 +126,81 @@ def test_resolve_venue_acronym_and_name():
     r = resolve_venue(Fake(), "Custom Integrated Circuits Conference")
     assert r["how"] == "name" and r["doi_prefixes"] == ["10.1109/cicc"] and r["slug"] == "cicc" and r["source_ids"] == ["https://openalex.org/S1"]
     assert resolve_venue(Fake(), "") is None
+
+
+def test_short_queries_do_not_resolve_substring_collisions():
+    from paper_trends.fetch import resolve_venue
+
+    class Fake:
+        def count_by_year(self, f):
+            assert "primary_location" not in f  # unrelated sources must never be fetched
+            return {}
+
+        def search_sources(self, q):
+            return [{"id": "S1", "display_name": "TAP CHI SINH HOC", "works_count": 5000},
+                    {"id": "S2", "display_name": "Findings of the Association for Computational Linguistics: ACL", "works_count": 600}]
+
+    assert resolve_venue(Fake(), "CHI") is None
+    assert resolve_venue(Fake(), "ACL") is None
+
+
+def test_textless_proceedings_catalog_entries_are_not_papers():
+    assert is_front_matter({"title": "Proceedings for the 41st IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP 2016)"})
+    assert is_front_matter({"title": "Acoustics, Speech and Signal Processing (ICASSP), 2017 IEEE International Conference on"})
+    assert not is_front_matter({"title": "Fast Projection onto the Mixed Norm Ball Using Steffensen Root Search"})
+    assert not is_front_matter({"title": "Proceedings Mining for Conference Recommendation", "abstract": "A study of recommendation methods"})
+
+
+def test_duplicate_dois_keep_one_informative_record_without_fuzzy_title_merging():
+    from paper_trends.fetch import deduplicate_dois
+    records = [
+        {"id": "W1", "doi": "https://doi.org/10.1109/ICASSP.2017.1", "title": "Graph learning", "cited_by_count": 8, "abstract": "Text"},
+        {"id": "W2", "doi": "http://dx.doi.org/10.1109/icassp.2017.1", "title": "Graph learning", "cited_by_count": 32, "abstract": "Text"},
+        {"id": "W3", "doi": None, "title": "Graph learning"},
+        {"id": "W4", "doi": None, "title": "Graph learning"},
+        {"id": "W5", "doi": "10.1109/icassp.2017.1", "cited_by_count": 100},
+        {"id": "W6", "doi": "10.1109/icassp.2017.2", "title": "Graph learning"},
+    ]
+    result = deduplicate_dois(records)
+    assert [r["id"] for r in result] == ["W2", "W3", "W4", "W6"]
+    assert result[0]["cited_by_count"] == 32
+
+
+def test_exact_one_word_venue_still_resolves():
+    from paper_trends.fetch import resolve_venue
+
+    class Fake:
+        def count_by_year(self, f):
+            return {2022: 100} if "primary_location" in f else {}
+
+        def search_sources(self, q):
+            return [{"id": "S1", "display_name": "Interspeech 2022", "works_count": 100},
+                    {"id": "S2", "display_name": "Interspeech Workshops 2022", "works_count": 50}]
+
+        def get(self, path, params):
+            return {"results": [{"doi": None}]}
+
+    result = resolve_venue(Fake(), "Interspeech")
+    assert result["source_ids"] == ["S1"]
+    assert result["name"] == "Interspeech"
+
+
+def test_slash_delimited_dois_do_not_inflate_a_venue_to_a_publisher_prefix():
+    from paper_trends.fetch import resolve_venue
+
+    name = "Annual Meeting of the Association for Computational Linguistics"
+
+    class Fake:
+        def count_by_year(self, f):
+            assert "doi_starts_with:10.18653/v" not in f
+            return {2022: 603} if "primary_location" in f else {}
+
+        def search_sources(self, q):
+            return [{"id": "S1", "display_name": f"Proceedings of the 60th {name}", "works_count": 603}]
+
+        def get(self, path, params):
+            return {"results": [{"doi": f"https://doi.org/10.18653/v1/2022.acl-long.{i}"} for i in range(60)]}
+
+    result = resolve_venue(Fake(), name)
+    assert result["source_ids"] == ["S1"] and result["doi_prefixes"] == []
+    assert result["n_papers"] == 603

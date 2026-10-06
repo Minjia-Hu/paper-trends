@@ -1,0 +1,976 @@
+{
+  "period": [
+    2016,
+    2025
+  ],
+  "method": "Screening counts, not clean venue totals or a recall/completeness estimate. Samples are stratified, up to 200 per nonempty disjoint DOI partition. Full-name source coverage can be incomplete.",
+  "venues": [
+    {
+      "slug": "icc",
+      "field": "Communications",
+      "name": "International Conference on Communications",
+      "checked_at": "2026-10-04T16:44:32.322530+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 10385,
+      "abstracts": 10312,
+      "abstract_coverage": 0.9929706307173808,
+      "by_year": {
+        "2016": 961,
+        "2017": 1172,
+        "2018": 971,
+        "2019": 1118,
+        "2020": 853,
+        "2021": 850,
+        "2022": 1050,
+        "2023": 1242,
+        "2024": 1029,
+        "2025": 1139
+      },
+      "abstracts_by_year": {
+        "2016": 957,
+        "2017": 1169,
+        "2018": 969,
+        "2019": 1107,
+        "2020": 848,
+        "2021": 843,
+        "2022": 1038,
+        "2023": 1232,
+        "2024": 1019,
+        "2025": 1130
+      },
+      "filters": [
+        "doi_starts_with:10.1109/icc.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icc9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/icc",
+          "sample_size": 805,
+          "sources": [
+            [
+              "International Conference on Communications",
+              469
+            ],
+            [
+              "ICC",
+              93
+            ],
+            [
+              "Eleventh Indian Control Conference",
+              74
+            ],
+            [
+              "Tenth Indian Control Conference",
+              63
+            ],
+            [
+              "Ninth Indian Control Conference",
+              59
+            ],
+            [
+              "",
+              12
+            ],
+            [
+              "Sixth Indian Control Conference",
+              10
+            ],
+            [
+              "Seventh Indian Control Conference",
+              10
+            ],
+            [
+              "Eighth Indian Control Conference",
+              9
+            ],
+            [
+              "International Conference on Intelligent Communications and Computing",
+              5
+            ],
+            [
+              "International Conference on Communications Workshops",
+              1
+            ]
+          ],
+          "front_matter": 15
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "International Conference on Communications",
+        "doi_prefixes": [
+          "10.1109/icc"
+        ],
+        "source_ids": [],
+        "slug": "icc",
+        "n_papers": 8502,
+        "candidates": [
+          [
+            "International Conference on Communications",
+            0.5
+          ],
+          [
+            "Tenth Indian Control Conference",
+            0.25
+          ],
+          [
+            "Sixth Indian Control Conference",
+            0.25
+          ]
+        ],
+        "ambiguous": true,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "globecom",
+      "field": "Communications",
+      "name": "Global Communications Conference",
+      "checked_at": "2026-10-04T16:44:42.453851+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 10246,
+      "abstracts": 10015,
+      "abstract_coverage": 0.9774546164356822,
+      "by_year": {
+        "2016": 916,
+        "2017": 1029,
+        "2018": 1000,
+        "2019": 1103,
+        "2020": 927,
+        "2021": 915,
+        "2022": 1098,
+        "2023": 1266,
+        "2024": 912,
+        "2025": 1080
+      },
+      "abstracts_by_year": {
+        "2016": 910,
+        "2017": 1020,
+        "2018": 992,
+        "2019": 1093,
+        "2020": 917,
+        "2021": 905,
+        "2022": 1091,
+        "2023": 1263,
+        "2024": 905,
+        "2025": 919
+      },
+      "filters": [
+        "doi_starts_with:10.1109/globecom.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/globecom9,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/glocom9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/globecom",
+          "sample_size": 600,
+          "sources": [
+            [
+              "GLOBECOM",
+              343
+            ],
+            [
+              "Global Communications Conference",
+              256
+            ],
+            [
+              "",
+              1
+            ]
+          ],
+          "front_matter": 2
+        },
+        {
+          "probe": "bounded 10.1109/glocom",
+          "sample_size": 200,
+          "sources": [
+            [
+              "Global Communications Conference",
+              128
+            ],
+            [
+              "GLOBECOM",
+              72
+            ]
+          ],
+          "front_matter": 0
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "GLOBECOM",
+        "doi_prefixes": [
+          "10.1109/globecom"
+        ],
+        "source_ids": [],
+        "slug": "globecom",
+        "n_papers": 7304,
+        "candidates": [
+          [
+            "GLOBECOM",
+            0.7457627118644068
+          ],
+          [
+            "Global Communications Conference",
+            0.2542372881355932
+          ]
+        ],
+        "ambiguous": false,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "icassp",
+      "field": "Signal processing",
+      "name": "International Conference on Acoustics Speech and Signal Processing",
+      "checked_at": "2026-10-04T16:44:58.508141+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 20075,
+      "abstracts": 19992,
+      "abstract_coverage": 0.9958655043586551,
+      "by_year": {
+        "2016": 1334,
+        "2017": 1333,
+        "2018": 1409,
+        "2019": 1750,
+        "2020": 1880,
+        "2021": 1736,
+        "2022": 1876,
+        "2023": 2728,
+        "2024": 2713,
+        "2025": 3316
+      },
+      "abstracts_by_year": {
+        "2016": 1325,
+        "2017": 1325,
+        "2018": 1402,
+        "2019": 1743,
+        "2020": 1873,
+        "2021": 1728,
+        "2022": 1868,
+        "2023": 2722,
+        "2024": 2704,
+        "2025": 3302
+      },
+      "filters": [
+        "doi_starts_with:10.1109/icassp.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icassp9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/icassp",
+          "sample_size": 602,
+          "sources": [
+            [
+              "ICASSP",
+              455
+            ],
+            [
+              "International Conference on Acoustics, Speech and Signal Processing",
+              144
+            ],
+            [
+              "arXiv",
+              3
+            ]
+          ],
+          "front_matter": 4
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "ICASSP",
+        "doi_prefixes": [
+          "10.1109/icassp"
+        ],
+        "source_ids": [],
+        "slug": "icassp",
+        "n_papers": 20234,
+        "candidates": [
+          [
+            "ICASSP",
+            0.7796610169491526
+          ],
+          [
+            "International Conference on Acoustics, Speech and Signal Processing",
+            0.22033898305084745
+          ]
+        ],
+        "ambiguous": false,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "infocom",
+      "field": "Networking",
+      "name": "Conference on Computer Communications",
+      "checked_at": "2026-10-04T16:45:06.836442+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 2522,
+      "abstracts": 2411,
+      "abstract_coverage": 0.9559873116574148,
+      "by_year": {
+        "2016": 304,
+        "2017": 296,
+        "2018": 316,
+        "2019": 295,
+        "2020": 274,
+        "2021": 259,
+        "2022": 231,
+        "2023": 258,
+        "2024": 263,
+        "2025": 26
+      },
+      "abstracts_by_year": {
+        "2016": 300,
+        "2017": 292,
+        "2018": 310,
+        "2019": 290,
+        "2020": 269,
+        "2021": 255,
+        "2022": 226,
+        "2023": 189,
+        "2024": 256,
+        "2025": 24
+      },
+      "filters": [
+        "doi_starts_with:10.1109/infocom.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/infocom9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/infocom",
+          "sample_size": 603,
+          "sources": [
+            [
+              "Conference on Computer Communications",
+              550
+            ],
+            [
+              "The 35th Annual IEEE International Conference on Computer Communications",
+              45
+            ],
+            [
+              "",
+              7
+            ],
+            [
+              "Spiral",
+              1
+            ]
+          ],
+          "front_matter": 16
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "Conference on Computer Communications",
+        "doi_prefixes": [
+          "10.1109/infocom"
+        ],
+        "source_ids": [],
+        "slug": "infocom",
+        "n_papers": 2587,
+        "candidates": [
+          [
+            "Conference on Computer Communications",
+            0.8571428571428571
+          ],
+          [
+            "The 35th Annual IEEE International Conference on Computer Communications",
+            0.14285714285714285
+          ]
+        ],
+        "ambiguous": false,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "sp",
+      "field": "Security",
+      "name": "Symposium on Security and Privacy",
+      "checked_at": "2026-10-04T16:45:14.901852+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 1456,
+      "abstracts": 1372,
+      "abstract_coverage": 0.9423076923076923,
+      "by_year": {
+        "2016": 68,
+        "2017": 73,
+        "2018": 74,
+        "2019": 94,
+        "2020": 117,
+        "2021": 125,
+        "2022": 156,
+        "2023": 210,
+        "2024": 271,
+        "2025": 268
+      },
+      "abstracts_by_year": {
+        "2016": 57,
+        "2017": 62,
+        "2018": 66,
+        "2019": 87,
+        "2020": 110,
+        "2021": 117,
+        "2022": 150,
+        "2023": 203,
+        "2024": 261,
+        "2025": 259
+      },
+      "filters": [
+        "doi_starts_with:10.1109/sp.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/sp9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/sp",
+          "sample_size": 804,
+          "sources": [
+            [
+              "Symposium on Security and Privacy",
+              795
+            ],
+            [
+              "",
+              6
+            ],
+            [
+              "arXiv",
+              2
+            ],
+            [
+              "Spiral",
+              1
+            ]
+          ],
+          "front_matter": 45
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "Symposium on Security and Privacy",
+        "doi_prefixes": [
+          "10.1109/sp"
+        ],
+        "source_ids": [],
+        "slug": "sp",
+        "n_papers": 1160,
+        "candidates": [
+          [
+            "Symposium on Security and Privacy",
+            1.0
+          ]
+        ],
+        "ambiguous": false,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "icse",
+      "field": "Software engineering",
+      "name": "International Conference on Software Engineering",
+      "checked_at": "2026-10-04T16:45:24.226787+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 1125,
+      "abstracts": 1026,
+      "abstract_coverage": 0.912,
+      "by_year": {
+        "2016": 1,
+        "2017": 81,
+        "2018": 1,
+        "2019": 129,
+        "2020": 56,
+        "2021": 152,
+        "2022": 53,
+        "2023": 223,
+        "2024": 123,
+        "2025": 306
+      },
+      "abstracts_by_year": {
+        "2017": 70,
+        "2019": 117,
+        "2020": 49,
+        "2021": 141,
+        "2022": 45,
+        "2023": 212,
+        "2024": 105,
+        "2025": 287
+      },
+      "filters": [
+        "doi_starts_with:10.1109/icse.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/icse9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/icse",
+          "sample_size": 772,
+          "sources": [
+            [
+              "International Conference on Software Engineering",
+              540
+            ],
+            [
+              "International Conference on Semiconductor Electronics",
+              115
+            ],
+            [
+              "International Conference on Intelligent Communication, Sensing and Electromagnetics",
+              108
+            ],
+            [
+              "",
+              9
+            ]
+          ],
+          "front_matter": 47
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "International Conference on Software Engineering",
+        "doi_prefixes": [
+          "10.1109/icse"
+        ],
+        "source_ids": [],
+        "slug": "icse",
+        "n_papers": 1156,
+        "candidates": [
+          [
+            "International Conference on Software Engineering",
+            0.6666666666666666
+          ],
+          [
+            "International Conference on Semiconductor Electronics",
+            0.3333333333333333
+          ]
+        ],
+        "ambiguous": false,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "embc",
+      "field": "Biomedical engineering",
+      "name": "International Conference of the IEEE Engineering in Medicine and Biology Society",
+      "checked_at": "2026-10-04T16:45:33.291207+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 14551,
+      "abstracts": 14496,
+      "abstract_coverage": 0.9962201910521614,
+      "by_year": {
+        "2016": 1588,
+        "2017": 1137,
+        "2018": 1508,
+        "2019": 1685,
+        "2020": 1474,
+        "2021": 1642,
+        "2022": 1109,
+        "2023": 1240,
+        "2024": 1393,
+        "2025": 1775
+      },
+      "abstracts_by_year": {
+        "2016": 1582,
+        "2017": 1129,
+        "2018": 1498,
+        "2019": 1678,
+        "2020": 1469,
+        "2021": 1641,
+        "2022": 1108,
+        "2023": 1238,
+        "2024": 1386,
+        "2025": 1767
+      },
+      "filters": [
+        "doi_starts_with:10.1109/embc.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/embc9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/embc",
+          "sample_size": 603,
+          "sources": [
+            [
+              "Annual International Conference of the IEEE Engineering in Medicine and Biology Society",
+              399
+            ],
+            [
+              "Annual International Conference of the IEEE Engineering in Medicine & Biology Society",
+              200
+            ],
+            [
+              "",
+              4
+            ]
+          ],
+          "front_matter": 5
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "Annual International Conference of the IEEE Engineering in Medicine and Biology Society",
+        "doi_prefixes": [
+          "10.1109/embc"
+        ],
+        "source_ids": [],
+        "slug": "embc",
+        "n_papers": 14551,
+        "candidates": [
+          [
+            "Annual International Conference of the IEEE Engineering in Medicine and Biology Society",
+            0.7
+          ],
+          [
+            "Annual International Conference of the IEEE Engineering in Medicine & Biology Society",
+            0.3
+          ]
+        ],
+        "ambiguous": false,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "ecce",
+      "field": "Power electronics",
+      "name": "Energy Conversion Congress and Exposition",
+      "checked_at": "2026-10-04T16:45:42.279989+00:00",
+      "scope": "disjoint dot/digit DOI partitions",
+      "raw_works": 10482,
+      "abstracts": 10409,
+      "abstract_coverage": 0.9930356802136997,
+      "by_year": {
+        "2016": 924,
+        "2017": 876,
+        "2018": 1104,
+        "2019": 1072,
+        "2020": 969,
+        "2021": 901,
+        "2022": 857,
+        "2023": 1162,
+        "2024": 1152,
+        "2025": 1465
+      },
+      "abstracts_by_year": {
+        "2016": 918,
+        "2017": 868,
+        "2018": 1098,
+        "2019": 1067,
+        "2020": 965,
+        "2021": 896,
+        "2022": 856,
+        "2023": 1147,
+        "2024": 1143,
+        "2025": 1451
+      },
+      "filters": [
+        "doi_starts_with:10.1109/ecce.,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce0,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce1,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce2,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce3,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce4,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce5,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce6,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce7,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce8,publication_year:2016-2025",
+        "doi_starts_with:10.1109/ecce9,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "bounded 10.1109/ecce",
+          "sample_size": 803,
+          "sources": [
+            [
+              "Energy Conversion Congress and Exposition",
+              561
+            ],
+            [
+              "International Conference on Electrical, Computer and Communication Engineering",
+              203
+            ],
+            [
+              "Energy Conversion Conference Congress and Exposition",
+              35
+            ],
+            [
+              "",
+              4
+            ]
+          ],
+          "front_matter": 7
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "Energy Conversion Congress and Exposition",
+        "doi_prefixes": [
+          "10.1109/ecce"
+        ],
+        "source_ids": [],
+        "slug": "ecce",
+        "n_papers": 10635,
+        "candidates": [
+          [
+            "Energy Conversion Congress and Exposition",
+            0.9056603773584906
+          ],
+          [
+            "Energy Conversion Conference Congress and Exposition",
+            0.07547169811320754
+          ],
+          [
+            "International Conference on Electrical, Computer and Communication Engineering",
+            0.018867924528301886
+          ]
+        ],
+        "ambiguous": false,
+        "how": "acronym"
+      }
+    },
+    {
+      "slug": "chi",
+      "field": "Human-computer interaction",
+      "name": "CHI Conference on Human Factors in Computing Systems",
+      "checked_at": "2026-10-04T16:42:57.188190+00:00",
+      "scope": "exact full-name sources only",
+      "raw_works": 637,
+      "abstracts": 637,
+      "abstract_coverage": 1.0,
+      "by_year": {
+        "2022": 637
+      },
+      "abstracts_by_year": {
+        "2022": 637
+      },
+      "filters": [
+        "primary_location.source.id:S4363607743,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "name sources 1",
+          "sample_size": 200,
+          "sources": [
+            [
+              "CHI Conference on Human Factors in Computing Systems",
+              200
+            ]
+          ],
+          "front_matter": 0
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "TAP CHI SINH HOC",
+        "doi_prefixes": [],
+        "source_ids": [
+          "https://openalex.org/S4363605492",
+          "https://openalex.org/S4363605248",
+          "https://openalex.org/S4363605455",
+          "https://openalex.org/S4363605394",
+          "https://openalex.org/S4363605555",
+          "https://openalex.org/S4363607743",
+          "https://openalex.org/S4363607762",
+          "https://openalex.org/S4393914382",
+          "https://openalex.org/S2737115011",
+          "https://openalex.org/S4306468017",
+          "https://openalex.org/S4210168752",
+          "https://openalex.org/S4210192113",
+          "https://openalex.org/S4210216669",
+          "https://openalex.org/S4210199679",
+          "https://openalex.org/S4210217349",
+          "https://openalex.org/S2764435430",
+          "https://openalex.org/S4210219480",
+          "https://openalex.org/S7407059633",
+          "https://openalex.org/S7407057650",
+          "https://openalex.org/S168861512",
+          "https://openalex.org/S4210217338",
+          "https://openalex.org/S4306536169"
+        ],
+        "slug": "tap-chi-sinh-hoc",
+        "n_papers": 4993,
+        "candidates": [
+          [
+            "TAP CHI SINH HOC",
+            1.0
+          ]
+        ],
+        "ambiguous": false,
+        "how": "name"
+      }
+    },
+    {
+      "slug": "acl",
+      "field": "Natural language processing",
+      "name": "Annual Meeting of the Association for Computational Linguistics",
+      "checked_at": "2026-10-04T16:42:57.217387+00:00",
+      "scope": "exact full-name sources only",
+      "raw_works": 603,
+      "abstracts": 603,
+      "abstract_coverage": 1.0,
+      "by_year": {
+        "2022": 603
+      },
+      "abstracts_by_year": {
+        "2022": 603
+      },
+      "filters": [
+        "primary_location.source.id:S4363608652,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "name sources 1",
+          "sample_size": 200,
+          "sources": [
+            [
+              "Annual Meeting of the Association for Computational Linguistics",
+              200
+            ]
+          ],
+          "front_matter": 0
+        }
+      ],
+      "resolution_before_fix": {
+        "name": "Findings of the Association for Computational Linguistics: ACL",
+        "doi_prefixes": [
+          "10.18653/v"
+        ],
+        "source_ids": [
+          "https://openalex.org/S4363605144"
+        ],
+        "slug": "v",
+        "n_papers": 52847,
+        "candidates": [
+          [
+            "Findings of the Association for Computational Linguistics: ACL",
+            1.0
+          ]
+        ],
+        "ambiguous": false,
+        "how": "name"
+      }
+    },
+    {
+      "slug": "neurips",
+      "field": "Machine learning",
+      "name": "Advances in Neural Information Processing Systems",
+      "checked_at": "2026-10-04T16:42:57.225902+00:00",
+      "scope": "exact full-name sources only",
+      "raw_works": 0,
+      "abstracts": 0,
+      "abstract_coverage": null,
+      "by_year": {},
+      "abstracts_by_year": {},
+      "filters": [],
+      "sample_sources": [],
+      "resolution_before_fix": null
+    },
+    {
+      "slug": "icml",
+      "field": "Machine learning",
+      "name": "International Conference on Machine Learning",
+      "checked_at": "2026-10-04T16:42:57.227660+00:00",
+      "scope": "exact full-name sources only",
+      "raw_works": 844,
+      "abstracts": 165,
+      "abstract_coverage": 0.19549763033175355,
+      "by_year": {
+        "2016": 83,
+        "2017": 106,
+        "2018": 116,
+        "2019": 154,
+        "2020": 189,
+        "2021": 196
+      },
+      "abstracts_by_year": {
+        "2016": 72,
+        "2017": 25,
+        "2018": 11,
+        "2019": 12,
+        "2020": 27,
+        "2021": 18
+      },
+      "filters": [
+        "primary_location.source.id:S4306419644,publication_year:2016-2025"
+      ],
+      "sample_sources": [
+        {
+          "probe": "name sources 1",
+          "sample_size": 200,
+          "sources": [
+            [
+              "International Conference on Machine Learning",
+              200
+            ]
+          ],
+          "front_matter": 0
+        }
+      ],
+      "resolution_before_fix": null
+    }
+  ]
+}
