@@ -23,6 +23,22 @@ def _explorer(at):
     return json.loads(re.search(r"window.ENTITIES = (.*);", _iframe(at))[1])["explorer"]
 
 
+def test_report_asset_version_changes_with_template_mtime(tmp_path):
+    from paper_trends.report.render import asset_version
+
+    package = tmp_path / "paper_trends"
+    root = package / "report"
+    (root / "templates").mkdir(parents=True)
+    (root / "static").mkdir()
+    (package / "i18n.py").write_text("translations")
+    template = root / "templates" / "report.html.j2"
+    template.write_text("one")
+    before = asset_version(package)
+    template.write_text("two")
+    template.touch()
+    assert asset_version(package) != before
+
+
 def test_custom_period_survives_report_explore_and_new_session(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write_corpus(tmp_path / "data" / "ectc.jsonl")

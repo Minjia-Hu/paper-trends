@@ -22,7 +22,7 @@ from paper_trends.keywords import compute_trends
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
 from paper_trends.report.build import build_report, country_name, inst_rank_rows, inst_topic_rows
-from paper_trends.report.render import FULL, SHORT, TAGLINE, nav_for, render_explorer_page, render_page
+from paper_trends.report.render import FULL, SHORT, TAGLINE, asset_version as report_asset_version, nav_for, render_explorer_page, render_page
 from paper_trends.store import filter_years, metadata_path, provenance_label, read_jsonl, read_provenance, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import InsufficientTopicData, compute_nmf, compute_openalex
@@ -393,7 +393,8 @@ def cached_report_data(path: str, mtime: float, years: tuple[int, int], name: st
 @st.cache_data(show_spinner=False)
 def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
                        provenance: dict | None = None, default_span: int | None = None,
-                       calendar_year: int | None = None, lang: str = "en", explore_href: str = "") -> str:
+                       calendar_year: int | None = None, lang: str = "en", explore_href: str = "",
+                       asset_version: tuple[tuple[str, int], ...] = ()) -> str:
     """Render a language-specific report without changing analysis (revision 13)."""
     r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year)
     return render_page(r, None, embedded=True, app_links=True, lang=lang, explore_href=explore_href)
@@ -402,7 +403,8 @@ def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: st
 @st.cache_data(show_spinner=False)
 def cached_explorer_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
                          provenance: dict | None = None, default_span: int | None = None,
-                         calendar_year: int | None = None, lang: str = "en", initial_term: str = "") -> str:
+                         calendar_year: int | None = None, lang: str = "en", initial_term: str = "",
+                         asset_version: tuple[tuple[str, int], ...] = ()) -> str:
     """Focused time-window workspace, sharing exactly the report's analysis data."""
     r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year,
                            initial_term, True)
@@ -664,7 +666,8 @@ cov_y = frames.coverage_frame(recs)
 
 if mode == "Report":
     st.iframe(cached_report_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                                date.today().year, LANG, link(view="explore", section=None, term=None)), height="content")
+                                date.today().year, LANG, link(view="explore", section=None, term=None),
+                                report_asset_version()), height="content")
     st.stop()
 
 data_coverage = coverage_details(records, years, default_span=default_span)
@@ -721,7 +724,7 @@ if section == "trends":
         st.form_submit_button(t("Explore phrase"), on_click=find_phrase)
     initial_term = st.query_params.get("term", "")
     st.iframe(cached_explorer_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                                  date.today().year, LANG, initial_term), height="content")
+                                  date.today().year, LANG, initial_term, report_asset_version()), height="content")
 
 if section == "topics":
     o1, o2 = st.columns([1, 1])

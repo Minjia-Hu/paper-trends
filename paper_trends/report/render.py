@@ -64,6 +64,19 @@ SHORT = {"ectc": "ECTC", "eptc": "EPTC", "icept": "ICEPT", "itherm": "ITherm", "
          "icassp": "ICASSP", "embc": "EMBC", "sp": "IEEE S&P", "globecom": "GLOBECOM", "infocom": "INFOCOM"}
 
 
+def asset_version(root: Path | None = None) -> tuple[tuple[str, int], ...]:
+    """Version files that feed rendered HTML but are not cache function source.
+
+    This keeps report data cached while ensuring a page refresh picks up edits to
+    translations, Jinja templates, CSS and JavaScript without a server restart.
+    """
+    package = root or HERE.parent
+    files = [package / "i18n.py"]
+    files.extend(sorted((package / "report" / "templates").glob("*")))
+    files.extend(sorted((package / "report" / "static").glob("*")))
+    return tuple((str(file.relative_to(package)), file.stat().st_mtime_ns) for file in files if file.is_file())
+
+
 def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
     years = r["years"]
     specs: dict[str, dict] = {"fig-papers": charts.trend_line(r["papers_per_year"])}
