@@ -63,6 +63,10 @@ def test_report_and_explorer_are_separate_surfaces():
     assert "window.navigateHost" in html
     assert "window.scrollReportHostTo" in html
     assert "querySelectorAll('.report-jump a[href^=\"#\"]')" in html
+    assert 'data-open-details="method-details">Data &amp; methods</a>' in html
+    assert '<details class="method-details" id="method-details">' in html
+    assert "details.open = true" in html
+    assert "window.setTimeout(() => window.scrollReportHostTo" in html
     assert 'id="observatory"' in render_explorer_page(report)
     del report["entities"]["explorer"]
     explorer_html = render_explorer_page(report)

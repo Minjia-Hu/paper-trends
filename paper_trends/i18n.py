@@ -32,7 +32,7 @@ ZH = {
     "Why some years are not used by default": "为什么默认不包含部分年份？",
     "Explicit year selections can include these editions; their counts may be incomplete.": "手动选择年份可以包含这些届次，但其记录可能不完整。",
     "At a glance": "趋势速览", "Papers per year": "历年论文数量",
-    "Report sections": "报告章节", "Summary": "摘要", "Trends": "趋势", "People & places": "机构与地区", "Methods": "方法",
+    "Report sections": "报告章节", "Summary": "摘要", "Trends": "趋势", "People & places": "机构与地区", "Methods": "方法", "Data & methods": "数据与方法",
     "How the conversation changed": "研究关注点如何变化",
     "abstract coverage": "摘要覆盖率", "What is rising": "关注度上升",
     "What is fading": "关注度下降", "New vocabulary": "新兴词汇",

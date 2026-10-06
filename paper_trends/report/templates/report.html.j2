@@ -51,7 +51,7 @@
   {% if r.has_trends %}<a href="#trends">{{ _('Trends') }}</a>{% endif %}
   {% if r.topics %}<a href="#topics">{{ _('Topics') }}</a>{% endif %}
   <a href="#who">{{ _('People & places') }}</a>
-  <a href="#about">{{ _('Methods') }}</a>
+  <a href="#about" data-open-details="method-details">{{ _('Data & methods') }}</a>
 </nav>
 
 <section id="glance">
@@ -148,9 +148,9 @@
 </section>
 
 <footer class="about" id="about">
-  <h2>{{ _('About the data') }}</h2>
+  <h2>{{ _('Data & methods') }}</h2>
   <p>{{ _('OpenAlex metadata; titles and abstracts only. Coverage and affiliation matching vary by venue.') }}</p>
-  <details class="method-details"><summary>{{ _('Method and limitations') }}</summary>
+  <details class="method-details" id="method-details"><summary>{{ _('Method and limitations') }}</summary>
   {% if lang == 'zh' %}
   <p>本报告使用 <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a>（CC0）收录的 {{ r.name }} 在 {{ r.year_range[0] }}–{{ r.year_range[1] }} 年的论文元数据，覆盖程度取决于其索引。已去除封面、会议议程等前置材料。关键词提取自标题和摘要，不涉及全文。{{ '由于收录的摘要较少，本报告关键词统计仅使用标题。' if r.text_mode == 'title' else '缩写归一化后，关键词出现在标题中，或在摘要中至少出现两次，即计入该论文。' }}{{ '标题中的提及只是相关性线索，并不一定代表论文的研究主题。' if r.text_mode == 'title' else '这种规则用于初步判断相关性，并不一定代表论文的研究主题；重复的背景或应用描述也可能被计入。' }}语料中明确定义的缩写（例如 redistribution layer / RDL）按同一词统计，几乎总是包含于长词中的片段会合并；每组词形展示一个代表词。{% if r.n_common_hidden %}已隐藏 {{ r.n_common_hidden }} 个经审核且出现在至少三个其他领域中的通用表达（{{ r.common_examples|join('、') }} 等），deep learning 等跨领域技术词仍参与排名。{% endif %}“上升”和“下降”比较前、后半时段分别汇总后的论文占比。论文标题、摘要、技术词及机构名称保留原文。</p>
   {% else %}
@@ -190,7 +190,7 @@ window.navigateHost = function (url) {
 // section's iframe coordinate as if it belonged to the host page. That can
 // overshoot by hundreds of pixels. Scroll the actual host container using
 // the iframe's position plus the target's position within the report.
-window.scrollReportHostTo = function (hash) {
+window.scrollReportHostTo = function (hash, smooth = true) {
   if (!hash || window.parent === window) return false;
   const target = document.querySelector(hash);
   if (!target) return false;
@@ -210,7 +210,8 @@ window.scrollReportHostTo = function (hash) {
     const scrollerRect = scroller.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
     const top = scroller.scrollTop + frameRect.top - scrollerRect.top + targetRect.top - 20;
-    scroller.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: smooth && !reduceMotion ? 'smooth' : 'auto' });
     return true;
   } catch (_) { return false; }
 };
@@ -220,6 +221,17 @@ document.addEventListener("click", (ev) => {
 });
 document.querySelectorAll('.report-jump a[href^="#"]').forEach((link) => {
   link.addEventListener("click", (ev) => {
+    const details = link.dataset.openDetails && document.getElementById(link.dataset.openDetails);
+    if (details) {
+      details.open = true;
+      if (window.parent !== window) {
+        ev.preventDefault();
+        // Streamlit resizes the content-height iframe after <details> opens.
+        // Wait for that resize before measuring this far-away footer target.
+        window.setTimeout(() => window.scrollReportHostTo(link.getAttribute("href"), false), 120);
+        return;
+      }
+    }
     if (window.scrollReportHostTo(link.getAttribute("href"))) ev.preventDefault();
   }, true);
 });
