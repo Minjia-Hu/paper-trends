@@ -58,6 +58,7 @@ FIELD_OF = {
     "embc": "biomedical_engineering",
     "sp": "security",
     "globecom": "communications",
+    "infocom": "networking",
 }
 
 

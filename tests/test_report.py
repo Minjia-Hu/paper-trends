@@ -175,6 +175,28 @@ def test_report_escapes_markup_and_roundtrips_inline_json():
     assert 'Data fetched: unknown' in html and 'report generated ' in html
 
 
+def test_home_navigation_uses_domains_and_research_directions():
+    from paper_trends.report.render import nav_for, render_index
+
+    available = {
+        "ectc": {"name": "ECTC", "n_papers": 10},
+        "irps": {"name": "IRPS", "n_papers": 20},
+        "iedm": {"name": "IEDM", "n_papers": 30},
+        "infocom": {"name": "INFOCOM", "n_papers": 40},
+    }
+    nav = nav_for(available)
+    labels = [group for group, _ in nav]
+    assert labels == [
+        "Semiconductor & microelectronics · Packaging & integration",
+        "Semiconductor & microelectronics · Thermal management & reliability",
+        "Semiconductor & microelectronics · Devices & circuits",
+        "Communications & signal processing",
+    ]
+    zh = render_index(nav, embedded=True, lang="zh")
+    assert "半导体与微电子" in zh and "封装与集成" in zh and "通信与信号处理" in zh
+    assert "当前数量反映的是已核验的 OpenAlex 数据" in zh
+
+
 def test_panel_uses_the_same_title_only_counts_as_the_report():
     records = [{
         "id": f"W{i}", "publication_year": 2020 + i % 2,

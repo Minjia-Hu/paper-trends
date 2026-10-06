@@ -13,10 +13,12 @@
   <h1>{{ _('What a field talks about, year by year') }}</h1>
   <div class="meta"><span>{{ '从 OpenAlex 收录的历年会议论文中，追踪关键词的起伏、主题的演进与发文版图。选择下方报告，或分析你关注的会议。' if lang == 'zh' else 'Conference papers indexed by OpenAlex, read as rising and fading phrases, topic shifts and who publishes. These reports are ready to explore; you can also analyse your own conference.' }}</span></div>
 </header>
+<p class="collection-note">{{ _('Curated reports, expanding over time. Coverage reflects verified OpenAlex data, not the number of conferences in each field.') }}</p>
 <div class="groups">
 {% for group, items in nav %}
 <section class="group">
-  <h2>{{ _(group) }}</h2>
+  {% set headings = group.split(' · ', 1) %}
+  {% if headings|length == 2 %}<div class="domain">{{ _(headings[0]) }}</div><h2>{{ _(headings[1]) }}</h2>{% else %}<h2>{{ _(group) }}</h2>{% endif %}
   <ul class="glance">
   {% for slug, short, name, n in items %}<li><a href="{{ slug ~ ('.zh.html' if lang == 'zh' else '.html') }}"><em>{{ short }}</em> — {{ name }}</a> <span class="n">{{ "{:,}".format(n) }} {{ _('papers') }}</span></li>{% endfor %}
   </ul>

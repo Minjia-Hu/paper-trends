@@ -17,19 +17,18 @@ from ..i18n import language, tr, report_copy, chart_labels
 
 HERE = Path(__file__).parent
 TAGLINE = "Publication trends for any academic conference"
-# Preset conferences, grouped by field. The tool is not tied to these: they are the pages
-# that exist ready-made, and the mix (heavy on semiconductors, where the maintainer works)
-# is a choice of examples, not a scope.
+# Preset conferences, grouped as domain · research direction. These are curated,
+# verified reports rather than an exhaustive conference directory; group size must not
+# be read as the size of the underlying research community.
 GROUPS = [
-    ("Semiconductor packaging", ["ectc", "eptc", "icept", "itherm", "irps", "eurosime"]),
-    ("Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
-    ("Computer vision", ["cvpr"]),
-    ("Speech", ["interspeech"]),
+    ("Semiconductor & microelectronics · Packaging & integration", ["ectc", "eptc", "icept"]),
+    ("Semiconductor & microelectronics · Thermal management & reliability", ["itherm", "irps", "eurosime"]),
+    ("Semiconductor & microelectronics · Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
+    ("Artificial intelligence & perception", ["cvpr", "interspeech"]),
+    ("Communications & signal processing", ["icassp", "globecom", "infocom"]),
+    ("Computer systems & security", ["sp"]),
     ("Robotics", ["icra"]),
-    ("Signal processing", ["icassp"]),
     ("Biomedical engineering", ["embc"]),
-    ("Security", ["sp"]),
-    ("Communications", ["globecom"]),
 ]
 FULL = {
     "ectc": "Electronic Components and Technology Conference",
@@ -49,10 +48,11 @@ FULL = {
     "embc": "Annual International Conference of the IEEE Engineering in Medicine and Biology Society",
     "sp": "IEEE Symposium on Security and Privacy",
     "globecom": "Global Communications Conference",
+    "infocom": "IEEE Conference on Computer Communications",
 }
 SHORT = {"ectc": "ECTC", "eptc": "EPTC", "icept": "ICEPT", "itherm": "ITherm", "irps": "IRPS", "eurosime": "EuroSimE", "iedm": "IEDM",
          "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech", "icra": "ICRA",
-         "icassp": "ICASSP", "embc": "EMBC", "sp": "IEEE S&P", "globecom": "GLOBECOM"}
+         "icassp": "ICASSP", "embc": "EMBC", "sp": "IEEE S&P", "globecom": "GLOBECOM", "infocom": "INFOCOM"}
 
 
 def figure_specs(r: dict[str, Any]) -> dict[str, dict]:

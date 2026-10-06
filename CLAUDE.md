@@ -14,8 +14,9 @@ product; the presets are examples.** The semiconductor-heavy mix of presets refl
 where the maintainer works, not the tool's scope, and the UI must not suggest otherwise:
 the masthead carries only the brand, the tagline (`render.TAGLINE`, "Publication trends
 for any academic conference") and, on a conference page, "All conferences →"; the search
-box is the primary entry; presets live on the home page grouped by *field name*
-(never "Other fields"). Keep the README's first sentence and the home page consistent
+box is the primary entry; presets live on the home page grouped by domain and research
+direction (never "Other fields"). Their group sizes represent verified data coverage,
+not the real-world size of each research community. Keep the README's first sentence and the home page consistent
 with this.
 
 - First showcase: **ECTC (Electronic Components and Technology Conference) 2016–2026**.
@@ -212,10 +213,12 @@ needs both `glocom` and `globecom`. Grouped API counts are not clean corpus tota
 Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
-**Presets** live in `app.py:PRESETS` (semiconductor packaging: ECTC, EPTC, ICEPT, ITherm,
-IRPS, EuroSimE; devices & circuits: IEDM, ISSCC, VLSI Symposium, IMW; computer vision:
-CVPR; speech: Interspeech; robotics: ICRA; signal processing: ICASSP; biomedical
-engineering: EMBC; security: IEEE S&P; communications: GLOBECOM), each with
+**Presets** live in `app.py:PRESETS` (semiconductor & microelectronics: packaging and
+integration — ECTC, EPTC, ICEPT; thermal management and reliability — ITherm, IRPS,
+EuroSimE; devices and circuits — IEDM, ISSCC, VLSI Symposium, IMW; artificial
+intelligence and perception: CVPR, Interspeech; communications and signal processing:
+ICASSP, GLOBECOM, INFOCOM; computer systems and security: IEEE S&P; robotics: ICRA;
+biomedical engineering: EMBC), each with
 its DOI prefix list; `render.GROUPS` holds the same grouping for the home page and the
 static index, `background.FIELD_OF` the field used by the common-phrase filter (rebuild
 `resources/background.json` when a preset is added). VLSI
@@ -223,9 +226,10 @@ Symposium needs ten prefixes because IEEE (10.1109) and JSAP (10.23919) alternat
 publisher and the acronym changed (vlsit/vlsic → vlsitechnology/vlsicircuits →
 vlsitechnologyandcir). Venues that alternate IEEE/ACM DOIs by year (DAC, ICCAD) or whose
 prefix is a substring of a bigger venue's (ISCA/ISCAS) were deliberately left out.
-GLOBECOM uses both `10.1109/glocom` and `10.1109/globecom`. IEEE S&P's slug is `sp`;
-the search also accepts `S&P`, `IEEE S&P` and `IEEE SP`. All four new presets were
-fetched for 2016–2025; GLOBECOM's 2025 abstract coverage is lower than preceding years.
+GLOBECOM uses both `10.1109/glocom` and `10.1109/globecom`. INFOCOM's default report
+ends in 2024 because the 2025 DOI-prefix corpus remains sparse. IEEE S&P's slug is `sp`;
+the search also accepts `S&P`, `IEEE S&P` and `IEEE SP`. The cross-field presets have
+cached corpora; GLOBECOM's 2025 abstract coverage is lower than preceding years.
 
 The DOI fallback exists because **most ECTC years have no OpenAlex source at all** —
 only 2022 has a source record (S4363608088); other years carry just a

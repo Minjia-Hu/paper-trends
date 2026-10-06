@@ -1,6 +1,7 @@
 """Smoke-test the Streamlit app with a tiny synthetic corpus via streamlit.testing."""
 
 import json
+from html import escape
 from pathlib import Path
 
 import pytest
@@ -184,10 +185,11 @@ def test_single_edition_custom_period_does_not_create_an_invalid_slider(tmp_path
 
 
 @pytest.mark.parametrize("slug, search, field, title", [
-    ("icassp", "ICASSP", "Signal processing", "Acoustics Speech and Signal Processing"),
+    ("icassp", "ICASSP", "Communications & signal processing", "Acoustics Speech and Signal Processing"),
     ("embc", "EMBC", "Biomedical engineering", "Engineering in Medicine and Biology Society"),
-    ("sp", "S&P", "Security", "Symposium on Security and Privacy"),
-    ("globecom", "GLOBECOM", "Communications", "Global Communications Conference"),
+    ("sp", "S&P", "Computer systems & security", "Symposium on Security and Privacy"),
+    ("globecom", "GLOBECOM", "Communications & signal processing", "Global Communications Conference"),
+    ("infocom", "INFOCOM", "Communications & signal processing", "Conference on Computer Communications"),
 ])
 def test_new_presets_open_cached_reports_from_search(tmp_path, monkeypatch, slug, search, field, title):
     from unittest.mock import Mock
@@ -197,7 +199,7 @@ def test_new_presets_open_cached_reports_from_search(tmp_path, monkeypatch, slug
     monkeypatch.setattr("paper_trends.openalex.OpenAlex", Mock(side_effect=AssertionError("Unexpected remote lookup")))
     at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120).run()
     assert not at.exception
-    assert any(field in m.value and f"?conference={slug}" in m.value for m in at.markdown)
+    assert any(escape(field) in m.value and f"?conference={slug}" in m.value for m in at.markdown)
     at.text_input(key="search").set_value(search).run()
     assert not at.exception, at.exception
     assert at.query_params["conference"] in (slug, [slug])

@@ -139,23 +139,27 @@ per phrase/year/mention role. The shortlist contains up to 20 rising, fading, em
 and frequent phrases, not the entire vocabulary. Title-only reports disable abstract
 rules. See [interactive report behavior and tests](docs/interactive-report.md).
 
-The home page lists the presets that come ready-made, grouped by field: **semiconductor
-packaging** (ECTC, EPTC, ICEPT, ITherm, IRPS, EuroSimE), **devices & circuits** (IEDM,
-ISSCC, VLSI Symposium, IMW), **computer vision** (CVPR), **speech** (Interspeech),
-**robotics** (ICRA), **signal processing** (ICASSP), **biomedical engineering** (EMBC),
-**security** (IEEE S&P) and **communications** (GLOBECOM). They are examples, not the scope — the mix leans towards
-semiconductors because that is where the maintainer works. Each preset is a conference
-name plus the DOI prefix(es) its papers carry, so any venue indexed by OpenAlex can be
-added the same way, or simply typed into the search box.
+The home page presents a curated set of reports in two levels. **Semiconductor &
+microelectronics** is split into packaging & integration (ECTC, EPTC, ICEPT), thermal
+management & reliability (ITherm, IRPS, EuroSimE), and devices & circuits (IEDM, ISSCC,
+VLSI Symposium, IMW). The other communities are **artificial intelligence & perception**
+(CVPR, Interspeech), **communications & signal processing** (ICASSP, GLOBECOM, INFOCOM),
+**computer systems & security** (IEEE S&P), **robotics** (ICRA), and **biomedical
+engineering** (EMBC). The number shown in each group reflects verified OpenAlex coverage,
+not the real-world number of conferences in that field. Each preset is a conference name
+plus the DOI prefix(es) its papers carry, so any venue indexed by OpenAlex can be added the
+same way, or simply typed into the search box.
 
 Coverage varies by venue and year; a successful name match is not proof of a complete
 corpus. The [candidate venue audit](docs/venue-audit-2026-10-05.md) records prefix
 collisions, changing prefixes, and gaps found before expanding the presets.
 
-The four additions have cached 2016–2025 corpora and report pages. GLOBECOM uses both
+The cross-field additions have cached corpora and report pages. GLOBECOM uses both
 `10.1109/glocom` (early years) and `10.1109/globecom`; IEEE S&P uses `10.1109/sp` with
 the DOI boundary check that excludes unrelated conferences and workshops. Search
-`S&P`, `IEEE S&P`, `IEEE SP` or `sp` to open the same security preset.
+`S&P`, `IEEE S&P`, `IEEE SP` or `sp` to open the same security preset. INFOCOM defaults
+to 2016–2024 because its 2025 records are still sparse; 2026 remains visible under an
+explicit period selection but is excluded from the default trend window.
 
 ![The app's home page: a search box for any venue, and the ready-made conferences grouped by field](docs/screenshot-app.png)
 
