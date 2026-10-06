@@ -127,11 +127,13 @@ st.markdown(
     .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; box-shadow: none !important; }
     .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { background: #1B1B1B !important; color: #FFFFFF !important; border-color: #1B1B1B !important; padding: 6px 18px !important; letter-spacing: 0.02em; }
     .st-key-fetch_btn button:hover, .st-key-fetch_prefix_btn button:hover { background: #E3120B !important; border-color: #E3120B !important; }
-    /* controls row: text links, no widgets */
-    .pt-controls { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; color: #5C5C5C; padding: 12px 24px 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 14px; }
-    .pt-controls .lbl { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A877F; margin-right: 4px; }
-    .pt-controls .lbl.gap { margin-left: 22px; }
-    .pt-controls a { color: #5C5C5C; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+    /* compact editorial toolbar: each label owns one clearly separated group */
+    .pt-controls { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; color: #5C5C5C; margin: 14px 24px 0; padding: 0 0 13px; display: grid; grid-template-columns: max-content max-content 1fr; align-items: end; gap: 28px; border-bottom: 1px solid #E6E3DC; }
+    .pt-control-group { display: grid; gap: 6px; }
+    .pt-controls .lbl { font-size: 10px; line-height: 1; letter-spacing: 0.14em; text-transform: uppercase; color: #8A877F; }
+    .pt-control-links { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; }
+    .pt-control-actions { justify-self: end; }
+    .pt-controls a { color: #5C5C5C; text-decoration: none; padding-bottom: 3px; border-bottom: 2px solid transparent; white-space: nowrap; }
     .pt-controls a:hover { color: #E3120B; }
     .pt-controls a.current { color: #E3120B; border-bottom-color: #E3120B; }
     .st-key-custom_period { padding: 4px 24px 0; max-width: 520px; }
@@ -217,7 +219,7 @@ st.markdown(
     .pt-language a { color: #5C5C5C; text-decoration: none; padding: 5px 0; }
     .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
     .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
-    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
+    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
     .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
@@ -641,12 +643,13 @@ else:
 # Render links after bound widgets have synchronized the URL, including both range endpoints.
 masthead_slot.markdown(masthead(True), unsafe_allow_html=True)
 row = (
-    f'<div class="pt-controls"><span class="lbl">{t("Period")}</span>'
-    + links_row([(lbl, link(period=k), k == period_key) for k, (lbl, _) in periods.items()])
-    + f'<span class="lbl gap">{t("View")}</span>'
-    + links_row([("Report", link(view=None), mode == "Report"), ("Explore", link(view="explore"), mode == "Explore")])
-    + '<span class="lbl gap"></span>' + links_row([("Options", link(options="1"), show_options)])
-    + "</div>"
+    f'<nav class="pt-controls" aria-label="{escape(t("Report controls"))}">'
+    + f'<div class="pt-control-group"><span class="lbl">{t("Period")}</span><span class="pt-control-links">'
+    + links_row([(lbl, link(period=k), k == period_key) for k, (lbl, _) in periods.items()]) + '</span></div>'
+    + f'<div class="pt-control-group"><span class="lbl">{t("View")}</span><span class="pt-control-links">'
+    + links_row([("Report", link(view=None), mode == "Report"), ("Explore", link(view="explore"), mode == "Explore")]) + '</span></div>'
+    + '<div class="pt-control-actions">' + links_row([("Options", link(options="1"), show_options)]) + '</div>'
+    + "</nav>"
 )
 controls_slot.markdown(row, unsafe_allow_html=True)
 path, mtime = str(corpus_path(slug)), corpus_path(slug).stat().st_mtime

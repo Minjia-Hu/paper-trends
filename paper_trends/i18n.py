@@ -12,6 +12,7 @@ def language(value=None, accept_language=""):
 
 
 ZH = {
+    "Report controls": "报告控制项",
     "Title": "论文标题", "Citations": "被引次数",
     "No phrases are available in this period. Try another period or search for a two- or three-word phrase.": "当前时段没有可展示的关键词。可更换时段，或搜索由两三个英文单词组成的关键词。",
     "Find another phrase": "查找其他关键词",

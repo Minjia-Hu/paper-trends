@@ -108,6 +108,7 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch, lang):
     at.run()
     assert not at.exception, at.exception
     assert len(at.tabs) == 0 and not at.radio  # Report view: an embedded page, controls are links
+    assert any('class="pt-control-group"' in m.value and 'class="pt-control-actions"' in m.value for m in at.markdown)
     assert any('class="report-jump"' in e.proto.srcdoc and 'id="observatory"' not in e.proto.srcdoc for e in at if e.type == "iframe")
     at.query_params["view"] = "explore"
     at.query_params["section"] = "trends"

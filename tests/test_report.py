@@ -56,6 +56,9 @@ def test_report_and_explorer_are_separate_surfaces():
     html = render_page(report, embedded=True, explore_href="?view=explore")
     assert 'id="observatory"' not in html
     assert 'class="report-jump"' in html
+    assert 'class="title-grid"' in html
+    assert 'class="title-stats"' in html
+    assert 'class="title-provenance"' in html
     assert "Explore trends and supporting papers" in html
     assert "window.navigateHost" in html
     assert 'id="observatory"' in render_explorer_page(report)

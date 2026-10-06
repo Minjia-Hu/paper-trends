@@ -20,13 +20,19 @@
 
 <main class="page{{ ' embedded' if embedded else '' }}">
 <header class="title">
-  <div class="kicker">{{ _('Publication trends') }} · {{ r.year_range[0] }}–{{ r.year_range[1] }}</div>
-  <h1>{{ short or r.name }}</h1>
-  {% if short %}<p class="title-full">{{ r.name }}</p>{% endif %}
-  <div class="meta">
-    <span><b>{{ "{:,}".format(r.n_papers) }}</b> {{ _('papers') }}</span>
-    <span><b>{{ r.years|length }}</b> {{ _('editions') }}</span>
-    <span><b>{{ "%.0f"|format(r.abstract_coverage * 100) }}%</b> {{ _('with abstracts') }}</span>
+  <div class="title-grid">
+    <div class="title-identity">
+      <div class="kicker">{{ _('Publication trends') }} · {{ r.year_range[0] }}–{{ r.year_range[1] }}</div>
+      <h1>{{ short or r.name }}</h1>
+      {% if short %}<p class="title-full">{{ r.name }}</p>{% endif %}
+    </div>
+    <div class="title-stats" aria-label="{{ _('Summary') }}">
+      <span><b>{{ "{:,}".format(r.n_papers) }}</b><small>{{ _('papers') }}</small></span>
+      <span><b>{{ r.years|length }}</b><small>{{ _('editions') }}</small></span>
+      <span><b>{{ "%.0f"|format(r.abstract_coverage * 100) }}%</b><small>{{ _('with abstracts') }}</small></span>
+    </div>
+  </div>
+  <div class="title-provenance">
     <span>{{ _('data from OpenAlex · report generated') }} {{ r.generated }}</span>
     <span>{{ r.data_fetched_label }}</span>
   </div>
