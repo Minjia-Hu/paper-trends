@@ -152,6 +152,8 @@ ZH = {
     "Counting keywords…": "正在统计关键词…", "Searching papers…": "正在查找论文…",
     "Fitting topic model…": "正在分析研究主题…", "Ranking…": "正在计算排名…",
     "Looking the conference up in OpenAlex…": "正在 OpenAlex 中查找会议…", "Writing the report…": "正在生成报告…",
+    "Generating report": "正在生成报告",
+    "Analyzing keywords, topics and publishing institutions. The first build usually takes several seconds to around ten seconds; the same settings reopen faster.": "正在分析关键词、研究主题和发文机构。首次生成通常需要数秒至十几秒，相同设置再次打开会更快。",
     "Another fetch is running on this server. Please retry in a minute.": "正在获取其他会议的数据，请稍后重试。",
     "Fetching “{query}” from OpenAlex…": "正在从 OpenAlex 获取“{query}”的数据…",
     "Fetched {count:,} papers → {path}": "已获取 {count:,} 篇论文 → {path}",
