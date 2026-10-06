@@ -186,9 +186,42 @@ window.navigateHost = function (url) {
     return true;
   } catch (_) { return false; }
 };
+// A native fragment jump inside Streamlit's auto-height iframe uses the
+// section's iframe coordinate as if it belonged to the host page. That can
+// overshoot by hundreds of pixels. Scroll the actual host container using
+// the iframe's position plus the target's position within the report.
+window.scrollReportHostTo = function (hash) {
+  if (!hash || window.parent === window) return false;
+  const target = document.querySelector(hash);
+  if (!target) return false;
+  try {
+    const frame = window.frameElement;
+    let scroller = window.parent.document.querySelector('[data-testid="stMain"]');
+    if (!scroller) {
+      scroller = frame && frame.parentElement;
+      while (scroller) {
+        const style = window.parent.getComputedStyle(scroller);
+        if (/(auto|scroll)/.test(style.overflowY) && scroller.scrollHeight > scroller.clientHeight) break;
+        scroller = scroller.parentElement;
+      }
+    }
+    if (!frame || !scroller) return false;
+    const frameRect = frame.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const top = scroller.scrollTop + frameRect.top - scrollerRect.top + targetRect.top - 20;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    return true;
+  } catch (_) { return false; }
+};
 document.addEventListener("click", (ev) => {
   const link = ev.target.closest("a.explore-cta");
   if (link && window.navigateHost(link.getAttribute("href"))) ev.preventDefault();
+});
+document.querySelectorAll('.report-jump a[href^="#"]').forEach((link) => {
+  link.addEventListener("click", (ev) => {
+    if (window.scrollReportHostTo(link.getAttribute("href"))) ev.preventDefault();
+  }, true);
 });
 window.VIEWS = {};
 const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts).then((res) => {

@@ -61,6 +61,8 @@ def test_report_and_explorer_are_separate_surfaces():
     assert 'class="title-provenance"' in html
     assert "Explore trends and supporting papers" in html
     assert "window.navigateHost" in html
+    assert "window.scrollReportHostTo" in html
+    assert "querySelectorAll('.report-jump a[href^=\"#\"]')" in html
     assert 'id="observatory"' in render_explorer_page(report)
     del report["entities"]["explorer"]
     explorer_html = render_explorer_page(report)
