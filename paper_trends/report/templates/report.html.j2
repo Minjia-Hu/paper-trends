@@ -21,7 +21,8 @@
 <main class="page{{ ' embedded' if embedded else '' }}">
 <header class="title">
   <div class="kicker">{{ _('Publication trends') }} · {{ r.year_range[0] }}–{{ r.year_range[1] }}</div>
-  <h1>{{ r.name }}</h1>
+  <h1>{{ short or r.name }}</h1>
+  {% if short %}<p class="title-full">{{ r.name }}</p>{% endif %}
   <div class="meta">
     <span><b>{{ "{:,}".format(r.n_papers) }}</b> {{ _('papers') }}</span>
     <span><b>{{ r.years|length }}</b> {{ _('editions') }}</span>
@@ -39,7 +40,13 @@
 {% endif %}
 {% for note in r.data_coverage.notices %}<p class="lede">{{ note }}</p>{% endfor %}
 {% for note in r.analysis_notes %}<p class="lede">{{ note }}</p>{% endfor %}
-{% include "explorer.html.j2" %}
+<nav class="report-jump" aria-label="{{ _('Report sections') }}">
+  <a href="#glance">{{ _('Summary') }}</a>
+  {% if r.has_trends %}<a href="#trends">{{ _('Trends') }}</a>{% endif %}
+  {% if r.topics %}<a href="#topics">{{ _('Topics') }}</a>{% endif %}
+  <a href="#who">{{ _('People & places') }}</a>
+  <a href="#about">{{ _('Methods') }}</a>
+</nav>
 
 <section id="glance">
   <h2>{{ _('At a glance') }}</h2>
@@ -50,11 +57,12 @@
   </figure>
 </section>
 
-{% if r.has_trends %}<section id="rising">
-  <h2>{{ _('What is rising') }}</h2>
+{% if r.has_trends %}<section id="trends">
+  <h2>{{ _('How the conversation changed') }}</h2>
   <p class="lede">{% if lang == 'zh' %}按符合以下规则的论文占比统计：{{ '关键词出现在标题中（该会议摘要较少）' if r.text_mode == 'title' else '关键词出现在标题中，或在摘要中至少出现两次' }}。每组相关词形展示一个代表词，其他变体列于下方。按前半时段（{{ r.year_range[0] }}–{{ r.split_year - 1 }}）到后半时段（{{ r.split_year }}–{{ r.year_range[1] }}）的占比增幅排名。{% else %}Share of papers matching the counting rule: {{ "the phrase appears in the title (abstracts are sparse for this venue)" if r.text_mode == "title" else "the phrase appears in the title or more than once in the abstract" }}. One phrase per family — variants such as “wafer hybrid bonding” are listed under it. Ranked by the gain between the first half of the period ({{ r.year_range[0] }}–{{ r.split_year - 1 }}) and the second ({{ r.split_year }}–{{ r.year_range[1] }}).{% endif %}</p>
+  <h3 class="section-label">{{ _('What is rising') }}</h3>
   <div class="grid">
-  {% for t in r.rising %}
+  {% for t in r.rising[:4] %}
     <figure>
       <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="up">{{ "%.1f"|format(t.late*100) }}%</span></p>
@@ -63,14 +71,10 @@
     </figure>
   {% endfor %}
   </div>
-  <p class="source">OpenAlex · paper-trends</p>
-</section>
-
-<section id="fading">
-  <h2>{{ _('What is fading') }}</h2>
-  <p class="lede">{{ _('The same measure for the phrases losing the most share. A falling share measures a change in vocabulary, not necessarily a decline in the technique’s use. Click any phrase, institution or topic on this page to see who writes about it, what it travels with and the papers behind it.') }}</p>
+  <h3 class="section-label fading-label">{{ _('What is fading') }}</h3>
+  <p class="section-note">{{ _('A falling share measures a change in vocabulary, not necessarily a decline in the technique’s use.') }}</p>
   <div class="grid">
-  {% for t in r.falling %}
+  {% for t in r.falling[:4] %}
     <figure class="fading">
       <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="down">{{ "%.1f"|format(t.late*100) }}%</span></p>
@@ -79,17 +83,14 @@
     </figure>
   {% endfor %}
   </div>
-  <p class="source">OpenAlex · paper-trends</p>
-</section>
-
-{% if r.emerging %}<section id="vocabulary">
-  <h2>{{ _('New vocabulary') }}</h2>
+  {% if r.emerging %}<h3 class="section-label">{{ _('New vocabulary') }}</h3>
   <p class="lede">{% if lang == 'zh' %}这些词在 {{ r.split_year }} 年前几乎未出现，后半时段的论文占比达到至少 1%。✚ 标记首次出现的年份。{% else %}Phrases that were almost absent before {{ r.split_year }} and now appear in at least one paper in a hundred. ✚ marks the first year a phrase shows up.{% endif %}</p>
   <figure style="max-width: 760px">
     <div class="viz" id="fig-emerging"></div>
-    <p class="source">OpenAlex · paper-trends</p>
-  </figure>
-</section>{% endif %}
+  </figure>{% endif %}
+  <p class="source">OpenAlex · paper-trends</p>
+  {% if explore_href %}<a class="explore-cta" href="{{ explore_href }}" target="_top">{{ _('Explore trends and supporting papers →') }}</a>{% endif %}
+</section>
 {% endif %}
 
 {% if r.topics %}<section id="topics">
@@ -101,10 +102,13 @@
     <p class="source">OpenAlex · paper-trends</p>
   </figure>{% endif %}
   <ul class="topic-list">
-  {% for t in r.topics %}
+  {% for t in r.topics[:5] %}
     <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><b class="ent" data-ent="topic" data-name="{{ t.label }}">{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} {{ _('papers') }})</span></li>
   {% endfor %}
   </ul>
+  {% if r.topics|length > 5 %}<details class="topic-more"><summary>{{ _('Show all topics') }}</summary><ul class="topic-list">
+  {% for t in r.topics[5:] %}<li><span class="swatch" style="background: {{ topic_colors[loop.index0 + 5] if loop.index0 + 5 < topic_colors|length else other_color }}"></span><b class="ent" data-ent="topic" data-name="{{ t.label }}">{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} {{ _('papers') }})</span></li>{% endfor %}
+  </ul></details>{% endif %}
 </section>{% endif %}
 
 <section id="who">
@@ -134,24 +138,13 @@
     </figure>
   </div>
   <p class="source">OpenAlex · paper-trends</p>
-  {% if r.inst_ranks %}
-  <figure class="wide" style="margin-top: 44px">
-    <figcaption><span class="headline">{{ r.inst_rank_sentence }}</span><span class="sub">{{ _('Rank among the ten most prolific institutions, on a three-year rolling count of papers. Red lines climbed three places or more, blue lines slipped.') }}</span></figcaption>
-    <div class="viz" id="fig-bump"></div>
-    <p class="source">OpenAlex · paper-trends</p>
-  </figure>
-  {% endif %}
-  {% if r.inst_topic %}
-  <figure class="wide" style="margin-top: 36px">
-    <figcaption><span class="headline">{{ r.inst_topic_sentence }}</span><span class="sub">{{ _("Share of each institution's papers whose dominant topic is the column; each row sums to 100 %. Dark cells are specialities.") }}</span></figcaption>
-    <div class="viz" id="fig-heat"></div>
-    <p class="source">OpenAlex · paper-trends</p>
-  </figure>
-  {% endif %}
+  {% if explore_href %}<a class="explore-cta" href="{{ explore_href }}&amp;section=institutions" target="_top">{{ _('Explore institutions in detail →') }}</a>{% endif %}
 </section>
 
 <footer class="about" id="about">
   <h2>{{ _('About the data') }}</h2>
+  <p>{{ _('OpenAlex metadata; titles and abstracts only. Coverage and affiliation matching vary by venue.') }}</p>
+  <details class="method-details"><summary>{{ _('Method and limitations') }}</summary>
   {% if lang == 'zh' %}
   <p>本报告使用 <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a>（CC0）收录的 {{ r.name }} 在 {{ r.year_range[0] }}–{{ r.year_range[1] }} 年的论文元数据，覆盖程度取决于其索引。已去除封面、会议议程等前置材料。关键词提取自标题和摘要，不涉及全文。{{ '由于收录的摘要较少，本报告关键词统计仅使用标题。' if r.text_mode == 'title' else '缩写归一化后，关键词出现在标题中，或在摘要中至少出现两次，即计入该论文。' }}{{ '标题中的提及只是相关性线索，并不一定代表论文的研究主题。' if r.text_mode == 'title' else '这种规则用于初步判断相关性，并不一定代表论文的研究主题；重复的背景或应用描述也可能被计入。' }}语料中明确定义的缩写（例如 redistribution layer / RDL）按同一词统计，几乎总是包含于长词中的片段会合并；每组词形展示一个代表词。{% if r.n_common_hidden %}已隐藏 {{ r.n_common_hidden }} 个经审核且出现在至少三个其他领域中的通用表达（{{ r.common_examples|join('、') }} 等），deep learning 等跨领域技术词仍参与排名。{% endif %}“上升”和“下降”比较前、后半时段分别汇总后的论文占比。论文标题、摘要、技术词及机构名称保留原文。</p>
   {% else %}
@@ -163,6 +156,7 @@
     {% for row in r.data_coverage.rows %}<tr><td>{{ row.year }}</td><td class="num">{{ row.papers if row.papers else _("No cached records") }}</td><td class="num">{{ "%.1f%%"|format(row.coverage * 100) if row.coverage is not none else "—" }}</td></tr>{% endfor %}
     </tbody></table>
   </details>
+  </details>
   <p style="margin-top: 20px">{% if lang == 'zh' %}由 <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a> 生成于 {{ r.generated }}。{% else %}Generated {{ r.generated }} by <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a>.{% endif %}</p>
 </footer>
 </main>
@@ -172,6 +166,24 @@ const specs = {{ specs|tojson }};
 const opts = { actions: false, renderer: "svg" };
 window.REPORT_LANG = {{ lang|tojson }};
 window.ENTITIES = {{ entities|tojson }};
+window.EXPLORE_URL = {{ explore_href|tojson }};
+// Streamlit's HTML iframe allows same-origin access but blocks direct top
+// navigation. Trigger a temporary link in the host document so report CTAs
+// behave like the host's own navigation controls.
+window.navigateHost = function (url) {
+  if (!url || window.parent === window) return false;
+  try {
+    const link = window.parent.document.createElement("a");
+    link.href = url; link.hidden = true;
+    window.parent.document.body.appendChild(link);
+    link.click(); link.remove();
+    return true;
+  } catch (_) { return false; }
+};
+document.addEventListener("click", (ev) => {
+  const link = ev.target.closest("a.explore-cta");
+  if (link && window.navigateHost(link.getAttribute("href"))) ev.preventDefault();
+});
 window.VIEWS = {};
 const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts).then((res) => {
   window.VIEWS[id] = res.view;
@@ -212,6 +224,5 @@ const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec,
 })();
 </script>
 <script>{{ entities_js|safe }}</script>
-<script>{{ explorer_js|safe }}</script>
 </body>
 </html>

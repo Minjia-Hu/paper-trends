@@ -10,7 +10,7 @@ function fixture() {
   if (html) return html;
   const result = spawnSync('.venv/bin/python', ['-c', `
 from paper_trends.report.build import build_report
-from paper_trends.report.render import render_page
+from paper_trends.report.render import render_explorer_page
 records=[]
 for y, roles in [(2018, ['title']*2+['repeated']*2+['once']*2+['none']*2), (2020, ['title','repeated']+['once']*2+['none']*4)]:
     for i,role in enumerate(roles):
@@ -19,7 +19,7 @@ for y, roles in [(2018, ['title']*2+['repeated']*2+['once']*2+['none']*2), (2020
           'abstract':'Hybrid bonding improves hybrid bonding.' if role=='repeated' else 'Hybrid bonding is used.' if role=='once' else 'Thermal resistance heat sink cooling.',
           'doi':'javascript:alert(1)' if i==0 else f'10.1109/test.{y}.{i}', 'cited_by_count':i,
           'authorships':[{'institutions':[{'id':'I1','name':'Lab Alpha'}]},{'institutions':[{'id':'I1','name':'Lab Alpha'}]}]})
-print(render_page(build_report(records,name='Test conference',slug='test',years=(2018,2020),n_topics=2)))
+print(render_explorer_page(build_report(records,name='Test conference',slug='test',years=(2018,2020),n_topics=2)))
 `], { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   html = result.stdout;
@@ -42,7 +42,7 @@ function mount(edit, lang = 'en') {
   return { dom, win, data: data.explorer, get, input, timers };
 }
 
-test('changing counting rules and time updates real report DOM, evidence and institutions', { skip: !JSDOM }, () => {
+test('changing counting rules and time updates real explorer DOM, evidence and institutions', { skip: !JSDOM }, () => {
   const { dom, win, get, input } = mount();
   try {
     assert.equal(get('share').textContent, '37.5%');

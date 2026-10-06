@@ -15,14 +15,14 @@ import streamlit as st
 from paper_trends import compare, frames
 from paper_trends.i18n import language, tr, chart_labels, field_label
 from paper_trends.report import charts
-from paper_trends.background import MIN_FIELDS, field_of
+from paper_trends.background import field_of
 from paper_trends.coverage import coverage_details, default_period
 from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends, display_form, group_families, hyphen_forms, papers_with
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
-from paper_trends.report.build import build_report, country_map_rows, country_name, coverage_note, growth_sentence
-from paper_trends.report.render import FULL, SHORT, TAGLINE, nav_for, render_page
+from paper_trends.report.build import build_report, country_name
+from paper_trends.report.render import FULL, SHORT, TAGLINE, nav_for, render_explorer_page, render_page
 from paper_trends.store import filter_years, metadata_path, provenance_label, read_jsonl, read_provenance, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import InsufficientTopicData, compute_nmf, compute_openalex
@@ -143,13 +143,15 @@ st.markdown(
     .st-key-refresh_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; }
     .st-key-refresh_btn button:hover { border-color: #1B1B1B !important; }
     /* explore view header, in the report's voice */
-    .pt-head { font-family: "IBM Plex Sans", system-ui, sans-serif; padding: 34px 24px 0; }
+    .pt-head { font-family: "IBM Plex Sans", system-ui, sans-serif; padding: 22px 24px 0; }
     .pt-head .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 14px; }
-    .pt-head h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; padding: 0; }
+    .pt-head h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(32px, 4vw, 46px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 4px; color: #1B1B1B; padding: 0; }
+    .pt-head .full-name { font-family: Newsreader, Georgia, serif; color: #5C5C5C; font-size: 20px; line-height: 1.25; margin: 0 0 16px; }
     .pt-head .meta { color: #5C5C5C; font-size: 14.5px; display: flex; gap: 22px; flex-wrap: wrap; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
     .pt-head .meta b { color: #1B1B1B; font-weight: 600; }
     .pt-sections { padding-top: 16px !important; padding-bottom: 8px; }
     .pt-h2 { font-family: Newsreader, Georgia, serif !important; font-weight: 500 !important; font-size: 26px !important; letter-spacing: -0.01em; margin: 26px 0 4px !important; padding: 0 !important; color: #1B1B1B; }
+    .pt-subhead { font-family: Newsreader, Georgia, serif !important; font-size: 21px !important; font-weight: 500 !important; margin: 14px 0 5px !important; }
     .pt-lede { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; max-width: 72ch; margin: 0 0 12px; }
     .block-container [data-testid="stMarkdownContainer"] p { font-family: "IBM Plex Sans", system-ui, sans-serif; }
     /* explore widgets: quiet */
@@ -183,8 +185,8 @@ st.markdown(
     .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] span, .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] button { color: #1B1B1B !important; }
     .block-container [data-testid="stSliderThumbValue"] p { color: #1B1B1B !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 12px !important; }
     .block-container [data-testid="stSliderTickBar"] p { color: #8A877F !important; font-size: 11px !important; }
-    .st-key-dl_corpus button, .st-key-dl_keywords button, .st-key-dl_institutions button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; width: 100%; }
-    .st-key-dl_corpus button:hover, .st-key-dl_keywords button:hover, .st-key-dl_institutions button:hover { border-color: #1B1B1B !important; }
+    .st-key-dl_results button, .st-key-dl_corpus button, .st-key-dl_keywords button, .st-key-dl_institutions button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; width: 100%; }
+    .st-key-dl_results button:hover, .st-key-dl_corpus button:hover, .st-key-dl_keywords button:hover, .st-key-dl_institutions button:hover { border-color: #1B1B1B !important; }
     .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
     /* resolution card */
     .pt-found { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
@@ -402,10 +404,19 @@ def cached_report_data(path: str, mtime: float, years: tuple[int, int], name: st
 @st.cache_data(show_spinner=False)
 def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
                        provenance: dict | None = None, default_span: int | None = None,
-                       calendar_year: int | None = None, lang: str = "en") -> str:
-    """Render a language-specific report without changing analysis (revision 12)."""
+                       calendar_year: int | None = None, lang: str = "en", explore_href: str = "") -> str:
+    """Render a language-specific report without changing analysis (revision 13)."""
     r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year)
-    return render_page(r, None, embedded=True, app_links=True, lang=lang)
+    return render_page(r, None, embedded=True, app_links=True, lang=lang, explore_href=explore_href)
+
+
+@st.cache_data(show_spinner=False)
+def cached_explorer_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
+                         provenance: dict | None = None, default_span: int | None = None,
+                         calendar_year: int | None = None, lang: str = "en", initial_term: str = "") -> str:
+    """Focused time-window workspace, sharing exactly the report's analysis data."""
+    r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year)
+    return render_explorer_page(r, lang=lang, initial_term=initial_term)
 
 
 @st.cache_data(show_spinner=t("Ranking…"))
@@ -666,31 +677,34 @@ cov_y = frames.coverage_frame(recs)
 
 if mode == "Report":
     st.iframe(cached_report_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                                date.today().year, LANG), height="content")
+                                date.today().year, LANG, link(view="explore", section=None, term=None)), height="content")
     st.stop()
 
 data_coverage = coverage_details(records, years, default_span=default_span)
-st.caption(t(provenance_label(provenance)))
-st.caption(t(data_coverage["selection"]))
+st.caption(t(provenance_label(provenance)) + " · " + t(data_coverage["selection"]))
 for message in data_coverage["notices"]:
     st.caption(t(message))
 with st.expander(t("Data coverage and period details")):
     st.caption(t(data_coverage["caveat"]))
     for exclusion in data_coverage["exclusions"]:
         st.write(t(exclusion["message"]))
-    st.dataframe(pd.DataFrame(data_coverage["rows"]), hide_index=True,
+    st.dataframe(pd.DataFrame(data_coverage["rows"]), hide_index=True, width="stretch",
                  column_config={c: field_label(c, LANG) for c in ("year", "papers", "abstracts", "coverage")})
 
-section = st.query_params.get("section", "overview")
-SECTIONS = [("overview", "Overview"), ("keywords", "Keywords"), ("topics", "Topics"), ("rankings", "Rankings"), ("compare", "Compare"), ("data", "Data")]
+section = st.query_params.get("section", "trends")
+section = {"overview": "trends", "keywords": "trends", "rankings": "institutions", "data": "papers"}.get(section, section)
+SECTIONS = [("trends", "Trends & evidence"), ("topics", "Topic analysis"), ("institutions", "Institution analysis"),
+            ("compare", "Compare conferences"), ("papers", "Papers & export")]
 if section not in dict(SECTIONS):
-    section = "overview"
-n_inst = len(cached_ranking(path, mtime, years, "institution").by_year)
+    section = "trends"
+short_name = SHORT.get(slug)
+display_name = short_name or query
+full_name = f'<div class="full-name">{escape(query)}</div>' if short_name and short_name != query else ""
 st.markdown(
-    f'<div class="pt-head"><div class="kicker">{t("Explore")} · {years[0]}–{years[1]}</div><h1>{escape(query)}</h1>'
+    f'<div class="pt-head"><div class="kicker">{t("Explore")} · {years[0]}–{years[1]}</div><h1>{escape(display_name)}</h1>{full_name}'
     f'<div class="meta"><span><b>{len(recs):,}</b> {t("papers")}</span><span><b>{years[1] - years[0] + 1}</b> {t("editions")}</span>'
-    f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b> {t("with abstracts")}</span><span><b>{n_inst:,}</b> {t("Institutions")}</span></div></div>'
-    + '<div class="pt-controls pt-sections">' + links_row([(lbl, link(section=None if k == "overview" else k), k == section) for k, lbl in SECTIONS]) + "</div>",
+    f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b> {t("with abstracts")}</span></div></div>'
+    + '<div class="pt-controls pt-sections">' + links_row([(lbl, link(section=None if k == "trends" else k, term=None), k == section) for k, lbl in SECTIONS]) + "</div>",
     unsafe_allow_html=True,
 )
 
@@ -703,84 +717,65 @@ def note(text: str) -> None:
     st.markdown(f'<p class="pt-lede">{t(text)}</p>', unsafe_allow_html=True)
 
 
-if section == "overview":
-    rows_y = cov_y.to_dict("records")
-    per_year = {r["year"]: r["papers"] for r in rows_y}
-    with_abs = {r["year"]: r["abstracts"] for r in rows_y}
-    g = t(growth_sentence(per_year))
-    figure_head("Papers per year", t("{growth}; abstract coverage {coverage}{note}.", growth=g[0].upper() + g[1:],
-                                    coverage=f"{cov_y['abstracts'].sum() / max(len(recs), 1):.0%}", note=t(coverage_note(per_year, with_abs))))
-    a, b = st.columns([1, 1])
-    with a:
-        vl(charts.trend_line(rows_y), key="ov-papers")
-    rk_c = cached_ranking(path, mtime, years, "country")
-    top_c = rk_c.top(12)
-    figure_head("Where the papers come from", t("Share of papers with at least one author in the country, {start}–{end}; countries without a paper are left blank", start=years[0], end=years[1]))
-    vl(charts.world_map(country_map_rows(rk_c, len(recs))), key="ov-map")
-    a2, b2 = st.columns(2)
-    with a2:
-        figure_head("Papers by country", t("A paper counts once per country") + (t("; the arrow is the change in share between the two halves of the period") if len(cov_y) > 1 else ""))
-        vl(charts.ranked_bars([{**r, "name": country_name(r["name"])} for r in ranking_rows(rk_c, top_c)], show_change=len(cov_y) > 1), key="ov-country")
-        source_line()
-    with b2:
-        figure_head("By year")
-        html_table(frames.ranking_table(rk_c, top_c).assign(country=lambda d: d["country"].map(country_name)))
-
-if len(cov_y) < 2 and section in {"keywords", "compare"}:
-    st.info(t("Comparisons over time need at least two years. Open Data to see the papers in this period."))
+if len(cov_y) < 2 and section == "compare":
+    st.info(t("Comparisons over time need at least two years. Open Papers & export to see the papers in this period."))
     st.stop()
 
-if section == "keywords":
-    o1, o2, o3 = st.columns([1, 1, 2])
-    ngram = o1.selectbox(t("N-grams"), ["1–3", "2–3", "1"], index=1)
-    text_mode = o2.selectbox(t("Text"), ["title+abstract", "title"], format_func=t)
-    ng = {"1–3": (1, 3), "2–3": (2, 3), "1": (1, 1)}[ngram]
-    t1, t2 = st.columns([1, 1])
-    every = t1.toggle(t("Count every mention"), value=False, help=t("Off (default): a paper counts when the phrase is in its title or repeated in its abstract. This is a relevance heuristic; repeated background mentions can still count. On: any mention counts."))
-    keep_common = t2.toggle(t("Include boilerplate phrases"), value=False, help=t("Off (default): phrases on a reviewed boilerplate list (high performance, low cost, next generation…) are hidden when used by {fields} or more other fields. Cross-field technical phrases such as deep learning remain eligible.", fields=MIN_FIELDS))
-    basis = "any" if every else "topical"
-    kt = cached_keywords(path, mtime, years, text_mode, ng, extra_stop, basis, keep_common)
-    if kt.common and not keep_common:
-        note(t("{count} boilerplate phrases used in {fields}+ other fields are hidden, e.g. {examples}. Cross-field technical phrases remain eligible.", count=len(kt.common), fields=MIN_FIELDS, examples=", ".join(sorted(kt.common, key=lambda t: -kt.mentions(t))[:6])))
+if section == "trends":
+    initial_term = st.query_params.get("term", "")
+    st.iframe(cached_explorer_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
+                                  date.today().year, LANG, initial_term), height="content")
+    h2("Explore any phrase", "Choose a suggested phrase or type a two- or three-word phrase. The chart and papers use the same period and counting rule as the report.")
+    text_mode = "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title"
+    kt = cached_keywords(path, mtime, years, text_mode, (2, 3), extra_stop, "topical", False)
     forms = cached_hyphen_forms(path, mtime, years, text_mode)
     show = lambda t: display_form(t, forms, kt.acronyms.surface if kt.acronyms else None)  # noqa: E731
-    rising_f = group_families(kt.rising(60, min_total=10), 15, kt.total)
-    falling_f = group_families(kt.falling(60, min_total=10), 15, kt.total)
+    rising_f = group_families(kt.rising(60, min_total=10), 10, kt.total) if len(cov_y) > 1 else []
+    falling_f = group_families(kt.falling(60, min_total=10), 10, kt.total) if len(cov_y) > 1 else []
     rising = [h for h, _ in rising_f]
     falling = [h for h, _ in falling_f]
-    default_terms = [t for t, *_ in rising[:5]]
-    terms = o3.multiselect(t("Plot terms"), kt.top_terms(300), default=default_terms, format_func=show)
-    if terms:
+    options = kt.top_terms(500)
+    initial_key = next((term for term in options if term.lower() == initial_term.lower()), None)
+    default_terms = [initial_key] if initial_key else [term for term, *_ in rising[:3]] or options[:3]
+    selected = st.multiselect(t("Phrases to explore"), options, default=default_terms, format_func=show,
+                              accept_new_options=True, max_selections=4, select_all=False,
+                              placeholder=t("Choose or type a phrase"),
+                              key=f"trend_terms:{initial_term.strip().lower() or 'default'}", wrap=True)
+    option_by_lower = {term.lower(): term for term in options}
+    terms = list(dict.fromkeys(option_by_lower.get(str(term).strip().lower(), str(term).strip().lower()) for term in selected if str(term).strip()))
+    valid_terms = [term for term in terms if term in kt.doc_freq]
+    missing_terms = [term for term in terms if term not in kt.doc_freq]
+    if missing_terms:
+        st.caption(t("No matching two- or three-word phrase in this period: {terms}", terms=", ".join(missing_terms)))
+    if valid_terms:
         figure_head("Share of papers mentioning the phrase", t("{start}–{end}; the number at the end of each line is the latest year", start=years[0], end=years[1]))
-        small_multiples([{"term": show(t), "early": kt.momentum(t)[0], "late": kt.momentum(t)[1], "series": [{"year": y, "share": kt.share(t, y), "papers": kt.doc_freq[t].get(y, 0)} for y in kt.years]} for t in terms], kt.years, charts.RED)
+        small_multiples([{"term": show(term), "early": kt.momentum(term)[0], "late": kt.momentum(term)[1], "series": [{"year": y, "share": kt.share(term, y), "papers": kt.doc_freq[term].get(y, 0)} for y in kt.years]} for term in valid_terms], kt.years, charts.RED)
         source_line()
-    r, f = st.columns(2)
-    r.markdown('<h2 class=\"pt-h2\">' + t("Rising") + '</h2>', unsafe_allow_html=True)
-    with r:
-        html_table(frames.movers_table(rising).assign(term=[show(t) for t, *_ in rising], also=[", ".join(show(x) for x in v) for _, v in rising_f]), pct=["early", "late", "delta"], signed=["delta"])
-    f.markdown('<h2 class=\"pt-h2\">' + t("Falling") + '</h2>', unsafe_allow_html=True)
-    with f:
-        html_table(frames.movers_table(falling).assign(term=[show(t) for t, *_ in falling], also=[", ".join(show(x) for x in v) for _, v in falling_f]), pct=["early", "late", "delta"], signed=["delta"])
-    h2("Emerging")
-    emerging = [h for h, _ in group_families(kt.emerging(45, min_total=10), 15, kt.total)]
-    html_table(pd.DataFrame([(show(t), *rest) for t, *rest in emerging], columns=["term", "first seen", "early", "late"]), pct=["early", "late"])
-    note("Near-absent in the first half of the range, at least 1 % of papers in the second half — the new vocabulary, ranked by current share.")
-    h2("Papers mentioning a term")
-    pick_options = list(dict.fromkeys([*terms, *[t for t, *_ in emerging[:5]]]))
+    h2("Supporting papers")
+    pick_options = valid_terms
     pick = st.selectbox(t("Term"), pick_options, key="kw_pick", format_func=show) if pick_options else None
     if pick:
-        hits = cached_papers_with(path, mtime, years, pick, text_mode, basis == "topical", ng[1], extra_stop)
+        hits = cached_papers_with(path, mtime, years, pick, text_mode, True, 3, extra_stop)
         note(t("{count:,} papers matching the selected counting rule, newest and most cited first.", count=len(hits)))
-        html_table(pd.DataFrame([{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in hits]), links=["doi"], max_rows=60)
-    h2("Top terms by year")
-    top = [h[0] for h, _ in group_families([(t,) for t in kt.top_terms(80)], 40, kt.total)]
-    html_table(frames.keyword_table(kt, top).assign(term=[show(t) for t in top]), pct=[str(y) for y in kt.years])
-    note("Phrases come from titles and abstracts (OpenAlex has no full text). Early/late compare the pooled share of papers in the first vs. second half of the year range. Acronyms the corpus defines are read as their long form; fragments that almost always sit inside a longer phrase are folded into it; the rising and falling lists show one phrase per family.")
+        html_table(pd.DataFrame([{"year": rec.get("publication_year"), "title": rec.get("title"), "citations": rec.get("cited_by_count", 0), "doi": rec.get("doi")} for rec in hits]), links=["doi"], max_rows=40)
+    if len(cov_y) > 1:
+        h2("More trend candidates")
+        rise_col, fall_col = st.columns(2)
+        rise_col.markdown('<h3 class=\"pt-subhead\">' + t("Rising") + '</h3>', unsafe_allow_html=True)
+        with rise_col:
+            html_table(frames.movers_table(rising).assign(term=[show(term) for term, *_ in rising], also=[", ".join(show(x) for x in variants) for _, variants in rising_f]), pct=["early", "late", "delta"], signed=["delta"])
+        fall_col.markdown('<h3 class=\"pt-subhead\">' + t("Falling") + '</h3>', unsafe_allow_html=True)
+        with fall_col:
+            html_table(frames.movers_table(falling).assign(term=[show(term) for term, *_ in falling], also=[", ".join(show(x) for x in variants) for _, variants in falling_f]), pct=["early", "late", "delta"], signed=["delta"])
+        emerging = [head for head, _ in group_families(kt.emerging(45, min_total=10), 10, kt.total)]
+        if emerging:
+            h2("Emerging")
+            html_table(pd.DataFrame([(show(term), *rest) for term, *rest in emerging], columns=["term", "first seen", "early", "late"]), pct=["early", "late"])
 
 if section == "topics":
     o1, o2 = st.columns([1, 1])
     method = o1.selectbox(t("Method"), ["nmf", "openalex", "openalex-subfield"], format_func=lambda m: t({"nmf": "NMF on titles + abstracts", "openalex": "OpenAlex topic labels", "openalex-subfield": "OpenAlex subfields"}[m]))
-    n_topics = o2.slider(t("Topics (NMF)"), 6, 20, 10, disabled=method != "nmf")
+    n_topics = o2.slider(t("Topics (NMF)"), 6, 20, 8, disabled=method != "nmf")
     try:
         tt = cached_topics(path, mtime, years, method, n_topics, extra_stop)
     except InsufficientTopicData as exc:
@@ -802,7 +797,7 @@ if section == "topics":
     if method == "nmf":
         note("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
 
-if section == "rankings":
+if section == "institutions":
     o1, o2, o3, o4 = st.columns([1, 1, 1, 1])
     entity = o1.selectbox(t("Rank"), ENTITIES, format_func=lambda value: t(value) if LANG == 'zh' else value.title())
     sort_by = o2.selectbox(t("Sort by"), ["papers", "citations"], format_func=lambda value: field_label(value, LANG))
@@ -833,16 +828,18 @@ if section == "rankings":
 
 if section == "compare":
     note("Same terms, other conferences. Only conferences already fetched on this server are listed.")
+    note("Every selected conference uses the same years, text range and counting rule. Missing editions remain missing rather than being treated as zero papers.")
     local = {k: v for k, v in PRESETS.items() if v["slug"] != slug and corpus_path(v["slug"]).exists()}
     others = st.multiselect(t("Compare with"), list(local), default=list(local)[:2], format_func=lambda k: " · ".join(t(part) for part in k.split(" — ")[0].split(" · ")))
-    kt_here = cached_keywords(path, mtime, years, "title+abstract", (2, 3), extra_stop, "topical", True)   # comparisons keep cross-field phrases
+    text_mode = "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title"
+    kt_here = cached_keywords(path, mtime, years, text_mode, (2, 3), extra_stop, "topical", True)   # comparisons keep cross-field phrases
     default_terms = [t for t, *_ in kt_here.rising(4, min_total=10)]
     cmp_terms = st.multiselect(t("Terms"), kt_here.top_terms(300), default=default_terms, key="cmp_terms")
     if others and cmp_terms:
         trends = {SHORT.get(slug, query): kt_here}
         for k in others:
             cp = corpus_path(local[k]["slug"])
-            trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, "title+abstract", (2, 3), extra_stop, "topical", True)
+            trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, text_mode, (2, 3), extra_stop, "topical", True)
         df = pd.DataFrame(compare.term_shares(trends, cmp_terms))
         names = list(trends)
         yrs = sorted(df["year"].unique().tolist())
@@ -864,12 +861,27 @@ if section == "compare":
     elif not others:
         st.info(t("Fetch another preset conference to enable comparison."))
 
-if section == "data":
+if section == "papers":
     size_mb = corpus_path(slug).stat().st_size / 1e6
-    note(t('Corpus {path} ({size:.0f} MB) — one JSON record per paper: title, abstract, authorships, citations, OpenAlex topics.', path=f'<span class="mono">{escape(str(corpus_path(slug)))}</span>', size=size_mb))
+    h2("Find papers", "Search titles and abstracts within the selected period, then sort or export the current results.")
+    paper_query = st.text_input(t("Search paper titles and abstracts"), type="search", placeholder=t("Type a phrase, method or application"), key="paper_filter")
+    sort_papers = st.segmented_control(t("Sort papers"), ["newest", "cited"], default="newest", format_func=t, key="paper_sort") or "newest"
+    needle = paper_query.strip().lower()
+    matching = [rec for rec in recs if not needle or needle in f"{rec.get('title') or ''} {rec.get('abstract') or ''}".lower()]
+    listing = pd.DataFrame(
+        [{"year": rec.get("publication_year"), "title": rec.get("title"), "citations": rec.get("cited_by_count", 0), "doi": rec.get("doi")} for rec in matching],
+        columns=["year", "title", "citations", "doi"],
+    )
+    listing = listing.sort_values(["citations", "year"], ascending=[False, False]) if sort_papers == "cited" else listing.sort_values(["year", "citations"], ascending=[False, False])
+    figure_head("Papers in the current result", t("{count:,} papers; sortable and scrollable", count=len(listing)))
+    st.dataframe(listing, hide_index=True, width="stretch", height=480,
+                 column_config={**{c: field_label(c, LANG) for c in ("year", "title", "citations")}, "doi": st.column_config.LinkColumn(t("doi"))})
+    h2("Export")
+    note(t('Full corpus: {path} ({size:.0f} MB). Current-result export follows the selected period and paper search.', path=f'<span class="mono">{escape(str(corpus_path(slug)))}</span>', size=size_mb))
     # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
-    d1, d2, d3, _ = st.columns([1, 1, 1, 2])
-    d1.download_button(t("Corpus (JSONL)"), lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
+    d0, d1, d2, d3 = st.columns(4)
+    d0.download_button(t("Current results (CSV)"), listing.to_csv(index=False), file_name=f"{slug}_{years[0]}-{years[1]}_papers.csv", mime="text/csv", key="dl_results")
+    d1.download_button(t("Full corpus (JSONL)"), lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
     d2.download_button(
         t("Keyword table (CSV)"),
         lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract", (1, 3), extra_stop)),
@@ -880,9 +892,3 @@ if section == "data":
         lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution")),
         file_name=f"{slug}_institutions.csv", mime="text/csv", key="dl_institutions",
     )
-    listing = pd.DataFrame(
-        [{"year": r.get("publication_year"), "title": r.get("title"), "citations": r.get("cited_by_count", 0), "doi": r.get("doi")} for r in recs]
-    ).sort_values(["year", "citations"], ascending=[False, False])
-    figure_head("All papers in the period", "Newest and most cited first; sortable, scrollable")
-    st.dataframe(listing, hide_index=True, width="stretch", height=420,
-                 column_config={**{c: field_label(c, LANG) for c in ("year", "title", "citations")}, "doi": st.column_config.LinkColumn(t("doi"))})

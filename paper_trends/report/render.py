@@ -70,7 +70,11 @@ def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
     for kind, key in (("rise", "rising"), ("fall", "falling")):
         items = r[key]
         ymax = max((s["share"] for t in items for s in t["series"]), default=0.1) * 1.15
-        for i, t in enumerate(items, 1):
+        # The report is an editorial summary.  The complete rankings and
+        # user-selected terms live in Explore; four small multiples are enough
+        # to make each direction legible without turning the report into a wall
+        # of charts.
+        for i, t in enumerate(items[:4], 1):
             specs[f"fig-{kind}-{i}"] = charts.small_multiple(t["series"], years, ymax, charts.RED if kind == "rise" else charts.BLUE)
     if r["emerging"]:
         specs["fig-emerging"] = charts.emerging_heatmap(r["emerging"], years)
@@ -79,10 +83,6 @@ def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
     specs["fig-map"] = charts.world_map(r["country_map"], years=years if r.get("map_lines") else None)
     specs["fig-inst"] = charts.ranked_bars(r["institutions"], show_change=len(years) > 1)
     specs["fig-country"] = charts.ranked_bars(r["countries"], show_change=len(years) > 1)
-    if r.get("inst_topic"):
-        specs["fig-heat"] = charts.inst_topic_heatmap(r["inst_topic"], r["inst_topic_insts"], r["inst_topic_topics"])
-    if r.get("inst_ranks"):
-        specs["fig-bump"] = charts.bump_chart(r["inst_ranks"], years, len({x["name"] for x in r["inst_ranks"]}))
     return specs
 
 
@@ -113,14 +113,32 @@ def _css() -> str:
     return (HERE / "static" / "report.css").read_text(encoding="utf-8")
 
 
-def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False, lang: str = "en") -> str:
+def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False,
+                lang: str = "en", explore_href: str | None = None) -> str:
     """HTML for one report. `embedded=True` inlines the CSS (for a Streamlit iframe);
     `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`)."""
     lang = language(lang)
     return _env().get_template("report.html.j2").render(
-        r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), nav=nav or [], tagline=TAGLINE, specs=chart_labels(figure_specs(r), lang), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
+        r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), nav=nav or [], tagline=TAGLINE,
+        short=SHORT.get(r.get("slug")), explore_href=explore_href,
+        specs=chart_labels(figure_specs(r), lang), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
         embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
         entities=r.get("entities"), map_lines=r.get("map_lines") or {},
+        entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
+    )
+
+
+def render_explorer_page(r: dict[str, Any], *, lang: str = "en", initial_term: str = "") -> str:
+    """Render the focused time-window and evidence workspace used by Explore.
+
+    It deliberately excludes the narrative report: Report explains the main
+    findings, while this surface lets the reader change the question and inspect
+    supporting papers.
+    """
+    lang = language(lang)
+    return _env().get_template("explorer_page.html.j2").render(
+        r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), inline_css=_css(), standalone_explorer=True,
+        entities=r.get("entities"), initial_term=initial_term,
         entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
         explorer_js=(HERE / "static" / "explorer.js").read_text(encoding="utf-8"),
     )

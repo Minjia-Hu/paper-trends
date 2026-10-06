@@ -40,8 +40,10 @@
   const pct = value => value == null ? "—" : (value * 100).toFixed(1) + "%";
   const modes = data.text_mode === "title" ? ["title"] : ["title", "topical", "any"];
   const colors = { title: "#1F4E79", topical: "#E3120B", any: "#8A877F" };
+  const requested = String(window.EXPLORER_TERM || "").trim().toLowerCase();
+  const requestedTerm = data.terms.findIndex(t => t.key.toLowerCase() === requested || t.label.toLowerCase() === requested);
   let state = { lo: Math.max(0, data.years.length - 3), hi: data.years.length - 1,
-    term: 0, mode: data.text_mode === "title" ? "title" : "topical" };
+    term: requestedTerm >= 0 ? requestedTerm : 0, mode: data.text_mode === "title" ? "title" : "topical" };
   let timer = null, shown = 6;
   for (const id of ["from", "to"]) { $(id).min = 0; $(id).max = data.years.length - 1; $(id).disabled = data.years.length < 2; }
   $("play").disabled = data.years.length < 2;

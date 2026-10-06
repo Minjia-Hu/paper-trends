@@ -39,7 +39,7 @@ def test_chinese_report_keeps_exact_data_and_original_paper_text(tmp_path):
     zh = render_page(r, lang="zh")
     assert '<html lang="zh-CN">' in zh
     assert "趋势速览" in zh and "默认不包含" not in zh
-    assert "标题提及或摘要多次提及" in zh and "前半时段" in zh
+    assert "关键词出现在标题中，或在摘要中至少出现两次" in zh and "前半时段" in zh
     assert "OpenAlex 收录了 Test Conf" in zh
     assert "hybrid bonding" in zh
     assert 'Hybrid bonding <script>' not in zh

@@ -5,7 +5,7 @@ import re
 import pytest
 
 from paper_trends.report.build import build_report, growth_sentence
-from paper_trends.report.render import figure_specs, render_site
+from paper_trends.report.render import figure_specs, render_explorer_page, render_site
 
 THERMAL = "thermal resistance heat sink cooling junction temperature heat flux"
 BONDING = "hybrid bonding copper pad pitch dielectric bond interface void"
@@ -38,7 +38,10 @@ def test_build_and_render(tmp_path):
     assert r["glance"] and "Test Conf" in r["glance"][0]
     assert r["countries"][0]["name"] in {"United States", "South Korea", "Japan", "Taiwan"}
     specs = figure_specs(r)
-    assert {"fig-papers", "fig-topics", "fig-inst", "fig-country", "fig-heat", "fig-bump"} <= set(specs)
+    assert {"fig-papers", "fig-topics", "fig-inst", "fig-country"} <= set(specs)
+    assert "fig-heat" not in specs and "fig-bump" not in specs
+    assert len([key for key in specs if key.startswith("fig-rise-")]) <= 4
+    assert len([key for key in specs if key.startswith("fig-fall-")]) <= 4
     json.dumps(specs)  # must be JSON-serialisable
     render_site([r], tmp_path)
     html = (tmp_path / "test.html").read_text()
@@ -46,15 +49,19 @@ def test_build_and_render(tmp_path):
     assert (tmp_path / "index.html").exists() and (tmp_path / "report.css").exists()
 
 
-def test_render_legacy_entities_without_explorer():
+def test_report_and_explorer_are_separate_surfaces():
     from paper_trends.report.render import render_page
 
     report = build_report(_corpus(), name="Legacy Conf", slug="legacy", years=(2016, 2023), n_topics=2)
-    assert 'id="observatory"' in render_page(report, embedded=True)
-    del report["entities"]["explorer"]
-    html = render_page(report, embedded=True)
-    assert "Legacy Conf" in html and 'id="fig-papers"' in html
+    html = render_page(report, embedded=True, explore_href="?view=explore")
     assert 'id="observatory"' not in html
+    assert 'class="report-jump"' in html
+    assert "Explore trends and supporting papers" in html
+    assert "window.navigateHost" in html
+    assert 'id="observatory"' in render_explorer_page(report)
+    del report["entities"]["explorer"]
+    explorer_html = render_explorer_page(report)
+    assert "Legacy Conf" in explorer_html and 'id="observatory"' not in explorer_html
 
 
 def test_coverage_note():
@@ -162,7 +169,7 @@ def test_report_escapes_markup_and_roundtrips_inline_json():
 
     parser = Tags()
     parser.feed(html)
-    assert sum(tag == "script" for tag, _ in parser.tags) == 6  # three CDN scripts + three trusted inline scripts
+    assert sum(tag == "script" for tag, _ in parser.tags) == 5  # three CDN scripts + report and entity-panel scripts
     assert not any(tag == "img" or "onerror" in attrs or attrs.get("id") == "review-probe" for tag, attrs in parser.tags)
     assert '&lt;/script&gt;' in html
     specs = json.loads(re.search(r"const specs = (.*?);\n", html).group(1))

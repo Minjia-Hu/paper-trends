@@ -69,13 +69,12 @@ uv run python -m paper_trends report data/ectc.jsonl --name "Electronic Componen
 open site/ectc.html
 ```
 
-Renders one static page per conference in an editorial layout: a few sentences at a
-glance, small multiples of rising and fading phrases, the new vocabulary, a topic
-streamgraph, and who publishes — a world map you can play through the years, institution and country rankings, how the
-leading institutions' ranks crossed over the years (bump chart) and what each of them
-works on (institution × topic heatmap) — each chart with a one-line conclusion and a
-source line. Pass several corpora to get a linked set with an index page. The pages are plain
-HTML + CSS with Vega-Lite charts, so they can be hosted anywhere static.
+Renders one concise static page per conference in an editorial layout: a few sentences
+at a glance, four leading rising and fading phrases, new vocabulary, topic evolution,
+and publishing geography with institution and country rankings. Method details and the
+remaining topic labels stay available without occupying the main reading path. Pass
+several corpora to get a linked set with an index page. The pages are plain HTML + CSS
+with Vega-Lite charts, so they can be hosted anywhere static.
 
 Everything named on a page is a link into it: click a phrase, an institution bar or a
 topic band and a panel opens with its trend, who writes about it, which topics it belongs
@@ -83,8 +82,6 @@ to, what it co-occurs with and the most cited papers (DOI links). Names inside t
 are clickable too, so you can walk from *hybrid bonding* to the institutions behind it to
 their other signature phrases, with a back button and a trail. The panel data is
 precomputed and inlined, so the page still works offline and without a server.
-
-![Who publishes: institution ranks over the years and what each institution works on](docs/screenshot-who-publishes.png)
 
 ### Interactive app
 
@@ -95,11 +92,13 @@ uv run streamlit run app.py
 Pick a conference from the header, or type an acronym or name into the search box —
 “DAC”, “ISCAS”, “Custom Integrated Circuits Conference” — and the app resolves it against
 OpenAlex (name, DOI prefix, paper count, and a warning when a prefix is shared by several
-venues) before you fetch. The report page then appears in the same editorial layout as
-the static pages, rebuilt live for the chosen period. Switch the view to **Explore** for the interactive
-side — tables, a term drill-down to the underlying papers, and cross-conference
-comparison. Fetched data is cached under `data/`; a DOI prefix for a custom venue and
-extra stopwords live under **Options**.
+venues) before you fetch. **Report** is a concise, conclusion-first briefing for the
+selected period: summary, leading phrase changes, topic mix, and publishing geography.
+**Explore** is the working surface: change time and counting rules, inspect supporting
+papers, analyse any two- or three-word phrase, study topics and institutions, compare
+conferences, and export filtered papers. Both views share the same period and analysis
+rules. Fetched data is cached under `data/`; a DOI prefix for a custom venue and extra
+stopwords live under **Options**.
 
 The default report period is the last ten years ending before the current calendar
 year. It also skips trailing years with fewer than 20% of the preceding three observed
@@ -127,17 +126,18 @@ phrase trends use titles only (topics still use available titles and abstracts).
 These checks describe the local OpenAlex snapshot, not completeness against official
 proceedings. See [coverage and freshness behavior](docs/data-coverage.md).
 
-At the top of each report, the **field observatory** lets you play or select a time
-window and switch between title mentions, title-or-repeated mentions, and any mention.
-The phrase curve, matching-paper counts, phrase shortlist, institutions, topics and paper
-examples update together without a server request. Open an example's abstract or follow
-its DOI to inspect the evidence. Eligible phrase drawers link back to this explorer.
-The full-period report remains below, with its scope explicitly labelled.
+The **Trends & evidence** section in Explore starts with a field observatory. It lets you
+play or select a time window and switch between title mentions,
+title-or-repeated mentions, and any mention. The phrase curve, matching-paper counts,
+phrase shortlist, institutions, topics and paper examples update together without a
+server request. Open an example's abstract or follow its DOI to inspect the evidence.
+Report phrases link into Explore with the selected period and phrase preserved.
 
 Counts cover every matching record; examples contain at most three highest-cited papers
 per phrase/year/mention role. The shortlist contains up to 20 rising, fading, emerging
-and frequent phrases, not the entire vocabulary. Title-only reports disable abstract
-rules. See [interactive report behavior and tests](docs/interactive-report.md).
+and frequent phrases. The separate free-phrase control searches the larger eligible
+phrase vocabulary. Title-only corpora disable abstract rules. See
+[interactive exploration behavior and tests](docs/interactive-report.md).
 
 The home page presents a curated set of reports in two levels. **Semiconductor &
 microelectronics** is split into packaging & integration (ECTC, EPTC, ICEPT), thermal

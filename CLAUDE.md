@@ -117,12 +117,14 @@ conference + an **Options** popover holding DOI prefix, extra stopwords and refr
 for a selected conference a controls row of plain text links (period, Report/Explore,
 Options — all `?param=` links, no widgets: Streamlit widgets cannot be restyled enough to
 match the page) and either
-the embedded report (`st.iframe(render_page(..., embedded=True), height="content")`) or the
-Explore view — the interactive side (papers behind a term, comparisons, tables) restyled to
-the report's voice: HTML header (`.pt-head`), sections as `?section=` links instead of tabs
-(only the chosen section is computed), `h2()`/`note()` helpers for headings and captions,
-and the Altair theme in `viz.py` built from the report tokens (grey bars with the top three
-in red, dashed grid, IBM Plex Sans). Selection lives in the URL: `?conference=<preset slug>` or
+the concise embedded report (`st.iframe(render_page(..., embedded=True), height="content")`)
+or Explore — a task-oriented workspace with Trends & evidence, Topic analysis,
+Institution analysis, Compare conferences, and Papers & export. Its field observatory is
+rendered by `render_explorer_page`; the remaining tools use the report's voice: HTML header
+(`.pt-head`), sections as `?section=` links instead of tabs (only the chosen section is
+computed), `h2()`/`note()` helpers for headings and captions, and the Altair theme in
+`viz.py` built from the report tokens (grey bars with the top three in red, dashed grid,
+IBM Plex Sans). Selection lives in the URL: `?conference=<preset slug>` or
 `?q=<custom name>&prefix=...`, plus `period=10|5|all|custom`, `view=explore`, `options=1`;
 nothing selected = the native home page (`home_page()`). The only widgets are the search
 box, the custom-period slider and the Options form (stopwords persist in
@@ -168,16 +170,17 @@ include the verified provenance and default-period span.
 table. Keep these descriptions shared between static reports and Explore. The 90%
 abstract-notice threshold is descriptive, not a measure of proceedings completeness.
 
-**Interactive report**: `report/explorer.py` accumulates exclusive title/repeated/once
+**Interactive exploration**: `report/explorer.py` accumulates exclusive title/repeated/once
 roles during the existing `build_entities` pass; do not estimate counts from sampled
 papers. It tracks up to 20 phrases over every calendar year, keeping gaps at zero
 denominator (the frontend renders missing shares, not 0%). Institutional counts dedupe
 co-authors and use all institutions, not just the legacy panel's top-60 set. Topic
 assignments are fitted once for the full report. Only evidence examples are capped at
 three per phrase/year/role. `static/explorer.js` owns the local time/rule state and stops
-playback on manual edits, hidden pages and page exit. This explorer and the explicitly
-labelled full-period report have separate scopes. Both static HTML and Streamlit embed
-the same template/CSS/JS; no new frontend runtime dependencies are required.
+playback on manual edits, hidden pages and page exit. `explorer_page.html.j2` is the
+standalone Streamlit iframe; the narrative report deliberately excludes the observatory.
+Report links may open Explore with `term=` while preserving conference and period. No new
+frontend runtime dependencies are required.
 
 **Resolution strategy in `fetch.py`** — this is the non-obvious part:
 
@@ -355,12 +358,10 @@ abstract coverage is under 60 % (Interspeech), restores corpus hyphenation for d
 (`restore_hyphens`: "co-packaged optics"), and drops singular/plural twins from the lists.
 `render.FULL`/`SHORT`/`GROUPS`/`TAGLINE` hold the preset names, the home-page grouping and the tagline.
 
-"Who publishes" also carries a **bump chart** (`charts.bump_chart`; ranks among the top
-10 institutions on a 3-year rolling count, `build.inst_rank_rows`; red = climbed ≥ 3
-places, blue = slipped ≥ 3) and an **institution × topic heatmap** (`charts.inst_topic_heatmap`;
-rows sum to one, `build.inst_topic_rows`, topics folded like the streamgraph). Their
-headline sentences are computed; when no institution's share of a topic reaches 1.8× the
-conference's (CVPR) the sentence says that nobody specialises instead of naming one.
+The report is intentionally selective: at most four rising and four fading phrase charts,
+five visible topic labels, and no institution bump chart or institution × topic heatmap.
+Those deeper ranking and composition questions belong in Explore. The underlying
+`build.inst_rank_rows` and `build.inst_topic_rows` data remain available for analysis.
 
 **Linked-entity panel** (`report/entities.py` + `static/entities.js`). Every phrase,
 institution and topic on the page is clickable (`<span class="ent" data-ent="term|inst|topic"

@@ -51,7 +51,7 @@
       + blk(L("Topics it belongs to", "相关研究主题"), t.topics.length ? bars(t.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), 1) : '<span class="ent-meta">—</span>')
       + blk(L("Often appears together with", "常见共现词"), t.co.length ? t.co.map(([o, lift, n]) => termChip(o, `${n} ${L("papers", "篇论文")} · ${lift}×`)).join("") : '<span class="ent-meta">' + L("No strong co-occurrence.", "暂无明显共现关系。") + '</span>')
       + blk(L("Most cited papers", "被引次数最多的论文"), t.papers.map(paper).join(""))
-      + (E.explorer?.terms.some(x => x.label === t.term) ? `<button type="button" class="obs-profile-link" data-obs-phrase="${esc(t.term)}">${L("Explore this phrase over time →", "探索这个关键词的历年变化 →")}</button>` : "");
+      + ((window.explorePhrase || window.EXPLORE_URL) && E.explorer?.terms.some(x => x.label === t.term) ? `<button type="button" class="obs-profile-link" data-obs-phrase="${esc(t.term)}">${L("Explore this phrase over time →", "探索这个关键词的历年变化 →")}</button>` : "");
   }
   function renderInst(id) {
     const i = E.insts[id];
@@ -96,7 +96,16 @@
 
   document.addEventListener("click", (ev) => {
     const explore = ev.target.closest("[data-obs-phrase]");
-    if (explore) { close(); window.explorePhrase?.(explore.dataset.obsPhrase); return; }
+    if (explore) {
+      close();
+      if (window.explorePhrase?.(explore.dataset.obsPhrase)) return;
+      if (window.EXPLORE_URL) {
+        const sep = window.EXPLORE_URL.includes("?") ? "&" : "?";
+        const url = window.EXPLORE_URL + sep + "term=" + encodeURIComponent(explore.dataset.obsPhrase);
+        if (!window.navigateHost?.(url)) window.open(url, "_blank", "noopener");
+      }
+      return;
+    }
     const el = ev.target.closest("[data-ent]");
     if (el) { const id = el.dataset.id != null ? +el.dataset.id : byName[el.dataset.ent][el.dataset.name]; open(el.dataset.ent, id); return; }
     const c = ev.target.closest("#ent-crumbs span");

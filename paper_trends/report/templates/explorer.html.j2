@@ -42,8 +42,10 @@
       <h3>{{ _('Topics around this phrase') }}</h3><p class="obs-caption">{{ _('Dominant topics from the full-period model, counted within your window.') }}</p><div id="obs-topics"></div>
     </aside>
   </div>
-  <p class="obs-foot">{{ _('Title and repetition are clues, not topic labels. Repeated background mentions can still count. The report below keeps its full-period scope.') }}</p>
-  <noscript><p>{{ _('This explorer needs JavaScript. The full-period report is available below.') }}</p></noscript>
+  <p class="obs-foot">{{ _('Title and repetition are clues, not topic labels. Repeated background mentions can still count. Use Report for the full-period summary.') if standalone_explorer else _('Title and repetition are clues, not topic labels. Repeated background mentions can still count. The report below keeps its full-period scope.') }}</p>
+  <noscript><p>{{ _('This explorer needs JavaScript. Use Report for the full-period summary.') if standalone_explorer else _('This explorer needs JavaScript. The full-period report is available below.') }}</p></noscript>
 </section>
+{% if not standalone_explorer %}
 <div class="obs-divider"><span>{{ _('The full-period report') }}</span><span>{{ r.year_range[0] }}—{{ r.year_range[1] }}</span></div>
+{% endif %}
 {% endif %}

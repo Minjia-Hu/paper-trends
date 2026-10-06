@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="{{ "zh-CN" if lang == "zh" else "en" }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ _('Trends & evidence') }} · {{ r.name }}</title>
+<style>{{ inline_css|safe }}</style>
+</head>
+<body class="embedded explorer-only">
+<main class="page embedded explorer-page">
+{% include "explorer.html.j2" %}
+</main>
+<script>
+window.REPORT_LANG = {{ lang|tojson }};
+window.ENTITIES = {{ entities|tojson }};
+window.EXPLORER_TERM = {{ initial_term|tojson }};
+</script>
+<script>{{ entities_js|safe }}</script>
+<script>{{ explorer_js|safe }}</script>
+</body>
+</html>

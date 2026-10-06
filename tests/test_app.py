@@ -47,31 +47,28 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch, lang):
     at.run()
     assert not at.exception, at.exception
     assert len(at.tabs) == 0 and not at.radio  # Report view: an embedded page, controls are links
-    assert any('id="observatory"' in e.proto.srcdoc for e in at if e.type == "iframe")
+    assert any('class="report-jump"' in e.proto.srcdoc and 'id="observatory"' not in e.proto.srcdoc for e in at if e.type == "iframe")
     at.query_params["view"] = "explore"
-    at.query_params["section"] = "keywords"
+    at.query_params["section"] = "trends"
     at.run()
     assert not at.exception, at.exception
     assert len(at.tabs) == 0 and not at.title  # sections are links, header is HTML
+    assert any('id="observatory"' in e.proto.srcdoc for e in at if e.type == "iframe")
     assert any(("上升" if lang == "zh" else "Rising") in m.value for m in at.markdown)
     copy = "\n".join(m.value for m in at.markdown)
     assert ("个百分点" if lang == "zh" else " pp") in copy
     if lang == "zh":
-        assert "被引次数" in copy and ">论文数<" in copy
+        assert "被引次数" in copy and "相关论文" in copy
         assert "papers matching" not in copy and "the number at the end" not in copy
-    for section in ("overview", "topics", "rankings", "compare", "data"):  # every section must render
+    for section in ("trends", "topics", "institutions", "compare", "papers"):  # every section must render
         at.query_params["section"] = section
         at.run()
         assert not at.exception, (section, at.exception)
         if section == "compare":
             assert any(("共同上升的关键词" if lang == "zh" else "Rising everywhere") in m.value for m in at.markdown)
-        if section == "overview" and lang == "zh":
-            copy = "\n".join(m.value for m in at.markdown)
-            assert "年发文量" in copy and "摘要覆盖率" in copy
-            assert "Output has been" not in copy and "A paper counts" not in copy
-        if section == "rankings" and lang == "zh":
+        if section == "institutions" and lang == "zh":
             assert any("机构排名 · 按论文数" in m.value for m in at.markdown)
-        if section == "data" and lang == "zh":
+        if section == "papers" and lang == "zh":
             assert json.loads(at.dataframe[-1].proto.columns)["citations"]["label"] == "被引次数"
 
 
@@ -167,7 +164,7 @@ def test_custom_empty_period_and_single_paper_are_safe_in_report_and_explore(tmp
     assert not at.exception, at.exception
     assert any("Only one year" in str(e.proto) for e in at if e.type == "iframe")
     at.query_params["view"] = "explore"
-    for section in ("overview", "keywords", "topics", "rankings", "compare", "data"):
+    for section in ("trends", "topics", "institutions", "compare", "papers"):
         at.query_params["section"] = section
         at.run()
         assert not at.exception, (section, at.exception)
