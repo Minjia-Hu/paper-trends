@@ -144,14 +144,27 @@ st.markdown(
     .st-key-options_form div[data-baseweb="input"], .st-key-options_form div[data-baseweb="input"] > div, .st-key-options_form div[data-baseweb="base-input"], .st-key-options_form div[data-baseweb="textarea"], .st-key-options_form textarea { background-color: #FCFBF8 !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14px !important; }
     .st-key-refresh_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; }
     .st-key-refresh_btn button:hover { border-color: #1B1B1B !important; }
-    /* explore view header, in the report's voice */
-    .pt-head { font-family: "IBM Plex Sans", system-ui, sans-serif; padding: 22px 24px 0; }
-    .pt-head .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 14px; }
-    .pt-head h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(32px, 4vw, 46px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 4px; color: #1B1B1B; padding: 0; }
-    .pt-head .full-name { font-family: Newsreader, Georgia, serif; color: #5C5C5C; font-size: 20px; line-height: 1.25; margin: 0 0 16px; }
-    .pt-head .meta { color: #5C5C5C; font-size: 14.5px; display: flex; gap: 22px; flex-wrap: wrap; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
-    .pt-head .meta b { color: #1B1B1B; font-weight: 600; }
-    .pt-sections { padding-top: 16px !important; padding-bottom: 8px; }
+    /* explore view header: the report's hierarchy, with an interactive workbench below */
+    .pt-head { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 0 24px; padding: 30px 0 18px; border-bottom: 1px solid #1B1B1B; }
+    .pt-head-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 36px; }
+    .pt-head-identity { min-width: 0; }
+    .pt-head .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 10px; }
+    .pt-head h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 12px; max-width: 18ch; color: #1B1B1B; padding: 0; overflow-wrap: anywhere; }
+    .pt-head .full-name { font-family: Newsreader, Georgia, serif; color: #5C5C5C; font-size: 21px; line-height: 1.25; margin: -3px 0 0; max-width: 40ch; }
+    .pt-head-stats { display: grid; grid-template-columns: repeat(3, minmax(92px, auto)); border-top: 1px solid #E6E3DC; }
+    .pt-head-stats > span { display: grid; align-content: start; gap: 2px; padding: 11px 18px 2px; border-left: 1px solid #E6E3DC; }
+    .pt-head-stats > span:first-child { padding-left: 0; border-left: 0; }
+    .pt-head-stats b { color: #1B1B1B; font: 500 22px/1 Newsreader, Georgia, serif; }
+    .pt-head-stats small { color: #5C5C5C; font: 12px/1.35 "IBM Plex Sans", system-ui, sans-serif; white-space: nowrap; }
+    .pt-head-provenance { display: flex; gap: 8px 24px; flex-wrap: wrap; margin-top: 20px; padding-top: 10px; border-top: 1px solid #E6E3DC; color: #8A877F; font-size: 12px; }
+    .st-key-explore_context { margin: 10px 24px 0; }
+    .st-key-explore_context [data-testid="stCaptionContainer"] { color: #8A877F; }
+    .st-key-explore_context [data-testid="stExpander"] { border-color: #E6E3DC; border-radius: 2px; }
+    /* Explore tasks are page navigation, not another copy of the global toolbar. */
+    .pt-sections { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px 24px; margin: 12px 24px 0; padding: 10px 0; border-top: 1px solid #E6E3DC; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; }
+    .pt-sections a { color: #5C5C5C; text-decoration: none; padding-bottom: 3px; border-bottom: 2px solid transparent; white-space: nowrap; }
+    .pt-sections a:hover { color: #E3120B; }
+    .pt-sections a.current { color: #E3120B; border-bottom-color: #E3120B; }
     .pt-h2 { font-family: Newsreader, Georgia, serif !important; font-weight: 500 !important; font-size: 26px !important; letter-spacing: -0.01em; margin: 26px 0 4px !important; padding: 0 !important; color: #1B1B1B; }
     .pt-subhead { font-family: Newsreader, Georgia, serif !important; font-size: 21px !important; font-weight: 500 !important; margin: 14px 0 5px !important; }
     .pt-lede { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; max-width: 72ch; margin: 0 0 12px; }
@@ -219,7 +232,8 @@ st.markdown(
     .pt-language a { color: #5C5C5C; text-decoration: none; padding: 5px 0; }
     .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
     .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
-    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
+    @media (max-width: 900px) { .pt-head-grid { grid-template-columns: 1fr; gap: 22px; } .pt-head-stats { width: min(100%, 430px); } }
+    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context { margin-left: 16px; margin-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
     .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
@@ -671,16 +685,6 @@ if mode == "Report":
     st.stop()
 
 data_coverage = coverage_details(records, years, default_span=default_span)
-st.caption(t(provenance_label(provenance)) + " · " + t(data_coverage["selection"]))
-for message in data_coverage["notices"]:
-    st.caption(t(message))
-with st.expander(t("Data coverage and period details")):
-    st.caption(t(data_coverage["caveat"]))
-    for exclusion in data_coverage["exclusions"]:
-        st.write(t(exclusion["message"]))
-    st.dataframe(pd.DataFrame(data_coverage["rows"]), hide_index=True, width="stretch",
-                 column_config={c: field_label(c, LANG) for c in ("year", "papers", "abstracts", "coverage")})
-
 section = st.query_params.get("section", "trends")
 section = {"overview": "trends", "keywords": "trends", "rankings": "institutions", "data": "papers"}.get(section, section)
 SECTIONS = [("trends", "Trends & evidence"), ("topics", "Topic analysis"), ("institutions", "Institution analysis"),
@@ -691,10 +695,30 @@ short_name = SHORT.get(slug)
 display_name = short_name or query
 full_name = f'<div class="full-name">{escape(query)}</div>' if short_name and short_name != query else ""
 st.markdown(
-    f'<div class="pt-head"><div class="kicker">{t("Explore")} · {years[0]}–{years[1]}</div><h1>{escape(display_name)}</h1>{full_name}'
-    f'<div class="meta"><span><b>{len(recs):,}</b> {t("papers")}</span><span><b>{years[1] - years[0] + 1}</b> {t("editions")}</span>'
-    f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b> {t("with abstracts")}</span></div></div>'
-    + '<div class="pt-controls pt-sections">' + links_row([(lbl, link(section=None if k == "trends" else k), k == section) for k, lbl in SECTIONS]) + "</div>",
+    f'<header class="pt-head"><div class="pt-head-grid"><div class="pt-head-identity">'
+    f'<div class="kicker">{escape(t("Explore"))} · {years[0]}–{years[1]}</div>'
+    f'<h1>{escape(display_name)}</h1>{full_name}</div>'
+    f'<div class="pt-head-stats" aria-label="{escape(t("Conference summary"))}">'
+    f'<span><b>{len(recs):,}</b><small>{escape(t("papers"))}</small></span>'
+    f'<span><b>{years[1] - years[0] + 1}</b><small>{escape(t("editions"))}</small></span>'
+    f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b><small>{escape(t("with abstracts"))}</small></span>'
+    f'</div></div><div class="pt-head-provenance"><span>{escape(t(provenance_label(provenance)))}</span>'
+    f'<span>{escape(t(data_coverage["selection"]))}</span></div></header>',
+    unsafe_allow_html=True,
+)
+with st.container(key="explore_context"):
+    for message in data_coverage["notices"]:
+        st.caption(t(message))
+    with st.expander(t("Data coverage and period details")):
+        st.caption(t(data_coverage["caveat"]))
+        for exclusion in data_coverage["exclusions"]:
+            st.write(t(exclusion["message"]))
+        st.dataframe(pd.DataFrame(data_coverage["rows"]), hide_index=True, width="stretch",
+                     column_config={c: field_label(c, LANG) for c in ("year", "papers", "abstracts", "coverage")})
+st.markdown(
+    f'<nav class="pt-sections" aria-label="{escape(t("Explore sections"))}">'
+    + links_row([(lbl, link(section=None if k == "trends" else k), k == section) for k, lbl in SECTIONS])
+    + "</nav>",
     unsafe_allow_html=True,
 )
 

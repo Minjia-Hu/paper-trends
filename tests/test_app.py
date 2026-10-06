@@ -131,6 +131,12 @@ def test_app_renders_all_tabs(tmp_path, monkeypatch, lang):
     at.run()
     assert not at.exception, at.exception
     assert len(at.tabs) == 0 and not at.title  # sections are links, header is HTML
+    explore_markup = "\n".join(m.value for m in at.markdown)
+    assert 'class="pt-head-grid"' in explore_markup
+    assert 'class="pt-head-stats"' in explore_markup
+    assert 'class="pt-head-provenance"' in explore_markup
+    assert 'class="pt-sections"' in explore_markup
+    assert 'pt-controls pt-sections' not in explore_markup
     assert any('id="observatory"' in e.proto.srcdoc for e in at if e.type == "iframe")
     explorer = next(e.proto.srcdoc for e in at if e.type == "iframe")
     assert 'id="obs-results"' in explorer
