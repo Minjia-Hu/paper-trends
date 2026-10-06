@@ -24,8 +24,10 @@ def test_chinese_home_copy_reads_naturally():
     ) == "搜索 OpenAlex 中的会议：输入 DAC、ISCAS 等简称，或会议英文全名"
     assert tr("Semiconductor & microelectronics", "zh") == "半导体与微电子"
     assert tr("Packaging & integration", "zh") == "封装与集成"
-    assert tr("Thermal management & reliability", "zh") == "热管理与可靠性"
+    assert tr("Thermal management & multiphysics", "zh") == "热管理与多物理场"
+    assert tr("Reliability", "zh") == "可靠性"
     assert tr("Communications & signal processing", "zh") == "通信与信号处理"
+    assert tr("Communications & networking", "zh") == "通信与网络"
 
 
 def test_chinese_report_keeps_exact_data_and_original_paper_text(tmp_path):

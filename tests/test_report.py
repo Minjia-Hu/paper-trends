@@ -170,7 +170,7 @@ def test_report_escapes_markup_and_roundtrips_inline_json():
     entities = json.loads(re.search(r"window.ENTITIES = (.*?);\n", html).group(1))
     assert entities["insts"][0]["name"] == payload
     assert '.ent-drawer' in html and 'if (!E) return;' in html  # trusted CSS / JS remain executable
-    index = render_index([("More", [("test", "TEST", payload, 80)])], embedded=True)
+    index = render_index([("More", [(None, [("test", "TEST", payload, 80)])])], embedded=True)
     assert payload not in index and '&lt;/script&gt;' in index
     assert 'Data fetched: unknown' in html and 'report generated ' in html
 
@@ -185,15 +185,13 @@ def test_home_navigation_uses_domains_and_research_directions():
         "infocom": {"name": "INFOCOM", "n_papers": 40},
     }
     nav = nav_for(available)
-    labels = [group for group, _ in nav]
-    assert labels == [
-        "Semiconductor & microelectronics · Packaging & integration",
-        "Semiconductor & microelectronics · Thermal management & reliability",
-        "Semiconductor & microelectronics · Devices & circuits",
-        "Communications & signal processing",
-    ]
+    assert [domain for domain, _ in nav] == ["Semiconductor & microelectronics", "Communications & signal processing"]
+    semiconductor = nav[0][1]
+    assert [direction for direction, _ in semiconductor] == ["Packaging & integration", "Reliability", "Devices & circuits"]
+    assert nav[1][1][0][0] == "Communications & networking"
     zh = render_index(nav, embedded=True, lang="zh")
-    assert "半导体与微电子" in zh and "封装与集成" in zh and "通信与信号处理" in zh
+    assert "半导体与微电子" in zh and "封装与集成" in zh and "可靠性" in zh and "通信与信号处理" in zh
+    assert 'href="#domain-0"' in zh and 'id="domain-0"' in zh
     assert "当前数量反映的是已核验的 OpenAlex 数据" in zh
 
 

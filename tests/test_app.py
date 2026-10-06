@@ -185,11 +185,11 @@ def test_single_edition_custom_period_does_not_create_an_invalid_slider(tmp_path
 
 
 @pytest.mark.parametrize("slug, search, field, title", [
-    ("icassp", "ICASSP", "Communications & signal processing", "Acoustics Speech and Signal Processing"),
+    ("icassp", "ICASSP", "Signal processing", "Acoustics Speech and Signal Processing"),
     ("embc", "EMBC", "Biomedical engineering", "Engineering in Medicine and Biology Society"),
-    ("sp", "S&P", "Computer systems & security", "Symposium on Security and Privacy"),
-    ("globecom", "GLOBECOM", "Communications & signal processing", "Global Communications Conference"),
-    ("infocom", "INFOCOM", "Communications & signal processing", "Conference on Computer Communications"),
+    ("sp", "S&P", "Information security", "Symposium on Security and Privacy"),
+    ("globecom", "GLOBECOM", "Communications & networking", "Global Communications Conference"),
+    ("infocom", "INFOCOM", "Communications & networking", "Conference on Computer Communications"),
 ])
 def test_new_presets_open_cached_reports_from_search(tmp_path, monkeypatch, slug, search, field, title):
     from unittest.mock import Mock

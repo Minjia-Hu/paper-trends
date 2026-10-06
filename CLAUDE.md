@@ -214,11 +214,12 @@ Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
 **Presets** live in `app.py:PRESETS` (semiconductor & microelectronics: packaging and
-integration — ECTC, EPTC, ICEPT; thermal management and reliability — ITherm, IRPS,
-EuroSimE; devices and circuits — IEDM, ISSCC, VLSI Symposium, IMW; artificial
-intelligence and perception: CVPR, Interspeech; communications and signal processing:
-ICASSP, GLOBECOM, INFOCOM; computer systems and security: IEEE S&P; robotics: ICRA;
-biomedical engineering: EMBC), each with
+integration — ECTC, EPTC, ICEPT; thermal management and multiphysics — ITherm,
+EuroSimE; reliability — IRPS; devices and circuits — IEDM, ISSCC, VLSI Symposium,
+IMW; artificial intelligence and perception: computer vision — CVPR, speech technology
+— Interspeech; communications and signal processing: signal processing — ICASSP,
+communications and networking — GLOBECOM, INFOCOM; information security — IEEE S&P;
+robotics — ICRA; biomedical engineering — EMBC), each with
 its DOI prefix list; `render.GROUPS` holds the same grouping for the home page and the
 static index, `background.FIELD_OF` the field used by the common-phrase filter (rebuild
 `resources/background.json` when a preset is added). VLSI

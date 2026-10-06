@@ -141,14 +141,17 @@ rules. See [interactive report behavior and tests](docs/interactive-report.md).
 
 The home page presents a curated set of reports in two levels. **Semiconductor &
 microelectronics** is split into packaging & integration (ECTC, EPTC, ICEPT), thermal
-management & reliability (ITherm, IRPS, EuroSimE), and devices & circuits (IEDM, ISSCC,
-VLSI Symposium, IMW). The other communities are **artificial intelligence & perception**
-(CVPR, Interspeech), **communications & signal processing** (ICASSP, GLOBECOM, INFOCOM),
-**computer systems & security** (IEEE S&P), **robotics** (ICRA), and **biomedical
-engineering** (EMBC). The number shown in each group reflects verified OpenAlex coverage,
-not the real-world number of conferences in that field. Each preset is a conference name
-plus the DOI prefix(es) its papers carry, so any venue indexed by OpenAlex can be added the
-same way, or simply typed into the search box.
+management & multiphysics (ITherm, EuroSimE), reliability (IRPS), and devices & circuits
+(IEDM, ISSCC, VLSI Symposium, IMW). **Artificial intelligence & perception** contains
+computer vision (CVPR) and speech technology (Interspeech); **communications & signal
+processing** contains signal processing (ICASSP) and communications & networking
+(GLOBECOM, INFOCOM). **Information security** (IEEE S&P), **robotics** (ICRA), and
+**biomedical engineering** (EMBC) are specific enough to list their venues directly.
+Domain headings now occupy their own sections, so research directions cannot be mistaken
+for peer domains. The number shown in each group reflects verified OpenAlex coverage, not
+the real-world number of conferences in that field. Each preset is a conference name plus
+the DOI prefix(es) its papers carry, so any venue indexed by OpenAlex can be added the same
+way, or simply typed into the search box.
 
 Coverage varies by venue and year; a successful name match is not proof of a complete
 corpus. The [candidate venue audit](docs/venue-audit-2026-10-05.md) records prefix

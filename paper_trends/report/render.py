@@ -17,18 +17,27 @@ from ..i18n import language, tr, report_copy, chart_labels
 
 HERE = Path(__file__).parent
 TAGLINE = "Publication trends for any academic conference"
-# Preset conferences, grouped as domain · research direction. These are curated,
-# verified reports rather than an exhaustive conference directory; group size must not
-# be read as the size of the underlying research community.
+# Preset conferences grouped in two real levels: domain, then research direction.
+# A None direction means the domain is already specific enough to list venues directly.
+# These are curated reports rather than an exhaustive conference directory.
 GROUPS = [
-    ("Semiconductor & microelectronics · Packaging & integration", ["ectc", "eptc", "icept"]),
-    ("Semiconductor & microelectronics · Thermal management & reliability", ["itherm", "irps", "eurosime"]),
-    ("Semiconductor & microelectronics · Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
-    ("Artificial intelligence & perception", ["cvpr", "interspeech"]),
-    ("Communications & signal processing", ["icassp", "globecom", "infocom"]),
-    ("Computer systems & security", ["sp"]),
-    ("Robotics", ["icra"]),
-    ("Biomedical engineering", ["embc"]),
+    ("Semiconductor & microelectronics", [
+        ("Packaging & integration", ["ectc", "eptc", "icept"]),
+        ("Thermal management & multiphysics", ["itherm", "eurosime"]),
+        ("Reliability", ["irps"]),
+        ("Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
+    ]),
+    ("Artificial intelligence & perception", [
+        ("Computer vision", ["cvpr"]),
+        ("Speech technology", ["interspeech"]),
+    ]),
+    ("Communications & signal processing", [
+        ("Signal processing", ["icassp"]),
+        ("Communications & networking", ["globecom", "infocom"]),
+    ]),
+    ("Information security", [(None, ["sp"])]),
+    ("Robotics", [(None, ["icra"])]),
+    ("Biomedical engineering", [(None, ["embc"])]),
 ]
 FULL = {
     "ectc": "Electronic Components and Technology Conference",
@@ -79,13 +88,20 @@ def figure_specs(r: dict[str, Any]) -> dict[str, dict]:
 
 def nav_for(available: dict[str, dict]) -> list[tuple[str, list]]:
     nav = []
-    for group, slugs in GROUPS:
-        items = [(s, SHORT.get(s, s.upper()), available[s]["name"], available[s]["n_papers"]) for s in slugs if s in available]
-        if items:
-            nav.append((group, items))
-    extra = [(s, SHORT.get(s, s.upper()), r["name"], r["n_papers"]) for s, r in available.items() if not any(s in g for _, g in GROUPS)]
+    assigned = {slug for _, directions in GROUPS for _, slugs in directions for slug in slugs}
+    for domain, direction_specs in GROUPS:
+        directions = []
+        for direction, slugs in direction_specs:
+            items = [(s, SHORT.get(s, s.upper()), available[s]["name"], available[s]["n_papers"])
+                     for s in slugs if s in available]
+            if items:
+                directions.append((direction, items))
+        if directions:
+            nav.append((domain, directions))
+    extra = [(s, SHORT.get(s, s.upper()), r["name"], r["n_papers"])
+             for s, r in available.items() if s not in assigned]
     if extra:
-        nav.append(("More", extra))
+        nav.append(("More", [(None, extra)]))
     return nav
 
 
@@ -120,7 +136,9 @@ def render_site(reports: list[dict[str, Any]], out: Path) -> None:
     env = _env()
     available = {r["slug"]: r for r in reports}
     nav_full = nav_for(available)
-    nav_short = [(g, [(s, short) for s, short, _, _ in items]) for g, items in nav_full]
+    nav_short = [(domain, [(direction, [(s, short) for s, short, _, _ in items])
+                           for direction, items in directions])
+                 for domain, directions in nav_full]
     for r in reports:
         (out / f"{r['slug']}.html").write_text(render_page(r, nav_short), encoding="utf-8")
         (out / f"{r['slug']}.zh.html").write_text(render_page(r, nav_short, lang="zh"), encoding="utf-8")

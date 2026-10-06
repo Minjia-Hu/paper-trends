@@ -28,11 +28,17 @@ a:hover { border-bottom-color: var(--red); }
 .masthead .all { font-family: var(--sans); font-size: 13.5px; color: var(--muted); margin-left: auto; text-decoration: none; border-bottom: 1px solid var(--rule); }
 .masthead .all:hover { color: var(--red); border-color: var(--red); }
 .collection-note { max-width: 78ch; margin: 28px 0 0; color: var(--faint); font-family: var(--sans); font-size: 13px; }
-.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 48px; }
-.groups .group .domain { margin-top: 28px; color: var(--red); font-family: var(--sans); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-.groups .group h2 { font-size: 24px; margin-top: 28px; }
-.groups .group .domain + h2 { margin-top: 3px; }
-.groups .glance .n { color: var(--faint); font-family: var(--sans); font-size: 13px; margin-left: 6px; }
+.domain-jump { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 18px 0 4px; font-family: var(--sans); font-size: 13px; }
+.domain-jump a { color: var(--muted); }
+.domain-jump a:hover { color: var(--red); }
+.domains { margin-top: 4px; }
+.domain-section { padding: 38px 0 12px; border-top: 1px solid var(--rule); }
+.domain-section:first-child { border-top-color: var(--ink); }
+.domain-section > h2 { font-size: 31px; margin: 0 0 18px; }
+.directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
+.direction h3 { font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; }
+.directions .glance .n { color: var(--faint); font-family: var(--sans); font-size: 13px; margin-left: 6px; }
+@media (max-width: 700px) { .directions { grid-template-columns: 1fr; gap: 28px; } .domain-section { padding-top: 30px; } .domain-section > h2 { font-size: 27px; } }
 .brand { font-family: var(--serif); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; border: 0; }
 .venues { display: flex; gap: 4px 18px; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); }
 .venues .group { color: var(--faint); text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; margin-right: 2px; }

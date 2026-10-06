@@ -39,13 +39,13 @@ PRESETS = {
     "Packaging & integration · ICEPT — International Conference on Electronic Packaging Technology": {
         "query": "International Conference on Electronic Packaging Technology", "doi_prefixes": ["10.1109/icept"], "slug": "icept",
     },
-    "Thermal management & reliability · ITherm — Thermal and Thermomechanical Phenomena in Electronic Systems": {
+    "Thermal management & multiphysics · ITherm — Thermal and Thermomechanical Phenomena in Electronic Systems": {
         "query": "Thermal and Thermomechanical Phenomena in Electronic Systems", "doi_prefixes": ["10.1109/itherm"], "slug": "itherm",
     },
-    "Thermal management & reliability · IRPS — International Reliability Physics Symposium": {
+    "Reliability · IRPS — International Reliability Physics Symposium": {
         "query": "International Reliability Physics Symposium", "doi_prefixes": ["10.1109/irps"], "slug": "irps",
     },
-    "Thermal management & reliability · EuroSimE — Thermal, Mechanical and Multi-Physics Simulation in Microelectronics": {
+    "Thermal management & multiphysics · EuroSimE — Thermal, Mechanical and Multi-Physics Simulation in Microelectronics": {
         "query": "Thermal, Mechanical and Multi-Physics Simulation and Experiments in Microelectronics and Microsystems",
         "doi_prefixes": ["10.1109/eurosime"], "slug": "eurosime",
     },
@@ -67,28 +67,28 @@ PRESETS = {
         "query": "International Memory Workshop", "doi_prefixes": ["10.1109/imw"], "slug": "imw",
     },
     # ---- broader research communities: curated examples, not an exhaustive directory ---
-    "Artificial intelligence & perception · CVPR — Conference on Computer Vision and Pattern Recognition": {
+    "Computer vision · CVPR — Conference on Computer Vision and Pattern Recognition": {
         "query": "Conference on Computer Vision and Pattern Recognition", "doi_prefixes": ["10.1109/cvpr"], "slug": "cvpr",
     },
-    "Artificial intelligence & perception · Interspeech — Conference of the International Speech Communication Association": {
+    "Speech technology · Interspeech — Conference of the International Speech Communication Association": {
         "query": "Interspeech", "doi_prefixes": ["10.21437/interspeech"], "slug": "interspeech",
     },
     "Robotics · ICRA — International Conference on Robotics and Automation": {
         "query": "International Conference on Robotics and Automation", "doi_prefixes": ["10.1109/icra"], "slug": "icra",
     },
-    "Communications & signal processing · ICASSP — International Conference on Acoustics, Speech and Signal Processing": {
+    "Signal processing · ICASSP — International Conference on Acoustics, Speech and Signal Processing": {
         "query": "International Conference on Acoustics Speech and Signal Processing", "doi_prefixes": ["10.1109/icassp"], "slug": "icassp",
     },
     "Biomedical engineering · EMBC — Engineering in Medicine and Biology Society": {
         "query": "Annual International Conference of the IEEE Engineering in Medicine and Biology Society", "doi_prefixes": ["10.1109/embc"], "slug": "embc",
     },
-    "Computer systems & security · IEEE S&P — Symposium on Security and Privacy": {
+    "Information security · IEEE S&P — Symposium on Security and Privacy": {
         "query": "Symposium on Security and Privacy", "doi_prefixes": ["10.1109/sp"], "slug": "sp", "aliases": ["S&P", "IEEE SP"],
     },
-    "Communications & signal processing · GLOBECOM — Global Communications Conference": {
+    "Communications & networking · GLOBECOM — Global Communications Conference": {
         "query": "Global Communications Conference", "doi_prefixes": ["10.1109/glocom", "10.1109/globecom"], "slug": "globecom",
     },
-    "Communications & signal processing · INFOCOM — Conference on Computer Communications": {
+    "Communications & networking · INFOCOM — Conference on Computer Communications": {
         "query": "Conference on Computer Communications", "doi_prefixes": ["10.1109/infocom"], "slug": "infocom",
     },
 }
@@ -202,15 +202,20 @@ st.markdown(
     .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 28px; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
     .pt-home h2 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
     .pt-home .collection-note { max-width: 78ch; margin: 0 0 2px; color: #8A877F; font-size: 13px; }
-    .pt-home .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 0 48px; max-width: 1120px; }
+    .pt-home .domain-jump { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 18px 0 4px; font-size: 13px; }
+    .pt-home .domain-jump a { color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
+    .pt-home .domain-jump a:hover { color: #E3120B; border-bottom-color: #E3120B; }
+    .pt-home .domains { max-width: 1120px; }
+    .pt-home .domain-section { padding: 38px 0 12px; border-top: 1px solid #E6E3DC; }
+    .pt-home .domain-section:first-child { border-top-color: #1B1B1B; }
+    .pt-home .domain-section > h2 { font-size: 31px; margin: 0 0 18px; }
+    .pt-home .directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
+    .pt-home .direction h3 { font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; color: #1B1B1B; }
     .pt-language { display: inline-flex; gap: 12px; white-space: nowrap; font-size: 13px; margin-left: auto; }
     .pt-language a { color: #5C5C5C; text-decoration: none; padding: 5px 0; }
     .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
     .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
-    @media (max-width: 600px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } }
-    .pt-home .group .domain { margin-top: 30px; color: #E3120B; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-    .pt-home .group h2 { font-size: 24px; margin-top: 30px; }
-    .pt-home .group .domain + h2 { margin-top: 3px; }
+    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
     .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
@@ -230,17 +235,21 @@ def home_page(available: dict[str, dict]) -> str:
         f'<h1>{t("What a field talks about, year by year")}</h1>',
         '<p class="lede">' + ('从 OpenAlex 收录的历年会议论文中，追踪关键词的起伏、主题的演进与发文版图。搜索一个会议，或从下方开始探索。' if LANG == 'zh' else 'Conference papers indexed by OpenAlex, read as rising and fading phrases, topic shifts and who publishes. Type any conference into the search box, or open one of these.') + '</p>',
         f'<p class="collection-note">{escape(t("Curated reports, expanding over time. Coverage reflects verified OpenAlex data, not the number of conferences in each field."))}</p>',
-        '<div class="groups">',
+        '<nav class="domain-jump" aria-label="' + ("研究领域" if LANG == "zh" else "Research domains") + '">',
     ]
-    for group, items in nav_for(available):
-        headings = group.split(" · ", 1)
-        heading = (f'<div class="domain">{escape(t(headings[0]))}</div><h2>{escape(t(headings[1]))}</h2>'
-                   if len(headings) == 2 else f'<h2>{escape(t(group))}</h2>')
-        parts.append(f'<section class="group">{heading}<ul>')
-        for slug_, short, name, n in items:
-            tail = f"{n:,} {t('papers')}" if n else ("尚未获取数据，点击获取" if LANG == 'zh' else "not fetched yet — open to fetch")
-            parts.append(f'<li><a href="?conference={escape(slug_)}&amp;lang={LANG}" target="_self"><em>{escape(short)}</em> — {escape(name)}</a><span class="n">{tail}</span></li>')
-        parts.append("</ul></section>")
+    navigation = nav_for(available)
+    for index, (domain, _) in enumerate(navigation):
+        parts.append(f'<a href="#domain-{index}">{escape(t(domain))}</a>')
+    parts.append('</nav><div class="domains">')
+    for index, (domain, directions) in enumerate(navigation):
+        parts.append(f'<section class="domain-section" id="domain-{index}"><h2>{escape(t(domain))}</h2><div class="directions">')
+        for direction, items in directions:
+            parts.append('<section class="direction">' + (f'<h3>{escape(t(direction))}</h3>' if direction else '') + '<ul>')
+            for slug_, short, name, n in items:
+                tail = f"{n:,} {t('papers')}" if n else ("尚未获取数据，点击获取" if LANG == 'zh' else "not fetched yet — open to fetch")
+                parts.append(f'<li><a href="?conference={escape(slug_)}&amp;lang={LANG}" target="_self"><em>{escape(short)}</em> — {escape(name)}</a><span class="n">{tail}</span></li>')
+            parts.append("</ul></section>")
+        parts.append("</div></section>")
     parts.append("</div>")
     parts.append('<h2>探索其他会议</h2><p>输入 OpenAlex 使用的会议英文名并按回车；若无法匹配，可在“选项”中添加 DOI 前缀。获取的数据会缓存，供后续使用。在会议页面切换到“探索”，可查看数据表、关键词对应论文，以及跨会议比较。</p></div>' if LANG == 'zh' else (
         "<h2>Your own conference</h2><p>Type any conference name in the search box above, as OpenAlex spells it, and press Enter; if the name "
