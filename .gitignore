@@ -11,6 +11,11 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+node_modules/
+
+# Machine-local skill links installed alongside the virtual environment.
+.agents/skills/
+.claude/skills/
 
 # editors / OS
 .DS_Store

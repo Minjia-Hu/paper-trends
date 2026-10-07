@@ -63,6 +63,8 @@ uv run python -m paper_trends report data/ectc.jsonl --name "..." --years 2016-2
 uv run python -m paper_trends fetch --help
 uv run pytest -q                          # tests live in tests/, pythonpath="." set in pyproject
 uv run pytest -q tests/test_keywords.py::test_rising_and_falling   # single test
+npm ci --ignore-scripts                    # test deps (Node 24 recommended, matching CI)
+npm test                                 # core + jsdom interaction tests; missing jsdom is an error
 ```
 
 The project deliberately sets `[tool.uv] package = false` and uses a flat layout
@@ -78,34 +80,39 @@ No linter is configured yet.
 
 The package is a **library first, CLI second**: every analysis is a plain function over
 the list of records returned by `store.read_jsonl`, and each module's `main()` is a thin
-argparse wrapper. A Streamlit front end is planned on top of the same functions, so keep
-analysis code free of printing/argparse.
+argparse wrapper. The Streamlit front end and static reports use the same functions;
+keep analysis code free of printing/argparse.
 
 ```
 paper_trends/
-  cli.py       # `paper-trends <command>` dispatcher; add new subcommands to COMMANDS
+  cli.py       # `python -m paper_trends <command>` dispatcher; add subcommands to COMMANDS
   validate.py  # title-agreement check of the mention roles (how the counting rule was chosen)
   openalex.py  # API client: polite pool, cursor paging, retries, abstract reconstruction
   fetch.py     # conference -> works resolution, coverage table
   store.py     # JSONL read/write, year filtering (shared by all commands)
   coverage.py  # conservative default report period; excludes current/incomplete trailing editions
+  presets.py   # conference registry; derives PRESETS, FULL, SHORT and GROUPS for app/site
   text.py      # tokenizer (strips inline LaTeX from IEEE abstracts), n-grams, stopwords
   keywords.py  # KeywordTrends: per-year counts of papers about a phrase, rising/falling/emerging
   background.py  # cross-field table of common phrases (resources/background.json) + builder
   topics.py    # TopicTrends: NMF on TF-IDF (default) or OpenAlex topic labels, per-year share
   rank.py      # Ranking: institutions / authors / countries, papers + citations per year
   compare.py   # same terms across several corpora; "shared risers"
+  i18n.py      # English/Chinese interface, chart labels and narrative translations
   frames.py    # analysis results -> tidy pandas DataFrames (charts/tables)
   viz.py       # chart palette (CVD-validated, fixed slot order) + Altair theme
-  report/      # static report site: build.py (numbers + sentences), charts.py (Vega-Lite specs),
+  report/      # analysis.py (shared expensive analysis), build.py (numbers + sentences),
+               #   charts.py (Vega-Lite specs), explorer.py (phrase roles + evidence),
                #   entities.py (linked-entity panel data), render.py (Jinja2 -> site/), templates/,
-               #   static/report.css, static/entities.js (the panel, no library)
+               #   static/report.css (shared tokens), static/app.css (Streamlit shell),
+               #   static/entities.js (the panel, no library), static/explorer.js
 app.py         # Streamlit UI: masthead + search, Report (iframe) / Explore views, no sidebar
-.github/workflows/ci.yml  # pytest on push/PR (tests are fully offline: OpenAlex is mocked)
+.github/workflows/ci.yml  # offline pytest (3.12/3.13) + Node core/jsdom tests (Node 24)
 .streamlit/config.toml  # theme; secrets.toml (git-ignored) may hold OPENALEX_MAILTO when hosted
 data/<name>.jsonl   # one work per line (git-ignored)
-docs/               # README screenshots
-tests/              # pytest, incl. a streamlit.testing AppTest smoke test of app.py
+docs/               # README screenshots and historical audits (Chinese)
+tests/              # pytest/AppTest and Node core/DOM integration tests
+package.json        # required jsdom test dependency; npm test preflight prevents silent skips
 ```
 
 **Streamlit app = shell around the report, no sidebar.** Layout top to bottom: masthead
@@ -113,7 +120,7 @@ tests/              # pytest, incl. a streamlit.testing AppTest smoke test of ap
 because the report iframe is sandboxed without top navigation; the conference list is on
 the home page in a grid of field groups, unfetched presets greyed with the fetch offered
 when opened), a search row (`st.text_input` for any OpenAlex
-conference + an **Options** popover holding DOI prefix, extra stopwords and refresh), then
+conference), with an **Options** form for DOI prefix, extra stopwords and refresh, then
 for a selected conference a controls row of plain text links (period, Report/Explore,
 Options — all `?param=` links, no widgets: Streamlit widgets cannot be restyled enough to
 match the page) and either
@@ -122,13 +129,15 @@ or Explore — a task-oriented workspace with Trends & evidence, Topic analysis,
 Institution analysis, Compare conferences, and Papers & export. Its field observatory is
 rendered by `render_explorer_page`; the remaining tools use the report's voice: HTML header
 (`.pt-head`), sections as `?section=` links instead of tabs (only the chosen section is
-computed), `h2()`/`note()` helpers for headings and captions, and the Altair theme in
-`viz.py` built from the report tokens (grey bars with the top three in red, dashed grid,
-IBM Plex Sans). Selection lives in the URL: `?conference=<preset slug>` or
+computed), and `h2()`/`note()` helpers for headings and captions. Vega-Lite specs use
+`report/charts.py` and its shared `CONFIG` (grey bars with the top three in red, dashed
+grid, IBM Plex Sans); `vl()` disables Streamlit's chart theme to preserve that styling.
+Selection lives in the URL: `?conference=<preset slug>` or
 `?q=<custom name>&prefix=...`, plus `period=10|5|all|custom`, `view=explore`, `options=1`;
-nothing selected = the native home page (`home_page()`). The only widgets are the search
-box, the custom-period slider and the Options form (stopwords persist in
-`st.session_state["extra_stop_saved"]` because the form is not always rendered).
+nothing selected = the native home page (`home_page()`). The report shell uses the search
+box, custom-period slider and Options form; Explore also has task-specific widgets for
+topic methods, rankings, comparison and paper search/export. Stopwords persist in
+`st.session_state["extra_stop_saved"]` because the Options form is not always rendered.
 Do not call `st.rerun()` right after changing `st.query_params` — the URL update is lost;
 set the params and continue the run. Hide Streamlit chrome via `stToolbarActions`,
 `stMainMenu`, `stAppDeployButton` and make the header `pointer-events: none`, otherwise
@@ -142,14 +151,29 @@ baseweb, so CSS hooks are those attributes. `.streamlit/config.toml` sets
 `primaryColor` to ink (#1B1B1B) so sliders, toggles and focus rings stay quiet; red is
 reserved for our own HTML (current links, kicker, focus series). Verify styling changes
 with a Playwright screenshot — many selectors silently fail to match.
+`app.py` loads shared `report/static/report.css` before `report/static/app.css`, which
+contains the Streamlit-specific layout and widget overrides. Keep common tokens in the
+shared stylesheet rather than reintroducing an inline copy of the app CSS.
 
-**Streamlit app conventions**: all heavy work goes through `st.cache_data` keyed on
-(corpus path, mtime, params); fetches are serialized with a `threading.Lock` held in
-`st.cache_resource`. Charts follow the dataviz rules: categorical colours from
-`viz.CATEGORICAL` in fixed order, at most 8 series then fold into "Other", one axis per
+**Streamlit app conventions**: `cached_analysis` uses `st.cache_resource(max_entries=4)`
+keyed on corpus path, mtime, years, slug, stopwords and analysis source revision. It
+shares the fitted models and large token lists without copying them between Report
+and Explore. Consumers must treat this shared `CorpusAnalysis` and its records as
+read-only; prepare query-local results without mutating the cached object. Other
+analyses and rendered payloads use bounded `st.cache_data` caches. Fetches are serialized
+with a `threading.Lock` held in `st.cache_resource`. Charts follow the dataviz rules:
+categorical colours from `report.charts.TOPIC_COLORS` in fixed order, at most 8 series
+then fold into "Other", one axis per
 chart, a table next to every chart. Stacked areas need a fixed `order` across years
 (sorting by value per year breaks the areas). To eyeball the UI, run the app headless on
-a spare port and screenshot tabs with Playwright (system `python3` has it with Chromium).
+a spare port and screenshot the sections with Playwright.
+
+**Bilingual pages**: the UI uses `i18n.py` and `lang=en|zh`, following the browser's
+preferred language when no explicit language is set. Both languages share analysis;
+only rendered interface text, narratives and chart labels differ. Paper titles,
+abstracts, technical phrases and institution names retain their original text.
+Static generation writes English pages and `*.zh.html`/`index.zh.html`. Preserve both
+languages when editing templates and keep user-facing copy in the translation table.
 
 **Report consistency**: app default periods and CLI reports without `--years` use
 `coverage.default_period`; All/Custom or explicit CLI years override the heuristic.
@@ -171,16 +195,23 @@ table. Keep these descriptions shared between static reports and Explore. The 90
 abstract-notice threshold is descriptive, not a measure of proceedings completeness.
 
 **Interactive exploration**: `report/explorer.py` accumulates exclusive title/repeated/once
-roles during the existing `build_entities` pass; do not estimate counts from sampled
-papers. It tracks up to 20 phrases over every calendar year, keeping gaps at zero
+roles from the normalized token lists retained by shared corpus analysis; do not estimate
+counts from sampled papers. `build_explorer_data` constructs the standalone evidence
+workspace without building the narrative report's linked-entity data. It tracks up to
+20 phrases over every calendar year, keeping gaps at zero
 denominator (the frontend renders missing shares, not 0%). Institutional counts dedupe
 co-authors and use all institutions, not just the legacy panel's top-60 set. Topic
 assignments are fitted once for the full report. Only evidence examples are capped at
-three per phrase/year/role. Explore opts into `explorer_full` to include every matching
+three per phrase/year/role. Standalone Explore includes every matching
 paper's listing metadata and role-separated IDs; abstracts remain sampled. The full
 evidence table (20 rows per page), counts and CSV use this same local selection, with no
 second native keyword filter. The phrase-search form adds an explicit term to the
 observatory, normalized with the corpus acronym map; rare and empty results stay explicit.
+`report/analysis.py` separates the expensive keyword/topic/ranking analysis from
+rendering. Report and Explore reuse that analysis for the same corpus, years and
+settings. A newly requested phrase is normalized and looked up in cached token lists;
+it must not trigger another keyword pass or NMF fit. Narrative report payloads omit
+the Explorer evidence data while retaining their own linked-entity panel data.
 `static/explorer.js` owns the local time/rule state and stops
 playback on manual edits, hidden pages and page exit. `explorer_page.html.j2` is the
 standalone Streamlit iframe; the narrative report deliberately excludes the observatory.
@@ -189,7 +220,7 @@ Custom ranges bind the `years` slider to query params; links must serialize both
 with `get_all` and `urlencode(..., doseq=True)`, using the live slider value on reruns.
 Institution rank history and topic mix are available behind a native toggle in Explore;
 both respect the parent roll-up setting. No new
-frontend runtime dependencies are required.
+frontend runtime dependencies are required. jsdom is a test-only dependency.
 
 **Resolution strategy in `fetch.py`** — this is the non-obvious part:
 
@@ -225,15 +256,17 @@ needs both `glocom` and `globecom`. Grouped API counts are not clean corpus tota
 Commas cannot appear in an OpenAlex filter value (they separate filters), so
 `search_sources` replaces them with spaces (EuroSimE's full name has one).
 
-**Presets** live in `app.py:PRESETS` (semiconductor & microelectronics: packaging and
+**Presets** live in `presets.py:CONFERENCES` (semiconductor & microelectronics: packaging and
 integration — ECTC, EPTC, ICEPT; thermal management and multiphysics — ITherm,
 EuroSimE; reliability — IRPS; devices and circuits — IEDM, ISSCC, VLSI Symposium,
 IMW; artificial intelligence and perception: computer vision — CVPR, speech technology
 — Interspeech; communications and signal processing: signal processing — ICASSP,
 communications and networking — GLOBECOM, INFOCOM; information security — IEEE S&P;
 robotics — ICRA; biomedical engineering — EMBC), each with
-its DOI prefix list; `render.GROUPS` holds the same grouping for the home page and the
-static index, `background.FIELD_OF` the field used by the common-phrase filter (rebuild
+its DOI prefix list. The registry derives `PRESETS`, `FULL`, `SHORT` and `GROUPS` for
+the app and static index; change the registry rather than maintaining duplicate lists
+in `app.py` and `report/render.py`. `background.FIELD_OF` holds the field used by the
+common-phrase filter (rebuild
 `resources/background.json` when a preset is added). VLSI
 Symposium needs ten prefixes because IEEE (10.1109) and JSAP (10.23919) alternate as
 publisher and the acronym changed (vlsit/vlsic → vlsitechnology/vlsicircuits →
@@ -254,10 +287,16 @@ leaked in.
 **Record schema** (`to_record`): `id, doi, title, publication_year, abstract` (plain text
 rebuilt from `abstract_inverted_index`), `authorships` (slimmed: author id/name/position,
 institutions id/name/country plus `root_id`/`root_name`/`root_country` = the top of
-OpenAlex's lineage, resolved after the fetch by `resolve_roots`; raw affiliation
+OpenAlex's lineage, resolved after the fetch by `resolve_roots`; `root_resolution`
+records resolved/unresolved parents; raw affiliation
 strings), `cited_by_count`, `type`,
 `source_id`, `source_name` (falls back to `raw_source_name`), `topics` (OpenAlex topic
 labels with subfield/field), `oa_keywords`.
+
+Parent institution lookup is best effort after papers have been fetched. On API
+failure, preserve the records and original affiliations, mark unresolved parents,
+and emit an explicit warning. Rankings use the direct institution name for unresolved
+parents; never invent a parent label or discard a completed paper fetch.
 
 `fetch` drops proceedings front matter via `is_front_matter`: OpenAlex's `is_paratext`
 flag catches only a fraction; the rest is a title regex (title pages, committees, indexes,
@@ -275,6 +314,9 @@ loses ~800 such items (a quarter of its DOIs), ECTC ~100. Extend the regex if ju
 **Topics (`topics.py`)**: default is NMF on TF-IDF (unigrams+bigrams, `min_df=5`,
 `max_df=0.4`, `nndsvda` init, fixed seed) with each paper assigned to its dominant topic;
 labels come from `make_label`, which prefers phrases over their constituent words.
+The analyzer uses the shared Unicode-aware tokenizer and retains scientific terms
+such as `3d`, `2.5d`, `5g` and `28nm`. Pure numbers are omitted and break bigrams so
+`copper 2024 bonding` does not manufacture the phrase `copper bonding`.
 `--method openalex` uses OpenAlex's own labels instead — too coarse for ECTC (half the
 papers land in "3D IC and TSV technologies") but fine for broad venues.
 
@@ -285,9 +327,11 @@ to misread as bugs:
 
 - **Topical counting** (`basis="topical"`, default): a paper counts for a phrase when the
   phrase is in its title or mentioned more than once (`text.TOPICAL_ROLES` = title,
-  repeated; a single mention is role `once`). Chosen with `paper-trends validate`, which
+  repeated; a single mention is role `once`). Chosen with
+  `uv run python -m paper_trends validate`, which
   judges roles from the abstract alone and asks how often the phrase is also in the title
-  (ECTC: repeated 36 %, once in the opening 19 %, once later 10 %). An earlier rule that
+  (historical ECTC check: repeated 32 %, once in the opening 21 %, once later 7 %;
+  these figures are not a new result for the current tokenizer/corpus). An earlier rule that
   counted "once, beyond the opening" and excluded "once, in the opening" had it backwards:
   single late mentions are methods and test conditions (finite element, thermal cycling).
   `KeywordTrends.doc_freq` holds the counts for the chosen basis, `mention_freq` every
@@ -336,8 +380,9 @@ These are data-driven heuristics without ground truth; `validate` is a sanity ch
 gold standard. The five-conference audit adds targeted paper review and reproducible count checks, not
 a representative independently annotated benchmark; do not present the rules as validated.
 
-**Coverage differs a lot by venue.** IEEE venues with acronym DOIs (ECTC, ISSCC, CVPR,
-ICRA…) are complete. Interspeech (ISCA, `10.21437/interspeech`) has every paper but
+**Coverage differs a lot by venue.** Earlier snapshots of IEEE venues with acronym DOIs
+(ECTC, ISSCC, CVPR, ICRA…) had broad coverage; this is not proof of completeness against
+official proceedings. Interspeech (ISCA, `10.21437/interspeech`) has broad paper coverage but
 abstracts for only ~40 % (2023+ ~20 %): use `--text title` there. Venues without DOIs
 (NeurIPS, ICML, CHI) are patchy in OpenAlex — NeurIPS' source covers 2016–2021 only —
 so they are not good showcases; say so rather than fetching them.
@@ -365,7 +410,8 @@ so the right-edge labels (computed in Python) line up with the bands. Preview wi
 network. `site/` is git-ignored. `build_report` switches to title-only phrase counting when
 abstract coverage is under 60 % (Interspeech), restores corpus hyphenation for display
 (`restore_hyphens`: "co-packaged optics"), and drops singular/plural twins from the lists.
-`render.FULL`/`SHORT`/`GROUPS`/`TAGLINE` hold the preset names, the home-page grouping and the tagline.
+`presets.py` owns preset names and home-page grouping; `report/render.py` re-exports
+`FULL`/`SHORT`/`GROUPS` for compatibility and owns `TAGLINE`.
 
 The report is intentionally selective: at most four rising and four fading phrase charts,
 five visible topic labels, and no institution bump chart or institution × topic heatmap.
@@ -373,14 +419,18 @@ Those deeper ranking and composition questions belong in Explore. The underlying
 `build.inst_rank_rows` and `build.inst_topic_rows` data remain available for analysis.
 
 **Linked-entity panel** (`report/entities.py` + `static/entities.js`). Every phrase,
-institution and topic on the page is clickable (`<span class="ent" data-ent="term|inst|topic"
+institution and topic on the page is clickable (`<button class="ent" data-ent="term|inst|topic"
 data-name="…">`, plus Vega click listeners on the institution bars, topic bands and
 emerging cells) and opens a drawer with the entity's trend, related institutions / topics /
 co-occurring phrases (lift > 1.3, ≥ 8 shared papers) / signature phrases (lift > 1.4, ≥ 5
 papers) and most cited papers; names inside the drawer are clickable too, with a history
-stack and crumbs. The data (`build_entities`: 150 terms, 60 institutions, all topics)
-is inlined as `window.ENTITIES`; only the papers some panel lists are shipped, renumbered,
-which keeps CVPR at ~0.4 MB instead of 2.7 MB. Topic membership comes from
+stack and crumbs. Entity buttons support keyboard activation; the dialog moves focus
+inside on opening, contains Tab navigation, closes with Escape and restores focus.
+The data (`build_entities`: 150 terms, 60 institutions, all topics)
+is inlined as `window.ENTITIES`; only the papers some panel lists are shipped, renumbered.
+Narrative reports omit the `explorer` key and do not embed the full Explore evidence
+listing; page size depends on the corpus and displayed entities, so do not document a
+fixed CVPR payload size. Topic membership comes from
 `TopicTrends.assignments` (record index → dominant NMF topic). Two things that are easy to
 break: Vega embed promises resolve before the next `<script>` runs, so the click handlers
 must look up `window.openEntity` lazily at click time, not when binding; and inside the

@@ -15,14 +15,14 @@ The same command works for ISSCC, IEDM, or any other venue indexed by OpenAlex.
 
 ## Requirements
 
-- Python 3.12+ (dependencies: requests, python-dotenv, scikit-learn, pandas, streamlit, altair)
+- Python 3.12+ (dependencies: requests, python-dotenv, scikit-learn, pandas, streamlit, altair, jinja2)
 - [uv](https://docs.astral.sh/uv/) for dependency management
 - A contact email and (recommended) a free [OpenAlex API key](https://help.openalex.org/api/authentication/)
 
 ## Setup
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/Minjia-Hu/paper-trends.git
 cd paper-trends
 uv sync
 
@@ -33,6 +33,12 @@ echo "OPENALEX_MAILTO=you@example.com" > .env
 # through it fast). Keys: https://help.openalex.org/api/authentication/
 echo "OPENALEX_API_KEY=your_key" >> .env
 ```
+
+Run CLI commands from the cloned repository with `uv run python -m paper_trends`.
+The local setup deliberately uses `package = false` to avoid an editable-install
+issue on some macOS systems; `uv sync` therefore does not install the `paper-trends`
+console command into this environment. Run the app separately with
+`uv run streamlit run app.py`; `app.py` belongs to the repository checkout.
 
 ## Quick start
 
@@ -62,6 +68,10 @@ and press **Fetch**.
 
 ## Usage
 
+Numerical examples below describe recorded corpus snapshots. They are illustrations,
+not fresh results for the current OpenAlex index or analysis code; regenerate them
+when comparing changes to the counting and topic rules.
+
 ### Report pages
 
 ```bash
@@ -81,7 +91,9 @@ topic band and a panel opens with its trend, who writes about it, which topics i
 to, what it co-occurs with and the most cited papers (DOI links). Names inside the panel
 are clickable too, so you can walk from *hybrid bonding* to the institutions behind it to
 their other signature phrases, with a back button and a trail. The panel data is
-precomputed and inlined, so the page still works offline and without a server.
+precomputed and inlined, so entity details need no server request. Reports contain
+the linked-panel data, but omit the larger Explore evidence workspace. Vega charts
+and fonts load from CDNs and require network access on first load.
 
 ### Interactive app
 
@@ -89,8 +101,8 @@ precomputed and inlined, so the page still works offline and without a server.
 uv run streamlit run app.py
 ```
 
-Pick a conference from the header, or type an acronym or name into the search box —
-“DAC”, “ISCAS”, “Custom Integrated Circuits Conference” — and the app resolves it against
+Pick a conference from the home page, or type an acronym or name into the search box —
+“ECTC”, “ISCAS”, “Custom Integrated Circuits Conference” — and the app resolves it against
 OpenAlex (name, DOI prefix, paper count, and a warning when a prefix is shared by several
 venues) before you fetch. **Report** is a concise, conclusion-first briefing for the
 selected period: summary, leading phrase changes, topic mix, and publishing geography.
@@ -119,12 +131,18 @@ save a UTC completion timestamp in `<corpus>.jsonl.meta.json`, bound to the corp
 by SHA-256. Missing, malformed or mismatched provenance displays **unknown**; copying or
 editing a file does not invent a new fetch date. Keep the sidecar when moving a corpus.
 
+Report and Explore share the cached keyword, topic and institution analysis for the same
+corpus and settings. Searching for another phrase queries the stored tokens and adds its
+evidence to Explore; it does not refit the topic model. The app retains at most four
+shared fitted analyses. If a new report or phrase request needs an analysis that has
+been evicted, the app computes it again.
+
 The report explains excluded current/future editions, unusually sparse trailing editions
 and delayed abstracts. Selected years with no cached records remain visible in the
 coverage table. Abstract coverage below 90% is called out by year; below 60% overall,
 phrase trends use titles only (topics still use available titles and abstracts).
 These checks describe the local OpenAlex snapshot, not completeness against official
-proceedings. See [coverage and freshness behavior](docs/data-coverage.md).
+proceedings. See [coverage and freshness behavior (Chinese)](docs/data-coverage.md).
 
 The **Trends & evidence** section in Explore starts with a field observatory. It lets you
 play or select a time window and switch between title mentions,
@@ -141,7 +159,7 @@ and frequent phrases. **Find another phrase** adds a typed phrase to this same w
 hyphenated display names resolve to their counting keys, and rare phrases remain searchable.
 **More institution analysis** restores rank history and institution/topic profiles on demand,
 respecting parent roll-up. Title-only corpora disable abstract rules. See
-[interactive exploration behavior and tests](docs/interactive-report.md).
+[interactive exploration behavior and tests (Chinese)](docs/interactive-report.md).
 
 The home page presents a curated set of reports in two levels. **Semiconductor &
 microelectronics** is split into packaging & integration (ECTC, EPTC, ICEPT), thermal
@@ -158,7 +176,7 @@ the DOI prefix(es) its papers carry, so any venue indexed by OpenAlex can be add
 way, or simply typed into the search box.
 
 Coverage varies by venue and year; a successful name match is not proof of a complete
-corpus. The [candidate venue audit](docs/venue-audit-2026-10-05.md) records prefix
+corpus. The [candidate venue audit (Chinese)](docs/venue-audit-2026-10-05.md) records prefix
 collisions, changing prefixes, and gaps found before expanding the presets.
 
 The cross-field additions have cached corpora and report pages. GLOBECOM uses both
@@ -205,6 +223,11 @@ citations are not added across duplicates. Records without a DOI are not merged 
 title alone. Proceedings front matter and identifiable textless catalog entries are
 excluded.
 
+Parent-institution enrichment is best effort. If its API lookup fails after the
+papers have been retrieved, the fetch retains the paper records and original
+affiliations, prints a warning, and marks unresolved parents in the corpus.
+Rankings fall back to the direct institution for those affiliations.
+
 ### Keyword trends
 
 ```bash
@@ -216,7 +239,7 @@ rules keep the lists about the conference rather than about academic prose:
 
 - **A paper counts when the phrase is in its title or repeated in its abstract**, after
   acronym normalization. This is a relevance heuristic, not a topic label: repeated
-  background or application mentions can still count. `paper-trends validate` compares
+  background or application mentions can still count. `uv run python -m paper_trends validate` compares
   abstract roles with title mentions; it is not a ground-truth accuracy benchmark.
   `--count any` counts every mention instead.
 - **Acronyms are read as their phrase.** When the corpus defines one (“redistribution
@@ -237,10 +260,10 @@ rules keep the lists about the conference rather than about academic prose:
   must also appear in at least 1% of papers in three other fields. Cross-field technical
   phrases (*deep learning*, *neural networks*, *energy consumption*) remain eligible;
   *high performance computing* does not inherit the exclusion of *high performance*.
-  `--keep-common` restores boilerplate. `paper-trends background data/*.jsonl` rebuilds
+  `--keep-common` restores boilerplate. `uv run python -m paper_trends background data/*.jsonl` rebuilds
   the frequency table; it does not change the reviewed phrase list.
 
-See [the five-conference trend audit](docs/trend-audit-2026-10-05.md) for count checks,
+See [the five-conference trend audit (Chinese)](docs/trend-audit-2026-10-05.md) for count checks,
 filter changes, paper examples and known acronym limitations.
 
 ECTC 2016–2025, share of papers, first vs. second half of the period:
@@ -255,10 +278,12 @@ co-packaged optics            0.1%    1.7%   +1.7%      ultra-thin              
 wafer-to-wafer                0.6%    2.1%   +1.4%      radio-frequency               3.8%    2.8%   -1.0%
 ```
 
-These are statistical heuristics, not a validated taxonomy. `paper-trends validate
-data/ectc.jsonl` prints the one check the data supports on its own — how often a phrase
-with each kind of mention also appears in the title (ECTC: repeated 36 %, once in the
-opening 19 %, once later 10 %) — so a change to the rules can be judged.
+These are statistical heuristics, not a validated taxonomy.
+`uv run python -m paper_trends validate data/ectc.jsonl` prints the one check the data
+supports on its own — how often a phrase with each kind of mention also appears in
+the title. The historical ECTC check recorded repeated 32 %, once in the opening
+21 %, and once later 7 %. These are historical measurements, not a fresh result for
+the current corpus or tokenizer; rerun the command to assess a rule change.
 
 ### Topic evolution
 
@@ -331,16 +356,18 @@ use of the vocabulary in these corpora, but cannot distinguish AI methods from A
 hardware applications or repeated background mentions. Inspect the backing papers before
 interpreting a phrase as the paper's research subject.
 
-The app has a **Compare** tab that plots the same terms across any fetched conferences,
-and the Keywords tab lists the papers behind any term.
+In Explore, **Compare conferences** plots the same terms across fetched conferences,
+and **Trends & evidence** lists the papers behind a phrase. CLI `--term` searches use
+the same hyphen and acronym normalization as Explore. Years with no cached papers are
+shown as missing values rather than zero-percent shares.
 
 ### Resolve an acronym
 
 ```bash
-uv run python -m paper_trends resolve DAC
-# name:         Design Automation Conference
-# doi prefixes: 10.1109/dac
-# papers:       ~1,497 (2016-2025)
+uv run python -m paper_trends resolve ECTC
+# name:         Electronic Components and Technology Conference
+# doi prefixes: 10.1109/ectc
+# Paper counts depend on the current OpenAlex snapshot.
 ```
 
 Acronyms are tried as IEEE-style DOI prefixes and the name is read off the matching
@@ -387,10 +414,13 @@ goes from 8 % to 22 %.
 
 ### Data coverage, honestly
 
-OpenAlex is excellent for IEEE-style venues whose DOIs carry the acronym (ECTC, ISSCC,
-IEDM, CVPR, ICRA, ...): every paper, ~97 % with abstracts. It is weaker elsewhere:
+OpenAlex often has broad coverage for IEEE-style venues whose DOIs carry the acronym
+(ECTC, ISSCC, IEDM, CVPR, ICRA, ...). Earlier snapshots had about 97 % abstract
+availability for many of these venues. That describes cached records, not completeness
+against official proceedings; coverage varies by venue and year. It is weaker elsewhere:
 
-- **Interspeech** (`10.21437/interspeech`): all papers, but abstracts for only ~40 % —
+- **Interspeech** (`10.21437/interspeech`): broad paper coverage in earlier snapshots,
+  but abstracts for only ~40 % —
   use `--text title`, titles alone still give clean trends.
 - **NeurIPS, ICML, CHI**: no DOIs on most papers and patchy source records (NeurIPS
   stops in 2021), so they are not well served by OpenAlex yet.
@@ -419,8 +449,10 @@ the years (VLSI Symposium has used ten) takes several `--doi-prefix` flags.
 
 ## How it works
 
-1. **Resolve the venue.** OpenAlex `sources` are searched by name and kept only when
-   the name, stripped of year/publisher decoration, equals the query. IEEE-style DOI
+1. **Resolve the venue.** OpenAlex `sources` are searched by name, preferring sources
+   whose core name, stripped of year/publisher decoration, equals the query. Longer
+   names may fall back to substring matching when no exact match exists; short
+   acronyms use conservative exact-source or DOI-prefix matching. IEEE-style DOI
    prefixes (`10.1109/ectc`) are used as a second route, with a boundary check so
    `isca` never matches `iscas`. Front matter (title pages, session overviews,
    committees, "not made available for publication") is dropped.
@@ -429,8 +461,9 @@ the years (VLSI Symposium has used ten) takes several `--doi-prefix` flags.
    counts once per institution). Shares make years and venues of different size
    comparable and are easy to sanity-check against the corpus. A paper is *about* a
    phrase when the phrase is in its title or mentioned more than once (acronyms the
-   corpus defines count as the phrase); phrases that three or more other fields also use
-   are left out of rankings.
+   corpus defines count as the phrase). A phrase is left out of rankings only when it
+   is reviewed boilerplate and occurs in at least 1% of papers in three other fields;
+   cross-field technical phrases remain eligible.
 3. **Rising / falling** = pooled share in the second half of the year range minus the
    first half, with a minimum-paper threshold. Fragments that almost always sit inside a
    longer phrase are folded into it, and the lists show one phrase per family.
@@ -452,9 +485,26 @@ papers; `--count any --keep-common` turns both off.
 - [x] `topics`: topic evolution over time (NMF or OpenAlex labels)
 - [x] `rank`: institution / author / country rankings with citations
 - [x] Streamlit app
-- [x] Compare terms across conferences (CLI + app tab)
+- [x] Compare terms across conferences (CLI + Explore section)
 - [x] Static report pages (`report`)
 - [ ] Hosted report site with pre-fetched presets (GitHub Pages)
+
+## Development checks
+
+```bash
+uv sync --frozen
+uv run pytest -q
+
+# Node.js 24 recommended (CI); DOM dependencies are pinned in package-lock.json.
+npm ci --ignore-scripts
+npm test
+```
+
+CI runs the offline Python suite on Python 3.12 and 3.13, plus the Node core and
+jsdom interaction tests on Node 24, including Explorer interactions and report entity
+navigation. `npm test` fails if jsdom is missing, rather than
+silently skipping the DOM suite. Historical audit documents under `docs/` retain the
+results and corpus snapshots recorded when those audits were performed.
 
 ## Data & license
 

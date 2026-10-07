@@ -1,0 +1,13 @@
+{
+  "name": "paper-trends-frontend-tests",
+  "private": true,
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
+  },
+  "scripts": {
+    "test": "node -e \"require('jsdom')\" && node --test tests/*.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "29.1.1"
+  }
+}
