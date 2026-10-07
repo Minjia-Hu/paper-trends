@@ -23,7 +23,7 @@ a:hover { border-bottom-color: var(--red); }
 
 /* ---- masthead & nav ---- */
 .masthead { border-bottom: 1px solid var(--rule); }
-.masthead .row { max-width: 1120px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; }
+.masthead .row { max-width: 1120px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
 .masthead .tagline { font-family: var(--sans); font-size: 13.5px; color: var(--muted); }
 .masthead .all { font-family: var(--sans); font-size: 13.5px; color: var(--muted); margin-left: auto; text-decoration: none; border-bottom: 1px solid var(--rule); }
 .masthead .all:hover { color: var(--red); border-color: var(--red); }
@@ -39,7 +39,8 @@ a:hover { border-bottom-color: var(--red); }
 .direction h3 { font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; }
 .directions .glance .n { color: var(--faint); font-family: var(--sans); font-size: 13px; margin-left: 6px; }
 @media (max-width: 700px) { .directions { grid-template-columns: 1fr; gap: 28px; } .domain-section { padding-top: 30px; } .domain-section > h2 { font-size: 27px; } }
-.brand { font-family: var(--serif); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; border: 0; }
+.brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; font-family: var(--serif); font-size: 20px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; border: 0; white-space: nowrap; }
+.brand-mark { display: block; width: 28px; height: 28px; flex-shrink: 0; }
 .venues { display: flex; gap: 4px 18px; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); }
 .venues .group { color: var(--faint); text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; margin-right: 2px; }
 .venues a { border: 0; padding-bottom: 2px; }

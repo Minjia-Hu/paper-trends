@@ -11,6 +11,7 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader
 
 from ..store import parse_years, read_jsonl, read_provenance
+from ..branding import favicon_uri, logo_svg
 from . import charts
 from .build import build_report
 from ..i18n import language, tr, report_copy, chart_labels
@@ -119,7 +120,9 @@ def nav_for(available: dict[str, dict]) -> list[tuple[str, list]]:
 
 
 def _env() -> Environment:
-    return Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=True)
+    env = Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=True)
+    env.globals.update(brand_mark=logo_svg(), favicon_uri=favicon_uri())
+    return env
 
 
 def _css() -> str:

@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>paper-trends</title>
+<link rel="icon" type="image/svg+xml" href="{{ favicon_uri }}">
 {% if inline_css %}<style>{{ inline_css|safe }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
 </head>
 <body>
-{% if not embedded %}<nav class="masthead"><div class="row"><a class="brand" href="{{ 'index.zh.html' if lang == 'zh' else 'index.html' }}">paper-trends</a><span class="all"><a href="index.zh.html">中文</a> · <a href="index.html">English</a></span></div></nav>{% endif %}
+{% if not embedded %}<nav class="masthead"><div class="row"><a class="brand" href="{{ 'index.zh.html' if lang == 'zh' else 'index.html' }}">{{ brand_mark|safe }}<span>paper-trends</span></a><span class="all"><a href="index.zh.html">中文</a> · <a href="index.html">English</a></span></div></nav>{% endif %}
 <main class="page{{ ' embedded' if embedded else '' }}">
 <header class="title">
   <div class="kicker">{{ _(tagline) }}</div>

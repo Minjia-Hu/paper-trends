@@ -13,6 +13,7 @@ import pandas as pd
 import streamlit as st
 
 from paper_trends import compare, frames
+from paper_trends.branding import FAVICON, logo_svg
 from paper_trends.i18n import language, tr, chart_labels, field_label
 from paper_trends.report import charts
 from paper_trends.background import field_of
@@ -94,7 +95,7 @@ PRESETS = {
 }
 FETCH_YEARS = (2016, 2026)
 
-st.set_page_config(page_title="paper-trends", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="paper-trends", page_icon=str(FAVICON), layout="wide", initial_sidebar_state="collapsed")
 LANG = language(st.query_params.get("lang"), st.context.headers.get("Accept-Language", ""))
 
 
@@ -111,8 +112,9 @@ st.markdown(
     .block-container { padding-top: 0.2rem; padding-bottom: 0; max-width: 1240px; }
     iframe[title="st.iframe"] { display: block; }
     /* masthead rendered by Streamlit (outside the iframe, so links can change the query string) */
-    .pt-masthead { display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-masthead .brand { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 20px; font-weight: 600; color: #1B1B1B; text-decoration: none; letter-spacing: -0.01em; }
+    .pt-masthead { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    .pt-masthead .brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 20px; font-weight: 500; line-height: 1; color: #1B1B1B; text-decoration: none; letter-spacing: -0.01em; white-space: nowrap; }
+    .pt-masthead .brand-mark { display: block; width: 28px; height: 28px; flex-shrink: 0; }
     .pt-masthead .tagline { font-size: 13.5px; color: #5C5C5C; }
     .pt-masthead .all { margin-left: auto; font-size: 13.5px; color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
     .pt-masthead .all:hover { color: #E3120B; border-color: #E3120B; }
@@ -288,6 +290,12 @@ st.markdown(
     @media (max-width: 900px) { .pt-head-grid { grid-template-columns: 1fr; gap: 22px; } .pt-head-stats { width: min(100%, 430px); } }
     @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .st-key-explore_loading { margin-left: 16px; margin-right: 16px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context { padding-left: 16px; padding-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
     .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 20px; line-height: 1.4; }
+    @media (max-width: 700px) {
+      .pt-masthead { column-gap: 10px; padding-left: 16px; padding-right: 16px; }
+      .pt-masthead .brand { gap: 7px; font-size: 18px; }
+      .pt-masthead .brand-mark { width: 24px; height: 24px; }
+      .pt-masthead .all { font-size: 12px; }
+    }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
     .pt-home li a { color: #1B1B1B; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
@@ -336,7 +344,7 @@ def masthead(on_conference: bool) -> str:
     # the home page says the tagline in its kicker, so the masthead carries it only elsewhere
     rest = f'<span class="tagline">{t(TAGLINE)}</span><a class="all" href="?lang={LANG}" target="_self">{t("All conferences →")}</a>' if on_conference else ""
     languages = '<span class="pt-language" aria-label="Language / 语言">' + links_row([('中文', link(lang='zh'), LANG == 'zh'), ('English', link(lang='en'), LANG == 'en')]) + '</span>'
-    return f'<nav class="pt-masthead"><a class="brand" href="?lang={LANG}" target="_self">paper-trends</a>{rest}{languages}</nav>'
+    return f'<nav class="pt-masthead"><a class="brand" href="?lang={LANG}" target="_self">{logo_svg()}<span>paper-trends</span></a>{rest}{languages}</nav>'
 
 # OpenAlex credentials: environment first, then Streamlit secrets (hosted demo).
 for _var in ("OPENALEX_MAILTO", "OPENALEX_API_KEY"):

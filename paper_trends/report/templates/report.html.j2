@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ r.name }} · paper-trends</title>
+<link rel="icon" type="image/svg+xml" href="{{ favicon_uri }}">
 <meta name="description" content="How {{ r.name }} changed {{ r.year_range[0] }}–{{ r.year_range[1] }}: rising and fading topics, new vocabulary, who publishes. Built from OpenAlex.">
 {% if inline_css %}<style>{{ inline_css|safe }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
 <script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
@@ -12,7 +13,7 @@
 </head>
 <body class="{{ 'embedded' if embedded else '' }}">
 {% if nav %}<nav class="masthead"><div class="row">
-  <a class="brand" href="{{ '?lang=' ~ lang if app_links else ('index.zh.html' if lang == 'zh' else 'index.html') }}"{% if app_links %} target="_top"{% endif %}>paper-trends</a>
+  <a class="brand" href="{{ '?lang=' ~ lang if app_links else ('index.zh.html' if lang == 'zh' else 'index.html') }}"{% if app_links %} target="_top"{% endif %}>{{ brand_mark|safe }}<span>paper-trends</span></a>
   <span class="tagline">{{ _(tagline) }}</span>
   <a class="all" href="{{ '?lang=' ~ lang if app_links else ('index.zh.html' if lang == 'zh' else 'index.html') }}"{% if app_links %} target="_top"{% endif %}>{{ _('All conferences →') }}</a>
 </div></nav>{% endif %}
