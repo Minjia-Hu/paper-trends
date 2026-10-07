@@ -236,8 +236,8 @@ def test_report_distinguishes_fetch_time_generation_and_missing_years():
     assert "Data fetched: 2020-01-02 03:04 UTC" in html
     assert f"report generated {r['generated']}" in html
     assert "No cached records for 2015" in html and "No cached records</td>" in html
-    assert "Selected period: 2015–2023" in html
-    assert "completeness against the official proceedings" in html
+    assert "Reporting period: 2015–2023" in html
+    assert "share of indexed papers with abstracts, not the completeness of conference proceedings" in html
 
 
 def test_all_displayed_phrases_get_panels_even_outside_top_terms(monkeypatch):

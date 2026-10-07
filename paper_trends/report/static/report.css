@@ -50,7 +50,7 @@ a:hover { border-bottom-color: var(--red); }
 .page.embedded header.title { padding-top: 22px; }
 .page.embedded { padding-bottom: 24px; }
 .explorer-only .page.explorer-page { max-width: none; padding-left: 0; padding-right: 0; }
-header.title { padding: 56px 0 20px; border-bottom: 1px solid var(--ink); margin-bottom: 32px; }
+header.title { padding: 56px 0 20px; border-bottom: 1px solid var(--ink); margin-bottom: 0; }
 .title-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 36px; }
 .title-identity { min-width: 0; }
 .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); margin-bottom: 10px; font-weight: 600; }
@@ -62,7 +62,22 @@ h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(34px, 4.6vw, 
 .title-stats b { color: var(--ink); font: 500 22px/1 var(--serif); }
 .title-stats small { color: var(--muted); font: 12px/1.35 var(--sans); white-space: nowrap; }
 .title-provenance { display: flex; gap: 8px 24px; flex-wrap: wrap; margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--rule); color: var(--faint); font-size: 12px; }
-.report-jump { display: flex; flex-wrap: wrap; gap: 7px 22px; margin: 24px 0 52px; padding: 10px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+.report-data { width: 100%; margin: 0; }
+.report-data > summary { display: flex; flex-wrap: wrap; gap: 6px 24px; align-items: baseline; list-style: none; font: 12px/1.65 var(--sans); color: var(--faint); }
+.report-data > summary::-webkit-details-marker { display: none; }
+.data-disclosure { color: var(--muted); border-bottom: 1px solid var(--rule); }
+.data-disclosure::after { content: " ›"; }
+.report-data[open] .data-disclosure::after { content: " ↑"; }
+.report-data > summary:hover .data-disclosure { color: var(--red); border-color: var(--red); }
+.report-data > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+.report-data-body { margin-top: 16px; color: var(--muted); font: 12.5px/1.65 var(--sans); }
+.report-data-body p { margin: 0 0 10px; }
+.report-data-body h3 { margin: 18px 0 8px; font: 500 13px/1.5 var(--sans); letter-spacing: 0; }
+.report-data-body ul { margin: 0 0 10px; padding-left: 20px; }
+.report-data-table { overflow-x: auto; }
+.report-data-table table { margin-bottom: 0; }
+.report-notice { margin: 14px 0 0; padding-left: 10px; border-left: 2px solid var(--red); color: var(--muted); font: 13px/1.65 var(--sans); max-width: 78ch; }
+.report-jump { display: flex; flex-wrap: wrap; gap: 7px 22px; margin: 12px 0 40px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
 .report-jump a { border: 0; }
 .report-jump a:hover { color: var(--red); }
 
@@ -273,6 +288,7 @@ body.embedded .ent-scrim { position: absolute; height: 100%; }
 /* Chinese display type uses local fonts; no font download is required. */
 html:lang(zh) body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
 html:lang(zh) h2, html:lang(zh) h3, html:lang(zh) .headline { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.4; }
+html:lang(zh) .report-data-body h3 { font: 500 13px/1.5 var(--sans); }
 html:lang(zh) .obs-mast h2 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.4; }
 html:lang(zh) .obs-mast em { font-style: normal; }
 html:lang(zh) .lede, html:lang(zh) .obs-caption, html:lang(zh) .obs-intro { line-height: 1.8; }

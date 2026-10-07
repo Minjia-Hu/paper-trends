@@ -33,18 +33,25 @@
     </div>
   </div>
   <div class="title-provenance">
-    <span>{{ _('data from OpenAlex · report generated') }} {{ r.generated }}</span>
-    <span>{{ r.data_fetched_label }}</span>
+    <details class="report-data" id="report-data">
+      <summary><span>{{ _('data from OpenAlex · report generated') }} {{ r.generated }}</span><span class="data-disclosure">{{ _('Data details') }}</span></summary>
+      <div class="report-data-body">
+        <p>{{ _('Reporting period') }}{{ '：' if lang == 'zh' else ': ' }}{{ r.data_coverage.rows[0].year }}–{{ r.data_coverage.rows[-1].year }}{{ '。' if lang == 'zh' else '.' }} {{ r.data_fetched_label }}</p>
+        <p>{{ _('The abstract percentage is the share of indexed papers with abstracts, not the completeness of conference proceedings.') }}</p>
+        {% if r.data_coverage.exclusions %}
+        <h3>{{ _('Why some years are not used by default') }}</h3>
+        <ul>{% for row in r.data_coverage.exclusions %}<li>{{ row.message }}</li>{% endfor %}</ul>
+        <p>{{ _('Explicit year selections can include these editions; their counts may be incomplete.') }}</p>
+        {% endif %}
+        <h3>{{ _('Coverage by year') }}</h3>
+        <div class="report-data-table"><table><thead><tr><th>{{ _('Year') }}</th><th class="num">{{ _('Papers') }}</th><th class="num">{{ _('With abstract') }}</th></tr></thead><tbody>
+          {% for row in r.data_coverage.rows %}<tr><td>{{ row.year }}</td><td class="num">{{ row.papers if row.papers else _("No cached records") }}</td><td class="num">{{ "%.1f%%"|format(row.coverage * 100) if row.coverage is not none else "—" }}</td></tr>{% endfor %}
+        </tbody></table></div>
+      </div>
+    </details>
   </div>
 </header>
-<p class="source">{{ r.data_coverage.selection }} {{ r.data_coverage.caveat }}</p>
-{% if r.data_coverage.exclusions %}
-<details><summary>{{ _('Why some years are not used by default') }}</summary>
-  <ul>{% for row in r.data_coverage.exclusions %}<li>{{ row.message }}</li>{% endfor %}</ul>
-  <p>{{ _('Explicit year selections can include these editions; their counts may be incomplete.') }}</p>
-</details>
-{% endif %}
-{% for note in r.data_coverage.notices %}<p class="lede">{{ note }}</p>{% endfor %}
+{% for note in r.data_coverage.notices %}<p class="report-notice">{{ note }}</p>{% endfor %}
 {% for note in r.analysis_notes %}<p class="lede">{{ note }}</p>{% endfor %}
 <nav class="report-jump" aria-label="{{ _('Report sections') }}">
   <a href="#glance">{{ _('Summary') }}</a>
