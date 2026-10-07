@@ -150,6 +150,11 @@ st.markdown(
     .pt-report-loading .kicker { margin: 0 0 9px; color: #E3120B; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
     .pt-report-loading h2 { margin: 0 0 8px !important; padding: 0 !important; color: #1B1B1B; font-family: Newsreader, Georgia, serif !important; font-size: 30px !important; font-weight: 500 !important; line-height: 1.1; }
     .pt-report-loading p { max-width: 68ch; margin: 0; color: #5C5C5C; font-size: 14px; line-height: 1.6; }
+    /* Keep the explorer responsive while its embedded analysis is assembled. */
+    .st-key-explore_loading { margin: 8px 24px 0; }
+    .pt-explore-loading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 14px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-explore-loading .kicker { color: #E3120B; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+    .pt-explore-loading p { margin: 0; color: #5C5C5C; font-size: 13.5px; line-height: 1.5; }
     /* explore view header: the report's hierarchy, with an interactive workbench below */
     .pt-head { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 0 24px; padding: 30px 0 18px; border-bottom: 1px solid #1B1B1B; }
     .pt-head-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 36px; }
@@ -239,7 +244,7 @@ st.markdown(
     .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
     .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
     @media (max-width: 900px) { .pt-head-grid { grid-template-columns: 1fr; gap: 22px; } .pt-head-stats { width: min(100%, 430px); } }
-    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context { margin-left: 16px; margin-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
+    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .st-key-explore_loading { margin-left: 16px; margin-right: 16px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context { margin-left: 16px; margin-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
     .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
@@ -763,8 +768,20 @@ if section == "trends":
         phrase = st.text_input(t("Find another phrase"), placeholder=t("Type a two- or three-word phrase"), key="phrase_search_input")
         st.form_submit_button(t("Explore phrase"), on_click=find_phrase)
     initial_term = st.query_params.get("term", "")
-    st.iframe(cached_explorer_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                                  date.today().year, LANG, initial_term, report_asset_version()), height="content")
+    loading_slot = st.empty()
+    with loading_slot.container(key="explore_loading"):
+        st.markdown(
+            f'<div class="pt-explore-loading"><span class="kicker">{escape(t("Preparing exploration"))}</span>'
+            f'<p>{escape(t("Building trends, paper evidence and interactive charts…"))}</p></div>',
+            unsafe_allow_html=True,
+        )
+        with st.skeleton(height=360):
+            explorer_html = cached_explorer_html(
+                path, mtime, years, query, slug, extra_stop, provenance, default_span,
+                date.today().year, LANG, initial_term, report_asset_version(),
+            )
+    loading_slot.empty()
+    st.iframe(explorer_html, height="content")
 
 if section == "topics":
     o1, o2 = st.columns([1, 1])

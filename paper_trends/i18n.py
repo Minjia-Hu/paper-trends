@@ -154,6 +154,8 @@ ZH = {
     "Looking the conference up in OpenAlex…": "正在 OpenAlex 中查找会议…", "Writing the report…": "正在生成报告…",
     "Generating report": "正在生成报告",
     "Analyzing keywords, topics and publishing institutions. Large conferences may take tens of seconds.": "正在分析关键词、主题与发文机构，大型会议可能需要几十秒。",
+    "Preparing exploration": "正在准备探索内容",
+    "Building trends, paper evidence and interactive charts…": "正在构建趋势、论文证据与交互图表……",
     "Another fetch is running on this server. Please retry in a minute.": "正在获取其他会议的数据，请稍后重试。",
     "Fetching “{query}” from OpenAlex…": "正在从 OpenAlex 获取“{query}”的数据…",
     "Fetched {count:,} papers → {path}": "已获取 {count:,} 篇论文 → {path}",
