@@ -10,8 +10,8 @@
   --red: #E3120B;
   --blue: #1F4E79;
   --grey: #B8B5AE;
-  --serif: "Newsreader", Georgia, "Times New Roman", serif;
-  --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --serif: "Newsreader", Georgia, "Songti SC", "Noto Serif CJK SC", "Times New Roman", serif;
+  --sans: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
   --measure: 66ch;
 }
 
@@ -49,6 +49,7 @@ a:hover { border-bottom-color: var(--red); }
 .page { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
 .page.embedded header.title { padding-top: 22px; }
 .page.embedded { padding-bottom: 24px; }
+.explorer-only .page.explorer-page { max-width: none; padding-left: 0; padding-right: 0; }
 header.title { padding: 56px 0 20px; border-bottom: 1px solid var(--ink); margin-bottom: 32px; }
 .title-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 36px; }
 .title-identity { min-width: 0; }

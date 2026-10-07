@@ -12,6 +12,15 @@ def language(value=None, accept_language=""):
 
 
 ZH = {
+    "Compare the share of the same phrase across conferences.": "比较同一关键词在不同会议中的论文占比。",
+    "Choose a topic method and follow how the research mix changes over time.": "选择分析方法，查看研究主题的分布与演进。",
+    "Compare publication rankings and changes in research participation.": "比较发文排名，观察研究参与格局的变化。",
+    "Follow keywords over time and read the papers behind their trends.": "追踪关键词的历年变化，查看曲线背后的论文。",
+    "Comparison basis": "比较口径",
+    "Same years, text range and counting rule; missing editions remain missing.": "使用相同年份、文本范围与统计规则；缺失年份保留为空。",
+    "Only conferences with cached data are available.": "可选择的会议均已获取数据。",
+    "Affiliation grouping": "机构归并",
+    "example": "代表论文",
     "Report controls": "报告控制项", "Conference summary": "会议概览", "Explore sections": "探索栏目",
     "Title": "论文标题", "Citations": "被引次数",
     "No phrases are available in this period. Try another period or search for a two- or three-word phrase.": "当前时段没有可展示的关键词。可更换时段，或搜索由两三个英文单词组成的关键词。",

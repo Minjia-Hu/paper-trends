@@ -111,8 +111,8 @@ st.markdown(
     .block-container { padding-top: 0.2rem; padding-bottom: 0; max-width: 1240px; }
     iframe[title="st.iframe"] { display: block; }
     /* masthead rendered by Streamlit (outside the iframe, so links can change the query string) */
-    .pt-masthead { display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
-    .pt-masthead .brand { font-family: Newsreader, Georgia, serif; font-size: 20px; font-weight: 600; color: #1B1B1B; text-decoration: none; letter-spacing: -0.01em; }
+    .pt-masthead { display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    .pt-masthead .brand { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 20px; font-weight: 600; color: #1B1B1B; text-decoration: none; letter-spacing: -0.01em; }
     .pt-masthead .tagline { font-size: 13.5px; color: #5C5C5C; }
     .pt-masthead .all { margin-left: auto; font-size: 13.5px; color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
     .pt-masthead .all:hover { color: #E3120B; border-color: #E3120B; }
@@ -122,13 +122,13 @@ st.markdown(
     /* search box: white, hairline border, red underline on focus */
     .st-key-controls_search div[data-baseweb="input"], .st-key-controls_search div[data-baseweb="input"] > div, .st-key-controls_search div[data-baseweb="base-input"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; }
     .st-key-controls_search div[data-baseweb="input"]:focus-within { border-color: #1B1B1B !important; box-shadow: none !important; }
-    .st-key-controls_search input { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
+    .st-key-controls_search input { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 14.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
     /* buttons: ink, square corners, quiet */
-    .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; box-shadow: none !important; }
+    .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13.5px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; box-shadow: none !important; }
     .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { background: #1B1B1B !important; color: #FFFFFF !important; border-color: #1B1B1B !important; padding: 6px 18px !important; letter-spacing: 0.02em; }
     .st-key-fetch_btn button:hover, .st-key-fetch_prefix_btn button:hover { background: #E3120B !important; border-color: #E3120B !important; }
     /* compact editorial toolbar: each label owns one clearly separated group */
-    .pt-controls { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; color: #5C5C5C; margin: 14px 24px 0; padding: 0 0 13px; display: grid; grid-template-columns: max-content max-content 1fr; align-items: end; gap: 28px; border-bottom: 1px solid #E6E3DC; }
+    .pt-controls { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 13.5px; color: #5C5C5C; margin: 14px 24px 0; padding: 0 0 13px; display: grid; grid-template-columns: max-content max-content 1fr; align-items: end; gap: 28px; border-bottom: 1px solid #E6E3DC; }
     .pt-control-group { display: grid; gap: 6px; }
     .pt-controls .lbl { font-size: 10px; line-height: 1; letter-spacing: 0.14em; text-transform: uppercase; color: #8A877F; }
     .pt-control-links { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; }
@@ -138,42 +138,42 @@ st.markdown(
     .pt-controls a.current { color: #E3120B; border-bottom-color: #E3120B; }
     .st-key-custom_period { padding: 4px 24px 0; max-width: 520px; }
     .st-key-options_form { margin: 10px 24px 0; padding: 12px 18px 6px; border: 1px solid #E6E3DC; border-radius: 2px; background: #FFFFFF; }
-    .pt-options-head { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A877F; margin-bottom: 4px; }
+    .pt-options-head { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A877F; margin-bottom: 4px; }
     .pt-options-head a { color: #E3120B; text-decoration: none; margin-left: 12px; text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .st-key-options_form label p, .st-key-options_form label { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; color: #5C5C5C !important; }
-    .st-key-options_form div[data-baseweb="input"], .st-key-options_form div[data-baseweb="input"] > div, .st-key-options_form div[data-baseweb="base-input"], .st-key-options_form div[data-baseweb="textarea"], .st-key-options_form textarea { background-color: #FCFBF8 !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14px !important; }
-    .st-key-refresh_btn button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; }
+    .st-key-options_form label p, .st-key-options_form label { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13px !important; color: #5C5C5C !important; }
+    .st-key-options_form div[data-baseweb="input"], .st-key-options_form div[data-baseweb="input"] > div, .st-key-options_form div[data-baseweb="base-input"], .st-key-options_form div[data-baseweb="textarea"], .st-key-options_form textarea { background-color: #FCFBF8 !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 14px !important; }
+    .st-key-refresh_btn button { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; }
     .st-key-refresh_btn button:hover { border-color: #1B1B1B !important; }
     /* Reserve the report surface while its first analysis is being built. */
     .st-key-report_loading { margin: 0 24px; padding: 30px 0 0; }
-    .pt-report-loading { padding: 0 0 18px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-report-loading { padding: 0 0 18px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
     .pt-report-loading .kicker { margin: 0 0 9px; color: #E3120B; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
-    .pt-report-loading h2 { margin: 0 0 8px !important; padding: 0 !important; color: #1B1B1B; font-family: Newsreader, Georgia, serif !important; font-size: 30px !important; font-weight: 500 !important; line-height: 1.1; }
+    .pt-report-loading h2 { margin: 0 0 8px !important; padding: 0 !important; color: #1B1B1B; font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; font-size: 30px !important; font-weight: 500 !important; line-height: 1.1; }
     .pt-report-loading p { max-width: 68ch; margin: 0; color: #5C5C5C; font-size: 14px; line-height: 1.6; }
     /* Keep the explorer responsive while its embedded analysis is assembled. */
     .st-key-explore_loading { margin: 8px 24px 0; }
-    .pt-explore-loading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 14px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-explore-loading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 14px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
     .pt-explore-loading .kicker { color: #E3120B; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
     .pt-explore-loading p { margin: 0; color: #5C5C5C; font-size: 13.5px; line-height: 1.5; }
     /* explore view header: the report's hierarchy, with an interactive workbench below */
-    .pt-head { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 0 24px; padding: 30px 0 18px; border-bottom: 1px solid #1B1B1B; }
+    .pt-head { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 0 24px; padding: 30px 0 18px; border-bottom: 1px solid #1B1B1B; }
     .pt-head-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 36px; }
     .pt-head-identity { min-width: 0; }
     .pt-head .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 10px; }
-    .pt-head h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 12px; max-width: 18ch; color: #1B1B1B; padding: 0; overflow-wrap: anywhere; }
-    .pt-head .full-name { font-family: Newsreader, Georgia, serif; color: #5C5C5C; font-size: 21px; line-height: 1.25; margin: -3px 0 0; max-width: 40ch; }
+    .pt-head h1 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 12px; max-width: 18ch; color: #1B1B1B; padding: 0; overflow-wrap: anywhere; }
+    .pt-head .full-name { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; color: #5C5C5C; font-size: 21px; line-height: 1.25; margin: -3px 0 0; max-width: 40ch; }
     .pt-head-stats { display: grid; grid-template-columns: repeat(3, minmax(92px, auto)); border-top: 1px solid #E6E3DC; }
     .pt-head-stats > span { display: grid; align-content: start; gap: 2px; padding: 11px 18px 2px; border-left: 1px solid #E6E3DC; }
     .pt-head-stats > span:first-child { padding-left: 0; border-left: 0; }
-    .pt-head-stats b { color: #1B1B1B; font: 500 22px/1 Newsreader, Georgia, serif; }
-    .pt-head-stats small { color: #5C5C5C; font: 12px/1.35 "IBM Plex Sans", system-ui, sans-serif; white-space: nowrap; }
+    .pt-head-stats b { color: #1B1B1B; font: 500 22px/1 Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; }
+    .pt-head-stats small { color: #5C5C5C; font: 12px/1.35 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; white-space: nowrap; }
     .pt-head-provenance { display: flex; gap: 8px 24px; flex-wrap: wrap; margin-top: 20px; padding-top: 10px; border-top: 1px solid #E6E3DC; color: #8A877F; font-size: 12px; }
     .pt-head-provenance a { color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #C9C6BE; }
     .pt-head-provenance a:hover { color: #E3120B; border-bottom-color: #E3120B; }
-    .st-key-explore_context { margin: 0 24px; }
-    .pt-coverage-notice { margin: 10px 0 0; color: #5C5C5C; font: 12.5px/1.55 "IBM Plex Sans", system-ui, sans-serif; }
-    .pt-coverage-panel { padding: 18px 0 20px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
-    .pt-coverage-panel h2 { margin: 0 0 6px !important; padding: 0 !important; color: #1B1B1B; font: 500 20px/1.25 Newsreader, Georgia, serif !important; }
+    .st-key-explore_context { box-sizing: border-box; padding: 0 24px; }
+    .pt-coverage-notice { margin: 10px 0 0; color: #5C5C5C; font: 12.5px/1.55 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    .pt-coverage-panel { padding: 18px 0 20px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    .pt-coverage-panel h2 { margin: 0 0 6px !important; padding: 0 !important; color: #1B1B1B; font: 500 20px/1.25 Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; }
     .pt-coverage-panel .caveat { margin: 0 0 14px; color: #5C5C5C; font-size: 13px; line-height: 1.55; }
     .pt-coverage-panel .exclusion { margin: 0 0 8px; color: #5C5C5C; font-size: 12.5px; line-height: 1.5; }
     .pt-coverage-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
@@ -181,41 +181,65 @@ st.markdown(
     .pt-coverage-table td { padding: 8px 10px; border-bottom: 1px solid #EEECE6; color: #3D3D3D; text-align: right; }
     .pt-coverage-table th:first-child, .pt-coverage-table td:first-child { padding-left: 0; text-align: left; }
     /* Phrase search is an editorial tool row rather than a boxed Streamlit form. */
-    .st-key-phrase_tool { margin: 18px 24px 0; padding: 0 0 20px !important; border-bottom: 1px solid #E6E3DC; }
+    .st-key-phrase_tool { margin: 0; padding: 0 0 18px !important; border-bottom: 1px solid #E6E3DC; }
     .st-key-phrase_tool [data-testid="stForm"] { padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; }
-    .pt-phrase-label { margin: 0 0 8px; color: #E3120B; font: 600 11px/1 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
+    .pt-phrase-label { margin: 0 0 8px; color: #E3120B; font: 600 11px/1 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
     .st-key-phrase_tool div[data-baseweb="input"], .st-key-phrase_tool div[data-baseweb="input"] > div, .st-key-phrase_tool div[data-baseweb="base-input"] { min-height: 40px; background: #FFFFFF !important; border-color: #D8D5CE !important; border-radius: 2px !important; box-shadow: none !important; }
     .st-key-phrase_tool div[data-baseweb="input"]:focus-within { border-color: #1B1B1B !important; }
-    .st-key-phrase_tool input { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
-    .st-key-phrase_submit button { min-height: 40px; border: 1px solid #1B1B1B !important; border-radius: 2px !important; background: #1B1B1B !important; color: #FFFFFF !important; box-shadow: none !important; font: 500 13px/1 "IBM Plex Sans", system-ui, sans-serif !important; }
+    .st-key-phrase_tool input { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
+    .st-key-phrase_submit button { min-height: 40px; border: 1px solid #1B1B1B !important; border-radius: 2px !important; background: #1B1B1B !important; color: #FFFFFF !important; box-shadow: none !important; font: 500 13px/1 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; }
     .st-key-phrase_submit button:hover { border-color: #E3120B !important; background: #E3120B !important; color: #FFFFFF !important; }
     /* Explore tasks are page navigation, not another copy of the global toolbar. */
-    .pt-sections { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px 24px; margin: 12px 24px 0; padding: 10px 0; border-top: 1px solid #E6E3DC; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; }
+    .pt-sections { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px 24px; margin: 12px 24px 0; padding: 10px 0; border-top: 1px solid #E6E3DC; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 13.5px; }
     .pt-sections a { color: #5C5C5C; text-decoration: none; padding-bottom: 3px; border-bottom: 2px solid transparent; white-space: nowrap; }
     .pt-sections a:hover { color: #E3120B; }
     .pt-sections a.current { color: #E3120B; border-bottom-color: #E3120B; }
-    .pt-h2 { font-family: Newsreader, Georgia, serif !important; font-weight: 500 !important; font-size: 26px !important; letter-spacing: -0.01em; margin: 26px 0 4px !important; padding: 0 !important; color: #1B1B1B; }
-    .pt-subhead { font-family: Newsreader, Georgia, serif !important; font-size: 21px !important; font-weight: 500 !important; margin: 14px 0 5px !important; }
-    .pt-lede { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; max-width: 72ch; margin: 0 0 12px; }
-    .block-container [data-testid="stMarkdownContainer"] p { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-h2 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; font-weight: 500 !important; font-size: 26px !important; letter-spacing: -0.01em; margin: 26px 0 4px !important; padding: 0 !important; color: #1B1B1B; }
+    .pt-subhead { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; font-size: 21px !important; font-weight: 500 !important; margin: 14px 0 5px !important; }
+    .block-container [data-testid="stMarkdownContainer"] p.pt-lede { font-family: var(--pt-sans); color: #5C5C5C; font-size: 14px; line-height: 1.65; max-width: 72ch; margin: 0 0 12px; }
+    /* One content measure for every Explore task, including native controls. */
+    :root { --pt-sans: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; --pt-serif: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; }
+    .st-key-explore_body { box-sizing: border-box; padding: 0 24px 24px; min-width: 0; font-family: var(--pt-sans); }
+    .pt-section-head { margin: 22px 0 8px; }
+    .pt-section-head .pt-h2 { margin: 0 0 6px !important; font-family: var(--pt-serif) !important; line-height: 1.3; }
+    .pt-section-head p.pt-lede { margin-bottom: 0 !important; }
+    .st-key-explore_controls { padding: 0 0 16px; border-bottom: 1px solid #E6E3DC; }
+    .st-key-explore_controls [data-testid="stToggle"] { min-height: 40px; display: flex; align-items: center; }
+    .pt-control-label { margin: 0 0 8px; font: 400 12.5px/20px var(--pt-sans); color: #5C5C5C; }
+    .st-key-explore_body [data-testid="stSelectbox"], .st-key-explore_body [data-testid="stMultiSelect"], .st-key-explore_body input, .st-key-explore_body button, .st-key-explore_body [data-testid="stMultiSelectTagsContainer"] { font-family: var(--pt-sans) !important; }
+    .st-key-explore_body [data-testid="stMultiSelectTagsContainer"] span[data-tag] { font-size: 13px !important; line-height: 1.5; font-family: var(--pt-sans) !important; }
+    .st-key-explore_body [data-testid="stWidgetLabel"] p { font-size: 12.5px !important; line-height: 20px; }
+    .st-key-explore_body [data-testid="stMarkdownContainer"] p.pt-method-note { font: 400 12.5px/1.65 var(--pt-sans); color: #77746D; margin: 0 0 10px; max-width: 88ch; }
+    .pt-method-note b { font-weight: 500; color: #5C5C5C; margin-right: 10px; }
+    .st-key-explore_body .pt-h2, .st-key-explore_body .pt-fig .headline { font-family: var(--pt-serif) !important; }
+    .st-key-explore_body .pt-fig { margin-top: 16px; }
+    .st-key-explore_body .pt-fig .sub { font-size: 13px; line-height: 1.6; }
+    .st-key-explore_body [data-testid="stExpander"] { border-radius: 2px; border-color: #E6E3DC; }
+    .st-key-explore_body .st-key-explore_loading { margin: 0; }
+    @media (max-width: 700px) {
+        .st-key-explore_body { padding-left: 16px; padding-right: 16px; }
+        .st-key-explore_body .st-key-phrase_tool, .st-key-explore_body .st-key-explore_loading { margin-left: 0; margin-right: 0; }
+        .pt-section-head { margin-top: 18px; }
+    }
+    .block-container [data-testid="stMarkdownContainer"] p { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
     /* explore widgets: quiet */
-    .block-container label p, .block-container label { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 12.5px !important; color: #5C5C5C !important; }
-    .block-container div[data-baseweb="select"] > div, .block-container div[data-baseweb="input"] > div, .block-container div[data-baseweb="textarea"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 14px !important; }
+    .block-container label p, .block-container label { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 12.5px !important; color: #5C5C5C !important; }
+    .block-container div[data-baseweb="select"] > div, .block-container div[data-baseweb="input"] > div, .block-container div[data-baseweb="textarea"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 14px !important; }
     .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
     .block-container [data-testid="stToggle"] label p { font-size: 13px !important; }
     .block-container [data-testid="stSlider"] { padding-top: 4px; }
     /* figures in Explore, same anatomy as the report */
-    .pt-fig { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 6px; font-family: "IBM Plex Sans", system-ui, sans-serif; }
-    .pt-fig .headline { font-family: Newsreader, Georgia, serif; font-size: 19px; font-weight: 500; line-height: 1.25; color: #1B1B1B; }
+    .pt-fig { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 6px; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    .pt-fig .headline { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 19px; font-weight: 500; line-height: 1.25; color: #1B1B1B; }
     .pt-fig .sub { color: #5C5C5C; font-size: 13.5px; }
-    .pt-source { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #8A877F; font-size: 12.5px; margin: 2px 0 14px; }
-    .pt-sm { border-top: 2px solid #1B1B1B; padding-top: 6px; margin-top: 10px; font-family: "IBM Plex Sans", system-ui, sans-serif; }
-    .pt-sm .term { font-family: Newsreader, Georgia, serif; font-size: 17px; font-weight: 500; line-height: 1.2; margin: 0 0 2px; color: #1B1B1B; }
+    .pt-source { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #8A877F; font-size: 12.5px; margin: 2px 0 14px; }
+    .pt-sm { border-top: 2px solid #1B1B1B; padding-top: 6px; margin-top: 10px; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    .pt-sm .term { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 17px; font-weight: 500; line-height: 1.2; margin: 0 0 2px; color: #1B1B1B; }
     .pt-sm .move { font-size: 12.5px; color: #5C5C5C; margin: 0; }
     [data-testid="stVegaLiteChart"] { margin-top: -6px; }
     /* tables in the report's style */
     .pt-table-wrap { overflow-x: auto; margin: 4px 0 6px; }
-    .pt-table { border-collapse: collapse; width: 100%; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; font-variant-numeric: tabular-nums; color: #1B1B1B; }
+    .pt-table { border-collapse: collapse; width: 100%; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 13.5px; font-variant-numeric: tabular-nums; color: #1B1B1B; }
     .pt-table th { text-align: left; font-weight: 500; color: #5C5C5C; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 12px 6px 0; border-bottom: 1px solid #1B1B1B; white-space: nowrap; }
     .pt-table td { padding: 7px 12px 7px 0; border-bottom: 1px solid #E6E3DC; vertical-align: top; }
     .pt-table th.num, .pt-table td.num { text-align: right; }
@@ -227,26 +251,26 @@ st.markdown(
     .block-container [data-testid="stSelectbox"] [role="combobox"], .block-container [data-testid="stMultiSelect"] [role="combobox"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; box-shadow: none !important; }
     .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] { background-color: #F3F1EC !important; color: #1B1B1B !important; border-radius: 2px !important; border: 1px solid #E6E3DC; }
     .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] span, .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] button { color: #1B1B1B !important; }
-    .block-container [data-testid="stSliderThumbValue"] p { color: #1B1B1B !important; font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 12px !important; }
+    .block-container [data-testid="stSliderThumbValue"] p { color: #1B1B1B !important; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 12px !important; }
     .block-container [data-testid="stSliderTickBar"] p { color: #8A877F !important; font-size: 11px !important; }
-    .st-key-dl_results button, .st-key-dl_corpus button, .st-key-dl_keywords button, .st-key-dl_institutions button { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; width: 100%; }
+    .st-key-dl_results button, .st-key-dl_corpus button, .st-key-dl_keywords button, .st-key-dl_institutions button { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; width: 100%; }
     .st-key-dl_results button:hover, .st-key-dl_corpus button:hover, .st-key-dl_keywords button:hover, .st-key-dl_institutions button:hover { border-color: #1B1B1B !important; }
     .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
     /* resolution card */
-    .pt-found { font-family: "IBM Plex Sans", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
+    .pt-found { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
     .pt-found .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 4px; }
-    .pt-found .name { font-family: Newsreader, Georgia, serif; font-size: 26px; font-weight: 500; line-height: 1.15; color: #1B1B1B; letter-spacing: -0.01em; }
+    .pt-found .name { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 26px; font-weight: 500; line-height: 1.15; color: #1B1B1B; letter-spacing: -0.01em; }
     .pt-found .meta { color: #5C5C5C; font-size: 14px; margin-top: 6px; }
     .pt-found .warn { color: #1B1B1B; font-size: 14px; margin-top: 8px; }
     .pt-found .warn b { color: #E3120B; }
     .st-key-fetch_row { padding: 10px 24px 4px 45px; }
-    .pt-note { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; padding: 4px 24px 0; }
+    .pt-note { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; padding: 4px 24px 0; }
     /* home page, rendered by Streamlit so its links can change the query string */
-    .pt-home { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #1B1B1B; padding: 8px 24px 40px; max-width: 1120px; }
+    .pt-home { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #1B1B1B; padding: 8px 24px 40px; max-width: 1120px; }
     .pt-home .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin: 12px 0 14px; }
-    .pt-home h1 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; }
+    .pt-home h1 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; }
     .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 28px; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
-    .pt-home h2 { font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
+    .pt-home h2 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
     .pt-home .collection-note { max-width: 78ch; margin: 0 0 2px; color: #8A877F; font-size: 13px; }
     .pt-home .domain-jump { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 18px 0 4px; font-size: 13px; }
     .pt-home .domain-jump a { color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
@@ -256,20 +280,20 @@ st.markdown(
     .pt-home .domain-section:first-child { border-top-color: #1B1B1B; }
     .pt-home .domain-section > h2 { font-size: 31px; margin: 0 0 18px; }
     .pt-home .directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
-    .pt-home .direction h3 { font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; color: #1B1B1B; }
+    .pt-home .direction h3 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; color: #1B1B1B; }
     .pt-language { display: inline-flex; gap: 12px; white-space: nowrap; font-size: 13px; margin-left: auto; }
     .pt-language a { color: #5C5C5C; text-decoration: none; padding: 5px 0; }
     .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
     .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
     @media (max-width: 900px) { .pt-head-grid { grid-template-columns: 1fr; gap: 22px; } .pt-head-stats { width: min(100%, 430px); } }
-    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .st-key-explore_loading { margin-left: 16px; margin-right: 16px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context, .st-key-phrase_tool { margin-left: 16px; margin-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
-    .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
+    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .st-key-explore_loading { margin-left: 16px; margin-right: 16px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context { padding-left: 16px; padding-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
+    .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
     .pt-home li a { color: #1B1B1B; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
     .pt-home li a:hover { border-bottom-color: #E3120B; }
     .pt-home li a em { font-style: normal; color: #E3120B; font-weight: 600; }
-    .pt-home li .n { color: #8A877F; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 14px; margin-left: 8px; }
+    .pt-home li .n { color: #8A877F; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 14px; margin-left: 8px; }
     .pt-home p { font-size: 16px; color: #5C5C5C; max-width: 66ch; }
     </style>""",
     unsafe_allow_html=True,
@@ -791,188 +815,211 @@ def note(text: str) -> None:
     st.markdown(f'<p class="pt-lede">{t(text)}</p>', unsafe_allow_html=True)
 
 
-if len(cov_y) < 2 and section == "compare":
-    st.info(t("Comparisons over time need at least two years. Open Papers & export to see the papers in this period."))
-    st.stop()
+def section_head(title: str, description: str) -> None:
+    st.markdown(
+        f'<header class="pt-section-head"><h2 class="pt-h2">{escape(t(title))}</h2>'
+        f'<p class="pt-lede">{escape(t(description))}</p></header>', unsafe_allow_html=True,
+    )
 
-if section == "trends":
-    # This search adds a phrase to the observatory; the observatory owns the one
-    # active term/window/rule used by its chart, complete evidence and CSV export.
-    def find_phrase():
-        phrase = st.session_state.get("phrase_search_input", "").strip()
-        if phrase:
-            st.query_params["term"] = phrase
 
-    with st.container(key="phrase_tool"):
-        with st.form("phrase_search", clear_on_submit=True):
-            st.markdown(f'<div class="pt-phrase-label">{escape(t("Custom phrase"))}</div>', unsafe_allow_html=True)
-            phrase_input, phrase_action = st.columns([6, 1.15], gap="small", vertical_alignment="bottom")
-            with phrase_input:
-                phrase = st.text_input(
-                    t("Custom phrase"), placeholder=t("Type a two- or three-word phrase"),
-                    key="phrase_search_input", label_visibility="collapsed",
-                )
-            with phrase_action:
-                st.form_submit_button(t("Analyze phrase"), on_click=find_phrase, width="stretch", key="phrase_submit")
-    initial_term = st.query_params.get("term", "")
-    loading_slot = st.empty()
-    with loading_slot.container(key="explore_loading"):
-        st.markdown(
-            f'<div class="pt-explore-loading"><span class="kicker">{escape(t("Preparing exploration"))}</span>'
-            f'<p>{escape(t("Building trends, paper evidence and interactive charts…"))}</p></div>',
-            unsafe_allow_html=True,
-        )
-        with st.skeleton(height=360):
-            explorer_html = cached_explorer_html(
-                path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                date.today().year, LANG, initial_term, report_asset_version(),
+with st.container(key="explore_body"):
+    if len(cov_y) < 2 and section == "compare":
+        st.info(t("Comparisons over time need at least two years. Open Papers & export to see the papers in this period."))
+        st.stop()
+
+    if section == "trends":
+        section_head("Trends & evidence", "Follow keywords over time and read the papers behind their trends.")
+        # This search adds a phrase to the observatory; the observatory owns the one
+        # active term/window/rule used by its chart, complete evidence and CSV export.
+        def find_phrase():
+            phrase = st.session_state.get("phrase_search_input", "").strip()
+            if phrase:
+                st.query_params["term"] = phrase
+
+        with st.container(key="phrase_tool"):
+            with st.form("phrase_search", clear_on_submit=True):
+                st.markdown(f'<div class="pt-phrase-label">{escape(t("Custom phrase"))}</div>', unsafe_allow_html=True)
+                phrase_input, phrase_action = st.columns([6, 1.15], gap="small", vertical_alignment="bottom")
+                with phrase_input:
+                    phrase = st.text_input(
+                        t("Custom phrase"), placeholder=t("Type a two- or three-word phrase"),
+                        key="phrase_search_input", label_visibility="collapsed",
+                    )
+                with phrase_action:
+                    st.form_submit_button(t("Analyze phrase"), on_click=find_phrase, width="stretch", key="phrase_submit")
+        initial_term = st.query_params.get("term", "")
+        loading_slot = st.empty()
+        with loading_slot.container(key="explore_loading"):
+            st.markdown(
+                f'<div class="pt-explore-loading"><span class="kicker">{escape(t("Preparing exploration"))}</span>'
+                f'<p>{escape(t("Building trends, paper evidence and interactive charts…"))}</p></div>',
+                unsafe_allow_html=True,
             )
-    loading_slot.empty()
-    st.iframe(explorer_html, height="content")
+            with st.skeleton(height=360):
+                explorer_html = cached_explorer_html(
+                    path, mtime, years, query, slug, extra_stop, provenance, default_span,
+                    date.today().year, LANG, initial_term, report_asset_version(),
+                )
+        loading_slot.empty()
+        st.iframe(explorer_html, height="content")
 
-if section == "topics":
-    o1, o2 = st.columns([1, 1])
-    method = o1.selectbox(t("Method"), ["nmf", "openalex", "openalex-subfield"], format_func=lambda m: t({"nmf": "NMF on titles + abstracts", "openalex": "OpenAlex topic labels", "openalex-subfield": "OpenAlex subfields"}[m]))
-    n_topics = o2.slider(t("Topics (NMF)"), 6, 20, 8, disabled=method != "nmf")
-    try:
-        tt = cached_topics(path, mtime, years, method, n_topics, extra_stop)
-    except InsufficientTopicData as exc:
-        st.info(t(str(exc)))
-        st.stop()
-    ordered = tt.ordered()
-    if not ordered:
-        st.info(t("No topic data is available for the selected papers."))
-        st.stop()
-    topic_rows = [{"topic": t.label, "year": y, "share": tt.share(t.id, y)} for t in ordered for y in tt.years]
-    figure_head("Share of papers by dominant topic", "Each paper assigned to its strongest topic; smaller topics folded into “Other”")
-    if len(tt.years) > 1:
-        vl(charts.streamgraph(topic_rows, [t.label for t in ordered], tt.years), key="topics-stream")
-    source_line()
-    ttab = frames.topic_table(tt)
-    if len(tt.years) < 2:
-        ttab = ttab.drop(columns=["early", "late", "delta"], errors="ignore")
-    html_table(ttab, pct=["early", "late", "delta"], signed=["delta"])
-    if method == "nmf":
-        note("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
-
-if section == "institutions":
-    o1, o2, o3, o4 = st.columns([1, 1, 1, 1])
-    entity = o1.selectbox(t("Rank"), ENTITIES, format_func=lambda value: t(value) if LANG == 'zh' else value.title())
-    sort_by = o2.selectbox(t("Sort by"), ["papers", "citations"], format_func=lambda value: field_label(value, LANG))
-    top_n = o3.slider(t("Show top"), 10, 50, 20)
-    roll_up = o4.toggle(t("Roll up to parent institutions"), value=True, disabled=entity != "institution",
-                        help=t("Credit the top-level parent from OpenAlex's lineage: A*STAR instead of IME, Chinese Academy of Sciences instead of its institutes."))
-    rk = cached_ranking(path, mtime, years, entity, roll_up and entity == "institution")
-    keys = rk.top(top_n, by=sort_by)
-    table = frames.ranking_table(rk, keys)
-    figure_head(f"{t(entity)}排名 · 按{field_label(sort_by, LANG)}" if LANG == 'zh' else f"Top {entity}s by {sort_by}", "前三名标红；箭头表示前后半时段的论文占比变化" if LANG == 'zh' else "Top three in red; the arrow is the change in share of papers between the two halves of the period")
-    rows_r = ranking_rows(rk, keys)
-    if entity == "country":
-        rows_r = [{**r, "name": country_name(r["name"])} for r in rows_r]
-    vl(charts.ranked_bars(rows_r, value=sort_by, show_change=len(cov_y) > 1), key=f"rank-{entity}-{sort_by}")
-    source_line()
-    html_table(table.assign(**({entity: table[entity].map(country_name)} if entity == "country" else {})))
-    if entity == "institution" and st.toggle(t("More institution analysis"), key="institution_details"):
-        detail_keys = keys[:8]
-        st.caption("以下分析展示当前排名的前 8 家机构。" if LANG == "zh" else "The analyses below show up to eight institutions from the current ranking.")
-        if len(rk.years) > 1 and detail_keys:
-            figure_head("Institution rank over time", "Ranks use a centered three-year paper count among the displayed institutions, regardless of the table sort order.")
-            rank_rows = inst_rank_rows(rk, detail_keys, rk.years)
-            vl(charts.bump_chart(rank_rows, rk.years, len(detail_keys)), key="institution-rank-history")
-            with st.expander(t("Institution rank over time")):
-                html_table(pd.DataFrame(rank_rows)[["name", "year", "rank", "papers"]], max_rows=None)
-        figure_head("Institution research profiles", "Each row shows the topic mix among an institution's papers with topic assignments. Parent roll-up follows the switch above.")
+    if section == "topics":
+        section_head("Topic analysis", "Choose a topic method and follow how the research mix changes over time.")
+        with st.container(key="explore_controls"):
+            o1, o2 = st.columns([1, 1], vertical_alignment="bottom")
+            method = o1.selectbox(t("Method"), ["nmf", "openalex", "openalex-subfield"], format_func=lambda m: t({"nmf": "NMF on titles + abstracts", "openalex": "OpenAlex topic labels", "openalex-subfield": "OpenAlex subfields"}[m]))
+            n_topics = o2.slider(t("Topics (NMF)"), 6, 20, 8, disabled=method != "nmf")
         try:
-            institution_topics = cached_topics(path, mtime, years, "nmf", 8, extra_stop)
+            tt = cached_topics(path, mtime, years, method, n_topics, extra_stop)
         except InsufficientTopicData as exc:
             st.info(t(str(exc)))
-        else:
-            ordered = institution_topics.ordered()
-            if ordered and detail_keys:
-                mix = inst_topic_rows(recs, institution_topics, rk, detail_keys, ordered, roll_up=roll_up)
-                labels = [topic.label for topic in ordered[:len(charts.TOPIC_COLORS)]]
-                if len(ordered) > len(charts.TOPIC_COLORS):
-                    labels.append("Other")
-                vl(charts.inst_topic_heatmap(mix, [rk.names[k] for k in detail_keys], labels), key="institution-topic-mix")
-                with st.expander(t("Institution research profiles")):
-                    html_table(pd.DataFrame(mix), pct=["share"], max_rows=None)
-            else:
-                st.info(t("No topic data is available for the selected papers."))
-    if len(cov_y) < 2:
-        st.info(t("Changes in share need at least two years."))
-        st.stop()
-    r, f = st.columns(2)
-    r.markdown('<h2 class=\"pt-h2\">' + t("Gaining share") + '</h2>', unsafe_allow_html=True)
-    with r:
-        html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=True)), pct=["early", "late", "delta"], signed=["delta"])
-    f.markdown('<h2 class=\"pt-h2\">' + t("Losing share") + '</h2>', unsafe_allow_html=True)
-    with f:
-        html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=False)), pct=["early", "late", "delta"], signed=["delta"])
-    note("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
-
-if section == "compare":
-    note("Same terms, other conferences. Only conferences already fetched on this server are listed.")
-    note("Every selected conference uses the same years, text range and counting rule. Missing editions remain missing rather than being treated as zero papers.")
-    local = {k: v for k, v in PRESETS.items() if v["slug"] != slug and corpus_path(v["slug"]).exists()}
-    others = st.multiselect(t("Compare with"), list(local), default=list(local)[:2], format_func=lambda k: " · ".join(t(part) for part in k.split(" — ")[0].split(" · ")))
-    text_mode = "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title"
-    kt_here = cached_keywords(path, mtime, years, text_mode, (2, 3), extra_stop, "topical", True)   # comparisons keep cross-field phrases
-    default_terms = [t for t, *_ in kt_here.rising(4, min_total=10)]
-    cmp_terms = st.multiselect(t("Terms"), kt_here.top_terms(300), default=default_terms, key="cmp_terms")
-    if others and cmp_terms:
-        trends = {SHORT.get(slug, query): kt_here}
-        for k in others:
-            cp = corpus_path(local[k]["slug"])
-            trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, text_mode, (2, 3), extra_stop, "topical", True)
-        df = pd.DataFrame(compare.term_shares(trends, cmp_terms))
-        names = list(trends)
-        yrs = sorted(df["year"].unique().tolist())
-        cols = st.columns(2)
-        for i, term in enumerate(cmp_terms):
-            rows_t = [{"name": r["conference"], "year": r["year"], "share": r["share"], "papers": r["papers"]} for r in df[df["term"] == term].to_dict("records")]
-            with cols[i % 2]:
-                vl(charts.multi_line(rows_t, names, yrs, title=term), key=f"cmp-{term}")
+            st.stop()
+        ordered = tt.ordered()
+        if not ordered:
+            st.info(t("No topic data is available for the selected papers."))
+            st.stop()
+        topic_rows = [{"topic": t.label, "year": y, "share": tt.share(t.id, y)} for t in ordered for y in tt.years]
+        figure_head("Share of papers by dominant topic", "Each paper assigned to its strongest topic; smaller topics folded into “Other”")
+        if len(tt.years) > 1:
+            vl(charts.streamgraph(topic_rows, [t.label for t in ordered], tt.years), key="topics-stream")
         source_line()
-        wide = df.pivot_table(index=["term", "conference"], columns="year", values="share").reset_index()
-        wide.columns = [str(c) for c in wide.columns]
-        ycols = [c for c in wide.columns if c.isdigit()]
-        html_table(wide, pct=ycols)
-        common = compare.shared_risers(trends, k=12)
-        if common:
-            h2("Rising everywhere")
-            html_table(pd.DataFrame([{"term": t, **{n: d for n, d in ds.items()}} for t, ds in common]), pct=names, signed=names)
-            note("Terms whose share rose in every selected conference, ranked by their smallest gain.")
-    elif not others:
-        st.info(t("Fetch another preset conference to enable comparison."))
+        ttab = frames.topic_table(tt)
+        if len(tt.years) < 2:
+            ttab = ttab.drop(columns=["early", "late", "delta"], errors="ignore")
+        html_table(ttab, pct=["early", "late", "delta"], signed=["delta"])
+        if method == "nmf":
+            note("Topics are fitted with NMF on TF-IDF (fixed seed, reproducible). Labels are the top terms; each paper is assigned to its strongest topic.")
 
-if section == "papers":
-    size_mb = corpus_path(slug).stat().st_size / 1e6
-    h2("Find papers", "Search titles and abstracts within the selected period, then sort or export the current results.")
-    paper_query = st.text_input(t("Search paper titles and abstracts"), type="search", placeholder=t("Type a phrase, method or application"), key="paper_filter")
-    sort_papers = st.segmented_control(t("Sort papers"), ["newest", "cited"], default="newest", format_func=t, key="paper_sort") or "newest"
-    needle = paper_query.strip().lower()
-    matching = [rec for rec in recs if not needle or needle in f"{rec.get('title') or ''} {rec.get('abstract') or ''}".lower()]
-    listing = pd.DataFrame(
-        [{"year": rec.get("publication_year"), "title": rec.get("title"), "citations": rec.get("cited_by_count", 0), "doi": rec.get("doi")} for rec in matching],
-        columns=["year", "title", "citations", "doi"],
-    )
-    listing = listing.sort_values(["citations", "year"], ascending=[False, False]) if sort_papers == "cited" else listing.sort_values(["year", "citations"], ascending=[False, False])
-    figure_head("Papers in the current result", t("{count:,} papers; sortable and scrollable", count=len(listing)))
-    st.dataframe(listing, hide_index=True, width="stretch", height=480,
-                 column_config={**{c: field_label(c, LANG) for c in ("year", "title", "citations")}, "doi": st.column_config.LinkColumn(t("doi"))})
-    h2("Export")
-    note(t('Full corpus: {path} ({size:.0f} MB). Current-result export follows the selected period and paper search.', path=f'<span class="mono">{escape(str(corpus_path(slug)))}</span>', size=size_mb))
-    # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
-    d0, d1, d2, d3 = st.columns(4)
-    d0.download_button(t("Current results (CSV)"), listing.to_csv(index=False), file_name=f"{slug}_{years[0]}-{years[1]}_papers.csv", mime="text/csv", key="dl_results")
-    d1.download_button(t("Full corpus (JSONL)"), lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
-    d2.download_button(
-        t("Keyword table (CSV)"),
-        lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title", (2, 3), extra_stop)),
-        file_name=f"{slug}_keywords.csv", mime="text/csv", key="dl_keywords",
-    )
-    d3.download_button(
-        t("Institution ranking (CSV)"),
-        lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution", True)),
-        file_name=f"{slug}_institutions.csv", mime="text/csv", key="dl_institutions",
-    )
+    if section == "institutions":
+        section_head("Institution analysis", "Compare publication rankings and changes in research participation.")
+        with st.container(key="explore_controls"):
+            o1, o2 = st.columns(2, vertical_alignment="bottom")
+            entity = o1.selectbox(t("Rank"), ENTITIES, format_func=lambda value: t(value) if LANG == 'zh' else value.title())
+            sort_by = o2.selectbox(t("Sort by"), ["papers", "citations"], format_func=lambda value: field_label(value, LANG))
+            o3, o4 = st.columns(2, vertical_alignment="bottom")
+            top_n = o3.slider(t("Show top"), 10, 50, 20)
+            with o4:
+                st.markdown(f'<div class="pt-control-label">{escape(t("Affiliation grouping"))}</div>', unsafe_allow_html=True)
+                roll_up = st.toggle(t("Roll up to parent institutions"), value=True, disabled=entity != "institution",
+                                    help=t("Credit the top-level parent from OpenAlex's lineage: A*STAR instead of IME, Chinese Academy of Sciences instead of its institutes."))
+        rk = cached_ranking(path, mtime, years, entity, roll_up and entity == "institution")
+        keys = rk.top(top_n, by=sort_by)
+        table = frames.ranking_table(rk, keys)
+        figure_head(f"{t(entity)}排名 · 按{field_label(sort_by, LANG)}" if LANG == 'zh' else f"Top {entity}s by {sort_by}", "前三名标红；箭头表示前后半时段的论文占比变化" if LANG == 'zh' else "Top three in red; the arrow is the change in share of papers between the two halves of the period")
+        rows_r = ranking_rows(rk, keys)
+        if entity == "country":
+            rows_r = [{**r, "name": country_name(r["name"])} for r in rows_r]
+        vl(charts.ranked_bars(rows_r, value=sort_by, show_change=len(cov_y) > 1), key=f"rank-{entity}-{sort_by}")
+        source_line()
+        html_table(table.assign(**({entity: table[entity].map(country_name)} if entity == "country" else {})))
+        if entity == "institution" and st.toggle(t("More institution analysis"), key="institution_details"):
+            detail_keys = keys[:8]
+            st.caption("以下分析展示当前排名的前 8 家机构。" if LANG == "zh" else "The analyses below show up to eight institutions from the current ranking.")
+            if len(rk.years) > 1 and detail_keys:
+                figure_head("Institution rank over time", "Ranks use a centered three-year paper count among the displayed institutions, regardless of the table sort order.")
+                rank_rows = inst_rank_rows(rk, detail_keys, rk.years)
+                vl(charts.bump_chart(rank_rows, rk.years, len(detail_keys)), key="institution-rank-history")
+                with st.expander(t("Institution rank over time")):
+                    html_table(pd.DataFrame(rank_rows)[["name", "year", "rank", "papers"]], max_rows=None)
+            figure_head("Institution research profiles", "Each row shows the topic mix among an institution's papers with topic assignments. Parent roll-up follows the switch above.")
+            try:
+                institution_topics = cached_topics(path, mtime, years, "nmf", 8, extra_stop)
+            except InsufficientTopicData as exc:
+                st.info(t(str(exc)))
+            else:
+                ordered = institution_topics.ordered()
+                if ordered and detail_keys:
+                    mix = inst_topic_rows(recs, institution_topics, rk, detail_keys, ordered, roll_up=roll_up)
+                    labels = [topic.label for topic in ordered[:len(charts.TOPIC_COLORS)]]
+                    if len(ordered) > len(charts.TOPIC_COLORS):
+                        labels.append("Other")
+                    vl(charts.inst_topic_heatmap(mix, [rk.names[k] for k in detail_keys], labels), key="institution-topic-mix")
+                    with st.expander(t("Institution research profiles")):
+                        html_table(pd.DataFrame(mix), pct=["share"], max_rows=None)
+                else:
+                    st.info(t("No topic data is available for the selected papers."))
+        if len(cov_y) < 2:
+            st.info(t("Changes in share need at least two years."))
+            st.stop()
+        r, f = st.columns(2)
+        r.markdown('<h2 class=\"pt-h2\">' + t("Gaining share") + '</h2>', unsafe_allow_html=True)
+        with r:
+            html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=True)), pct=["early", "late", "delta"], signed=["delta"])
+        f.markdown('<h2 class=\"pt-h2\">' + t("Losing share") + '</h2>', unsafe_allow_html=True)
+        with f:
+            html_table(frames.ranking_movers(rk, rk.movers(10, 10, rising=False)), pct=["early", "late", "delta"], signed=["delta"])
+        note("A paper counts once per entity (full counting). Institution ids come from OpenAlex affiliation matching, which is imperfect: treat close ranks as ties.")
+
+    if section == "compare":
+        section_head("Compare conferences", "Compare the share of the same phrase across conferences.")
+        local = {k: v for k, v in PRESETS.items() if v["slug"] != slug and corpus_path(v["slug"]).exists()}
+        text_mode = "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title"
+        with st.container(key="explore_controls"):
+            others = st.multiselect(t("Compare with"), list(local), default=list(local)[:2], format_func=lambda k: " · ".join(t(part) for part in k.split(" — ")[0].split(" · ")))
+            kt_here = cached_keywords(path, mtime, years, text_mode, (2, 3), extra_stop, "topical", True)   # comparisons keep cross-field phrases
+            default_terms = [t for t, *_ in kt_here.rising(4, min_total=10)]
+            cmp_terms = st.multiselect(t("Terms"), kt_here.top_terms(300), default=default_terms, key="cmp_terms")
+        st.markdown(
+            f'<p class="pt-method-note"><b>{escape(t("Comparison basis"))}</b>'
+            f'{escape(t("Same years, text range and counting rule; missing editions remain missing."))} '
+            f'{escape(t("Only conferences with cached data are available."))}</p>', unsafe_allow_html=True,
+        )
+        if others and cmp_terms:
+            trends = {SHORT.get(slug, query): kt_here}
+            for k in others:
+                cp = corpus_path(local[k]["slug"])
+                trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, text_mode, (2, 3), extra_stop, "topical", True)
+            df = pd.DataFrame(compare.term_shares(trends, cmp_terms))
+            names = list(trends)
+            yrs = sorted(df["year"].unique().tolist())
+            cols = st.columns(2)
+            for i, term in enumerate(cmp_terms):
+                rows_t = [{"name": r["conference"], "year": r["year"], "share": r["share"], "papers": r["papers"]} for r in df[df["term"] == term].to_dict("records")]
+                with cols[i % 2]:
+                    vl(charts.multi_line(rows_t, names, yrs, title=term), key=f"cmp-{term}")
+            source_line()
+            wide = df.pivot_table(index=["term", "conference"], columns="year", values="share").reset_index()
+            wide.columns = [str(c) for c in wide.columns]
+            ycols = [c for c in wide.columns if c.isdigit()]
+            html_table(wide, pct=ycols)
+            common = compare.shared_risers(trends, k=12)
+            if common:
+                h2("Rising everywhere")
+                html_table(pd.DataFrame([{"term": t, **{n: d for n, d in ds.items()}} for t, ds in common]), pct=names, signed=names)
+                note("Terms whose share rose in every selected conference, ranked by their smallest gain.")
+        elif not others:
+            st.info(t("Fetch another preset conference to enable comparison."))
+
+    if section == "papers":
+        size_mb = corpus_path(slug).stat().st_size / 1e6
+        section_head("Papers & export", "Search titles and abstracts within the selected period, then sort or export the current results.")
+        with st.container(key="explore_controls"):
+            paper_search, paper_order = st.columns([3, 1.5], vertical_alignment="bottom")
+            paper_query = paper_search.text_input(t("Search paper titles and abstracts"), type="search", placeholder=t("Type a phrase, method or application"), key="paper_filter")
+            sort_papers = paper_order.segmented_control(t("Sort papers"), ["newest", "cited"], default="newest", format_func=t, key="paper_sort") or "newest"
+        needle = paper_query.strip().lower()
+        matching = [rec for rec in recs if not needle or needle in f"{rec.get('title') or ''} {rec.get('abstract') or ''}".lower()]
+        listing = pd.DataFrame(
+            [{"year": rec.get("publication_year"), "title": rec.get("title"), "citations": rec.get("cited_by_count", 0), "doi": rec.get("doi")} for rec in matching],
+            columns=["year", "title", "citations", "doi"],
+        )
+        listing = listing.sort_values(["citations", "year"], ascending=[False, False]) if sort_papers == "cited" else listing.sort_values(["year", "citations"], ascending=[False, False])
+        figure_head("Papers in the current result", t("{count:,} papers; sortable and scrollable", count=len(listing)))
+        st.dataframe(listing, hide_index=True, width="stretch", height=480,
+                     column_config={**{c: field_label(c, LANG) for c in ("year", "title", "citations")}, "doi": st.column_config.LinkColumn(t("doi"))})
+        h2("Export")
+        note(t('Full corpus: {path} ({size:.0f} MB). Current-result export follows the selected period and paper search.', path=f'<span class="mono">{escape(str(corpus_path(slug)))}</span>', size=size_mb))
+        # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
+        d0, d1, d2, d3 = st.columns(4)
+        d0.download_button(t("Current results (CSV)"), listing.to_csv(index=False), file_name=f"{slug}_{years[0]}-{years[1]}_papers.csv", mime="text/csv", key="dl_results")
+        d1.download_button(t("Full corpus (JSONL)"), lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
+        d2.download_button(
+            t("Keyword table (CSV)"),
+            lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title", (2, 3), extra_stop)),
+            file_name=f"{slug}_keywords.csv", mime="text/csv", key="dl_keywords",
+        )
+        d3.download_button(
+            t("Institution ranking (CSV)"),
+            lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution", True)),
+            file_name=f"{slug}_institutions.csv", mime="text/csv", key="dl_institutions",
+        )
