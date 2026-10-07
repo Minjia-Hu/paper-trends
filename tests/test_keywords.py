@@ -179,3 +179,36 @@ def test_paper_lookup_uses_the_counting_normalization_options():
     kt = compute_trends(records, n_min=2, n_max=3, stopwords=stop, background=None)
     assert kt.total("redistribution layer") == 2
     assert len(papers_with(records, "redistribution layer", stopwords=stop)) == 2
+
+
+def test_keywords_cli_reports_empty_year_range(tmp_path, capsys):
+    from paper_trends.keywords import main
+    from paper_trends.store import write_jsonl
+
+    path = tmp_path / "papers.jsonl"
+    write_jsonl([_rec(2020, "Hybrid bonding")], path)
+    assert main([str(path), "--years", "1900-1901"]) == 1
+    assert "No papers" in capsys.readouterr().err
+
+
+def test_retained_tokens_preserve_record_alignment_and_counting():
+    from paper_trends.text import paper_tokens, phrase_roles, TOPICAL_ROLES
+
+    records = [_rec(2020, "Hybrid bonding", "Müller models hybrid bonding"),
+               _rec(None, "Undated paper"), _rec(2021, "3D integration")]
+    plain = compute_trends(records, min_total=1, background=None)
+    retained = compute_trends(records, min_total=1, background=None, retain_tokens=True)
+    assert plain.tokenized_papers is None
+    assert retained.doc_freq == plain.doc_freq
+    assert len(retained.tokenized_papers) == len(records)
+    assert retained.tokenized_papers[1] == ([], [])
+    for i in (0, 2):
+        record = records[i]
+        tokens = retained.tokenized_papers[i]
+        assert tokens == paper_tokens(record.get("title"), record.get("abstract"), retained.acronyms)
+        for term, role in phrase_roles(*tokens).items():
+            if role in TOPICAL_ROLES:
+                assert retained.doc_freq[term][record["publication_year"]] >= 1
+
+    titles = compute_trends(records, text="title", retain_tokens=True)
+    assert titles.tokenized_papers[0][1] == []

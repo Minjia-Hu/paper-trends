@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .keywords import KeywordTrends, compute_trends
 from .store import Record, filter_years, parse_years, read_jsonl
-from .text import STOPWORDS
+from .text import STOPWORDS, paper_tokens
 
 
 def trends_for(corpora: dict[str, list[Record]], **kwargs) -> dict[str, KeywordTrends]:
@@ -25,8 +25,9 @@ def term_shares(trends: dict[str, KeywordTrends], terms: list[str]) -> list[dict
     rows = []
     for name, kt in trends.items():
         for term in terms:
+            normalized = " ".join(paper_tokens(term, None, kt.acronyms, kt.stopwords, kt.n_max)[0])
             for y in kt.years:
-                n = kt.doc_freq.get(term, {}).get(y, 0)
+                n = kt.doc_freq.get(normalized, {}).get(y, 0)
                 tot = kt.papers_per_year.get(y, 0)
                 rows.append({"conference": name, "term": term, "year": y, "papers": n, "share": n / tot if tot else 0.0})
     return rows
@@ -76,9 +77,12 @@ def main(argv: list[str] | None = None) -> int:
     corpora = {path.stem: filter_years(read_jsonl(path), yrs) for path in args.jsonl}
     trends = trends_for(corpora, text=args.text, n_min=n_min, n_max=n_max, stopwords=STOPWORDS)
     years = sorted({y for kt in trends.values() for y in kt.years})
+    if not years:
+        print("[error] No papers with a publication year in the selected range.", file=sys.stderr)
+        return 1
     names = list(corpora)
 
-    terms = [t.lower() for t in args.term]
+    terms = [t.strip() for t in args.term]
     if not terms:
         common = shared_risers(trends, k=args.top)
         print(f"Terms rising in all of {', '.join(names)} (delta = late-half share minus early-half share)\n")

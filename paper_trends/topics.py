@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .store import Record, filter_years, parse_years, read_jsonl
-from .text import STOPWORDS, load_stopwords, tokenize
+from .text import STOPWORDS, _is_number, load_stopwords, tokenize
 
 
 @dataclass
@@ -68,6 +68,28 @@ def _doc_text(rec: Record) -> str:
     return " ".join(tokenize(f"{rec.get('title') or ''}. {rec.get('abstract') or ''}"))
 
 
+def _topic_terms(text: str, stopwords: frozenset[str]) -> list[str]:
+    """Unigrams/bigrams with scientific tokens retained and numbers as boundaries.
+
+    Removing "2024" from "copper 2024 bonding" must not invent "copper bonding".
+    Stopword handling stays consistent with the previous vectorizer: stopwords are
+    omitted before forming bigrams within each numeric-free run.
+    """
+    terms: list[str] = []
+    previous: str | None = None
+    for token in tokenize(text):
+        if _is_number(token) or len(token) < 2:
+            previous = None
+            continue
+        if token in stopwords:
+            continue
+        terms.append(token)
+        if previous is not None:
+            terms.append(f"{previous} {token}")
+        previous = token
+    return terms
+
+
 # ---- NMF ----------------------------------------------------------------------
 
 
@@ -113,11 +135,9 @@ def compute_nmf(
 
     def vectorize(min_df_: int, max_df_: float):
         vec_ = TfidfVectorizer(
-            ngram_range=(1, 2),
+            analyzer=lambda text: _topic_terms(text, stopwords),
             min_df=min_df_,
             max_df=max_df_,
-            stop_words=sorted(stopwords),
-            token_pattern=r"(?u)\b[a-z][a-z0-9\.]+\b",
             sublinear_tf=True,
         )
         return vec_, vec_.fit_transform(texts)
@@ -254,11 +274,21 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     records = filter_years(read_jsonl(args.jsonl), parse_years(args.years))
-    if args.method == "nmf":
-        extra = args.stopwords.read_text().splitlines() if args.stopwords else None
-        tt = compute_nmf(records, n_topics=args.n_topics, n_terms=args.n_terms, stopwords=load_stopwords(extra), seed=args.seed)
-    else:
-        tt = compute_openalex(records, level="subfield" if args.method.endswith("subfield") else "topic")
+    if not any(r.get("publication_year") for r in records):
+        print("[error] No papers with a publication year in the selected range.", file=sys.stderr)
+        return 1
+    try:
+        if args.method == "nmf":
+            extra = args.stopwords.read_text().splitlines() if args.stopwords else None
+            tt = compute_nmf(records, n_topics=args.n_topics, n_terms=args.n_terms, stopwords=load_stopwords(extra), seed=args.seed)
+        else:
+            tt = compute_openalex(records, level="subfield" if args.method.endswith("subfield") else "topic")
+    except InsufficientTopicData as exc:
+        print(f"[error] Cannot fit topics: {exc}", file=sys.stderr)
+        return 1
+    if not tt.years:
+        print("[error] No papers with usable topic data in the selected year range.", file=sys.stderr)
+        return 1
     topics = tt.ordered()[: args.top if args.method != "nmf" else None]
     n_used = sum(tt.papers_per_year.values())
     print(f"{n_used} papers, {tt.years[0]}-{tt.years[-1]}, method={tt.method}; share of papers per year by dominant topic\n")

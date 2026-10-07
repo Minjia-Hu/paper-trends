@@ -40,6 +40,23 @@ def test_figure_references_are_dropped():
     assert "latency" in toks
 
 
+def test_reference_words_without_numbers_are_research_terms():
+    assert tokenize("figure of merit lookup table equations of motion") == [
+        "figure", "of", "merit", "lookup", "table", "equations", "of", "motion",
+    ]
+    assert tokenize("Fig. 3a, Table 2, Equation (4), Refs. 5-7") == []
+    assert "figure of merit" in doc_terms("figure of merit", 1, 3)
+    assert "lookup table" in doc_terms("lookup table", 1, 2)
+
+
+def test_unicode_words_and_compatibility_forms_remain_whole():
+    assert tokenize("Müller Zürich naïve ﬁlter Δέλτα 模型") == [
+        "müller", "zürich", "naïve", "filter", "δέλτα", "模型",
+    ]
+    assert tokenize("Mu\u0308ller Zu\u0308rich") == tokenize("Müller Zürich")
+    assert tokenize("Ｍüller ３Ｄ", preserve_case=True) == ["Müller", "3D"]
+
+
 def test_urls_are_dropped():
     toks = tokenize("Code is available at https://github.com/foo/bar and project page www.foo.io/page. Diffusion models.")
     assert "github" not in toks and "https" not in toks and "foo" not in toks and "io" not in toks

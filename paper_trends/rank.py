@@ -165,6 +165,9 @@ def main(argv: list[str] | None = None) -> int:
 
     records = filter_years(read_jsonl(args.jsonl), parse_years(args.years))
     rk = compute_ranking(records, args.by, roll_up=args.roll_up)
+    if not rk.years:
+        print("[error] No papers with a publication year in the selected range.", file=sys.stderr)
+        return 1
     keys = rk.top(args.top, by=args.sort)
     n_credited = sum(1 for r in records if entities_of(r, args.by))
     mode = "parents rolled up" if args.roll_up else "as affiliated"

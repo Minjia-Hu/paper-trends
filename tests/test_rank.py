@@ -60,3 +60,13 @@ def test_roll_up_uses_lineage_root():
     assert set(entities_of(rec, "institution", roll_up=True).values()) == {"A*STAR", "Old corpus entry without lineage"}
     rk = compute_ranking([rec], "institution", roll_up=True)
     assert rk.total("I/ASTAR") == 1
+
+
+def test_rank_cli_reports_empty_year_range(tmp_path, capsys):
+    from paper_trends.rank import main
+    from paper_trends.store import write_jsonl
+
+    path = tmp_path / "papers.jsonl"
+    write_jsonl([_paper(2020, 1, ("alice", "TSMC", "TW"))], path)
+    assert main([str(path), "--years", "1900-1901"]) == 1
+    assert "No papers" in capsys.readouterr().err

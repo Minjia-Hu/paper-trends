@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Iterable, Iterator
 
 # Generic English + academic-boilerplate stopwords. Domain-specific terms are NOT listed
@@ -30,7 +31,10 @@ STOPWORDS: frozenset[str] = frozenset(
     """.split()
 )
 
-_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9\.]*[a-z0-9]|[a-z0-9]", re.I)
+# Unicode letters/digits, with internal dots for scientific terms such as "2.5D".
+# Normalization below composes accents and folds compatibility forms (e.g. ligatures),
+# while retaining accented letters instead of splitting "Müller" into "m" and "ller".
+_TOKEN_RE = re.compile(r"[^\W_]+(?:\.[^\W_]+)*")
 
 # IEEE abstracts in OpenAlex often contain inline LaTeX, e.g. "5$\mu \mathrm{m}$".
 _LATEX_UM = re.compile(r"\\mu\s*\\mathrm\{m\}|\\mu\s*m\b")
@@ -51,7 +55,8 @@ def clean_latex(text: str) -> str:
 
 # Figure/table references and panel positions ("Fig. 17.9.1 (top left)") are caption noise.
 _FIG_REF_RE = re.compile(
-    r"\b(?:fig|figs|figure|figures|table|tables|eq|eqs|equation|equations|ref|refs)\.?\s*[\d\.\-]*[a-z]?\b|"
+    r"\b(?:fig|figs|figure|figures|table|tables|eq|eqs|equation|equations|ref|refs)\.?\s*"
+    r"\(?\d+(?:[.\-]\d+)*(?:[a-z])?\)?(?!\w)|"
     r"\(?\b(?:top|bottom|upper|lower|middle)[- ](?:left|right|center|centre|middle|row|panel)\b\)?",
     re.I,
 )
@@ -69,6 +74,7 @@ def tokenize(text: str | None, *, preserve_case: bool = False) -> list[str]:
     plurals. Hyphens split, internal dots stay, and number/unit pairs join ('28nm')."""
     if not text:
         return []
+    text = unicodedata.normalize("NFKC", text)
     if "\\" in text or "$" in text:
         text = clean_latex(text)
     text = _URL_RE.sub(" ", text)
@@ -312,7 +318,7 @@ def mention_role(title: str | None, abstract: str | None, term: str, acronyms: A
 
 
 def _is_number(tok: str) -> bool:
-    return bool(re.fullmatch(r"[0-9][0-9\.\-]*", tok))
+    return bool(re.fullmatch(r"\d[\d\.\-]*", tok))
 
 
 def doc_terms(text: str | None, n_min: int = 1, n_max: int = 3, stopwords: frozenset[str] = STOPWORDS) -> set[str]:
@@ -323,7 +329,7 @@ def doc_terms(text: str | None, n_min: int = 1, n_max: int = 3, stopwords: froze
 def load_stopwords(extra: Iterable[str] | None = None) -> frozenset[str]:
     words = set(STOPWORDS)
     for w in extra or []:
-        w = w.strip().lower()
+        w = unicodedata.normalize("NFKC", w).strip().lower()
         if w and not w.startswith("#"):
             words.add(w)
     return frozenset(words)

@@ -40,6 +40,8 @@ class KeywordTrends:
     n_min: int = 1
     n_max: int = 3
     stopwords: frozenset[str] = STOPWORDS
+    # Optional reuse of the normalized text, aligned with the input record indices.
+    tokenized_papers: list[tuple[list[str], list[str]]] | None = None
 
     def mentions(self, term: str) -> int:
         return sum(self.mention_freq.get(term, self.doc_freq[term]).values())
@@ -299,6 +301,7 @@ def compute_trends(
     field: str | None = None,
     background: dict | None | str = "default",
     keep_common: bool = False,
+    retain_tokens: bool = False,
 ) -> KeywordTrends:
     """Per-year paper counts for every n-gram.
 
@@ -308,6 +311,8 @@ def compute_trends(
                 whether a phrase is common across fields.
     background  the cross-field table; "default" loads the one shipped with the package,
                 None switches the filter off.
+    retain_tokens  retain normalized title/abstract tokens in input-record order, for
+                   repeated searches without re-tokenizing the corpus.
     """
     if basis not in ("topical", "any"):
         raise ValueError("basis must be 'topical' or 'any'")
@@ -317,14 +322,19 @@ def compute_trends(
     anyrole: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
     acronyms = corpus_acronyms(records, n_max, stopwords)
     token_lists: list[list[str]] = []  # kept for the second pass (fragments)
+    retained_tokens = [] if retain_tokens else None
     for r in records:
         y = r.get("publication_year")
         if not y:
+            if retained_tokens is not None:
+                retained_tokens.append(([], []))
             continue
         papers[y] += 1
         if r.get("abstract"):
             with_abs[y] += 1
         t_toks, a_toks = paper_tokens(r.get("title"), r.get("abstract") if text != "title" else None, acronyms, stopwords, n_max)
+        if retained_tokens is not None:
+            retained_tokens.append((t_toks, a_toks))
         token_lists.append(t_toks)
         token_lists.append(a_toks)
         for term, role in phrase_roles(t_toks, a_toks, n_min, n_max, stopwords).items():
@@ -361,6 +371,7 @@ def compute_trends(
         n_min=n_min,
         n_max=n_max,
         stopwords=stopwords,
+        tokenized_papers=retained_tokens,
     )
 
 
@@ -437,6 +448,9 @@ def main(argv: list[str] | None = None) -> int:
     extra = args.stopwords.read_text().splitlines() if args.stopwords else None
     kt = compute_trends(records, text=args.text, n_min=n_min, n_max=n_max, stopwords=load_stopwords(extra),
                         basis=args.count, field=args.field or bg.field_of(args.jsonl.stem), keep_common=args.keep_common)
+    if not kt.years:
+        print("[error] No papers with a publication year in the selected range.", file=sys.stderr)
+        return 1
     if args.keep_subphrases:
         kt.collapse_ratio = None
 
