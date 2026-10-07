@@ -271,16 +271,15 @@ st.markdown(
     .pt-home { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #1B1B1B; padding: 8px 24px 40px; max-width: 1120px; }
     .pt-home .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin: 12px 0 14px; }
     .pt-home h1 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; }
-    .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 28px; padding-bottom: 28px; border-bottom: 1px solid #1B1B1B; }
+    .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 16px; }
     .pt-home h2 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
     .pt-home .collection-note { max-width: 78ch; margin: 0 0 2px; color: #8A877F; font-size: 13px; }
     .pt-home .domain-jump { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 18px 0 4px; font-size: 13px; }
     .pt-home .domain-jump a { color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
     .pt-home .domain-jump a:hover { color: #E3120B; border-bottom-color: #E3120B; }
     .pt-home .domains { max-width: 1120px; }
-    .pt-home .domain-section { padding: 38px 0 12px; border-top: 1px solid #E6E3DC; }
-    .pt-home .domain-section:first-child { border-top-color: #1B1B1B; }
-    .pt-home .domain-section > h2 { font-size: 31px; margin: 0 0 18px; }
+    .pt-home .domain-section { padding: 28px 0 12px; border-top: 1px solid #E6E3DC; }
+    .pt-home .domain-section h2 { font-size: 31px; margin: 0 0 18px; padding: 0; }
     .pt-home .directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
     .pt-home .direction h3 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; color: #1B1B1B; }
     .pt-language { display: inline-flex; gap: 12px; white-space: nowrap; font-size: 13px; margin-left: auto; }
@@ -295,6 +294,7 @@ st.markdown(
       .pt-masthead .brand { gap: 7px; font-size: 18px; }
       .pt-masthead .brand-mark { width: 24px; height: 24px; }
       .pt-masthead .all { font-size: 12px; }
+      .pt-home .domain-section h2 { font-size: 27px; }
     }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
@@ -303,6 +303,11 @@ st.markdown(
     .pt-home li a em { font-style: normal; color: #E3120B; font-weight: 600; }
     .pt-home li .n { color: #8A877F; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 14px; margin-left: 8px; }
     .pt-home p { font-size: 16px; color: #5C5C5C; max-width: 66ch; }
+    .pt-home .collection-footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #E6E3DC; }
+    .pt-home .collection-footer p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.65; color: #8A877F; max-width: 78ch; }
+    .pt-home .collection-footer a { color: #5C5C5C; border-bottom: 1px solid #E6E3DC; }
+    .pt-home .collection-footer summary { cursor: pointer; color: #5C5C5C; font-size: 12.5px; }
+    .pt-home .collection-footer details[open] p { margin-top: 10px; }
     </style>""",
     unsafe_allow_html=True,
 )
@@ -312,8 +317,8 @@ def home_page(available: dict[str, dict]) -> str:
     parts = [
         f'<div class="pt-home" lang="{LANG}"><div class="kicker">{t(TAGLINE)}</div>',
         f'<h1>{t("What a field talks about, year by year")}</h1>',
-        '<p class="lede">' + ('从 OpenAlex 收录的历年会议论文中，追踪关键词的起伏、主题的演进与发文版图。搜索一个会议，或从下方开始探索。' if LANG == 'zh' else 'Conference papers indexed by OpenAlex, read as rising and fading phrases, topic shifts and who publishes. Type any conference into the search box, or open one of these.') + '</p>',
-        f'<p class="collection-note">{escape(t("Curated reports, expanding over time. Coverage reflects verified OpenAlex data, not the number of conferences in each field."))}</p>',
+        f'<p class="lede">{escape(t("Follow keyword and topic trends, and see who publishes."))}</p>',
+        f'<p class="collection-note">{escape(t("Curated conferences, growing over time."))}</p>',
         '<nav class="domain-jump" aria-label="' + ("研究领域" if LANG == "zh" else "Research domains") + '">',
     ]
     navigation = nav_for(available)
@@ -330,11 +335,18 @@ def home_page(available: dict[str, dict]) -> str:
             parts.append("</ul></section>")
         parts.append("</div></section>")
     parts.append("</div>")
-    parts.append('<h2>探索其他会议</h2><p>输入 OpenAlex 使用的会议英文名并按回车；若无法匹配，可在“选项”中添加 DOI 前缀。获取的数据会缓存，供后续使用。在会议页面切换到“探索”，可查看数据表、关键词对应论文，以及跨会议比较。</p></div>' if LANG == 'zh' else (
+    parts.append('<h2>探索其他会议</h2><p>输入 OpenAlex 使用的会议英文名并按回车；若无法匹配，可在“选项”中添加 DOI 前缀。获取的数据会缓存，供后续使用。在会议页面切换到“探索”，可查看数据表、关键词对应论文，以及跨会议比较。</p>' if LANG == 'zh' else (
         "<h2>Your own conference</h2><p>Type any conference name in the search box above, as OpenAlex spells it, and press Enter; if the name "
         "does not match an OpenAlex source, add its DOI prefix under Options. Fetching takes a minute or two for most venues, and the data stays "
-        "cached on this machine. On a conference page, switch the view to <b>Explore</b> for tables, the papers behind any term, and cross-conference comparison.</p></div>"
+        "cached on this machine. On a conference page, switch the view to <b>Explore</b> for tables, the papers behind any term, and cross-conference comparison.</p>"
     ))
+    parts.append(
+        f'<footer class="collection-footer"><p>{escape(t("Data source"))}{"：" if LANG == "zh" else ": "}'
+        '<a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a></p>'
+        f'<details><summary>{escape(t("About this collection"))}</summary>'
+        f'<p>{escape(t("This directory features selected conferences, not a complete list. Paper counts reflect available OpenAlex records and may differ from official proceedings; the number of listed conferences does not indicate the size of a field."))}</p>'
+        '</details></footer></div>'
+    )
     return "".join(parts)
 
 

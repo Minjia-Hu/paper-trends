@@ -208,7 +208,7 @@ def test_home_navigation_uses_domains_and_research_directions():
     zh = render_index(nav, embedded=True, lang="zh")
     assert "半导体与微电子" in zh and "封装与集成" in zh and "可靠性" in zh and "通信与信号处理" in zh
     assert 'href="#domain-0"' in zh and 'id="domain-0"' in zh
-    assert "当前数量反映的是已核验的 OpenAlex 数据" in zh
+    assert "所列会议数量不代表各领域的会议规模" in zh
 
 
 def test_panel_uses_the_same_title_only_counts_as_the_report():
