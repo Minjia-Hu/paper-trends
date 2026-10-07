@@ -84,7 +84,7 @@ def test_deep_link_normalizes_hyphenated_phrase_and_keeps_full_evidence(tmp_path
     assert _explorer(at)["terms"][0]["key"] == "nonexistent phrase"
     assert _explorer(at)["terms"][0]["matches"] == []
     at.text_input(key="phrase_search_input").set_value("hybrid bonding")
-    next(b for b in at.button if b.label == "Explore phrase").click().run()
+    next(b for b in at.button if b.label == "Analyze phrase").click().run()
     assert not at.exception
     assert _explorer(at)["terms"][0]["key"] == "hybrid bonding"
     assert any("term=hybrid+bonding" in m.value and "section=institutions" in m.value for m in at.markdown)

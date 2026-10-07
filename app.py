@@ -168,9 +168,27 @@ st.markdown(
     .pt-head-stats b { color: #1B1B1B; font: 500 22px/1 Newsreader, Georgia, serif; }
     .pt-head-stats small { color: #5C5C5C; font: 12px/1.35 "IBM Plex Sans", system-ui, sans-serif; white-space: nowrap; }
     .pt-head-provenance { display: flex; gap: 8px 24px; flex-wrap: wrap; margin-top: 20px; padding-top: 10px; border-top: 1px solid #E6E3DC; color: #8A877F; font-size: 12px; }
-    .st-key-explore_context { margin: 10px 24px 0; }
-    .st-key-explore_context [data-testid="stCaptionContainer"] { color: #8A877F; }
-    .st-key-explore_context [data-testid="stExpander"] { border-color: #E6E3DC; border-radius: 2px; }
+    .pt-head-provenance a { color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #C9C6BE; }
+    .pt-head-provenance a:hover { color: #E3120B; border-bottom-color: #E3120B; }
+    .st-key-explore_context { margin: 0 24px; }
+    .pt-coverage-notice { margin: 10px 0 0; color: #5C5C5C; font: 12.5px/1.55 "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-coverage-panel { padding: 18px 0 20px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .pt-coverage-panel h2 { margin: 0 0 6px !important; padding: 0 !important; color: #1B1B1B; font: 500 20px/1.25 Newsreader, Georgia, serif !important; }
+    .pt-coverage-panel .caveat { margin: 0 0 14px; color: #5C5C5C; font-size: 13px; line-height: 1.55; }
+    .pt-coverage-panel .exclusion { margin: 0 0 8px; color: #5C5C5C; font-size: 12.5px; line-height: 1.5; }
+    .pt-coverage-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    .pt-coverage-table th { padding: 8px 10px; border-top: 1px solid #1B1B1B; border-bottom: 1px solid #E6E3DC; color: #8A877F; font-weight: 500; text-align: right; }
+    .pt-coverage-table td { padding: 8px 10px; border-bottom: 1px solid #EEECE6; color: #3D3D3D; text-align: right; }
+    .pt-coverage-table th:first-child, .pt-coverage-table td:first-child { padding-left: 0; text-align: left; }
+    /* Phrase search is an editorial tool row rather than a boxed Streamlit form. */
+    .st-key-phrase_tool { margin: 18px 24px 0; padding: 0 0 20px !important; border-bottom: 1px solid #E6E3DC; }
+    .st-key-phrase_tool [data-testid="stForm"] { padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; }
+    .pt-phrase-label { margin: 0 0 8px; color: #E3120B; font: 600 11px/1 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
+    .st-key-phrase_tool div[data-baseweb="input"], .st-key-phrase_tool div[data-baseweb="input"] > div, .st-key-phrase_tool div[data-baseweb="base-input"] { min-height: 40px; background: #FFFFFF !important; border-color: #D8D5CE !important; border-radius: 2px !important; box-shadow: none !important; }
+    .st-key-phrase_tool div[data-baseweb="input"]:focus-within { border-color: #1B1B1B !important; }
+    .st-key-phrase_tool input { font-family: "IBM Plex Sans", system-ui, sans-serif !important; font-size: 13.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
+    .st-key-phrase_submit button { min-height: 40px; border: 1px solid #1B1B1B !important; border-radius: 2px !important; background: #1B1B1B !important; color: #FFFFFF !important; box-shadow: none !important; font: 500 13px/1 "IBM Plex Sans", system-ui, sans-serif !important; }
+    .st-key-phrase_submit button:hover { border-color: #E3120B !important; background: #E3120B !important; color: #FFFFFF !important; }
     /* Explore tasks are page navigation, not another copy of the global toolbar. */
     .pt-sections { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px 24px; margin: 12px 24px 0; padding: 10px 0; border-top: 1px solid #E6E3DC; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13.5px; }
     .pt-sections a { color: #5C5C5C; text-decoration: none; padding-bottom: 3px; border-bottom: 2px solid transparent; white-space: nowrap; }
@@ -244,7 +262,7 @@ st.markdown(
     .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
     .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
     @media (max-width: 900px) { .pt-head-grid { grid-template-columns: 1fr; gap: 22px; } .pt-head-stats { width: min(100%, 430px); } }
-    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .st-key-explore_loading { margin-left: 16px; margin-right: 16px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context { margin-left: 16px; margin-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
+    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .st-key-explore_loading { margin-left: 16px; margin-right: 16px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context, .st-key-phrase_tool { margin-left: 16px; margin-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
     .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; line-height: 1.4; }
     .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
     .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
@@ -706,6 +724,7 @@ if mode == "Report":
     st.stop()
 
 data_coverage = coverage_details(records, years, default_span=default_span)
+coverage_open = st.query_params.get("coverage") == "1"
 section = st.query_params.get("section", "trends")
 section = {"overview": "trends", "keywords": "trends", "rankings": "institutions", "data": "papers"}.get(section, section)
 SECTIONS = [("trends", "Trends & evidence"), ("topics", "Topic analysis"), ("institutions", "Institution analysis"),
@@ -715,6 +734,9 @@ if section not in dict(SECTIONS):
 short_name = SHORT.get(slug)
 display_name = short_name or query
 full_name = f'<div class="full-name">{escape(query)}</div>' if short_name and short_name != query else ""
+coverage_href = link(coverage=None if coverage_open else "1")
+coverage_label = t("Hide data details" if coverage_open else "Data definition and annual coverage")
+coverage_marker = "↑" if coverage_open else "›"
 st.markdown(
     f'<header class="pt-head"><div class="pt-head-grid"><div class="pt-head-identity">'
     f'<div class="kicker">{escape(t("Explore"))} · {years[0]}–{years[1]}</div>'
@@ -724,18 +746,35 @@ st.markdown(
     f'<span><b>{years[1] - years[0] + 1}</b><small>{escape(t("editions"))}</small></span>'
     f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b><small>{escape(t("with abstracts"))}</small></span>'
     f'</div></div><div class="pt-head-provenance"><span>{escape(t(provenance_label(provenance)))}</span>'
-    f'<span>{escape(t(data_coverage["selection"]))}</span></div></header>',
+    f'<span>{escape(t(data_coverage["selection"]))}</span>'
+    f'<a href="{escape(coverage_href, quote=True)}" target="_self" aria-expanded="{str(coverage_open).lower()}">{escape(coverage_label)} {coverage_marker}</a>'
+    f'</div></header>',
     unsafe_allow_html=True,
 )
-with st.container(key="explore_context"):
-    for message in data_coverage["notices"]:
-        st.caption(t(message))
-    with st.expander(t("Data coverage and period details")):
-        st.caption(t(data_coverage["caveat"]))
-        for exclusion in data_coverage["exclusions"]:
-            st.write(t(exclusion["message"]))
-        st.dataframe(pd.DataFrame(data_coverage["rows"]), hide_index=True, width="stretch",
-                     column_config={c: field_label(c, LANG) for c in ("year", "papers", "abstracts", "coverage")})
+if data_coverage["notices"] or coverage_open:
+    with st.container(key="explore_context"):
+        for message in data_coverage["notices"]:
+            st.markdown(f'<p class="pt-coverage-notice">{escape(t(message))}</p>', unsafe_allow_html=True)
+        if coverage_open:
+            table_rows = "".join(
+                f'<tr><td>{row["year"]}</td><td>{row["papers"]:,}</td><td>{row["abstracts"]:,}</td>'
+                f'<td>{row["coverage"]:.0%}</td></tr>' if row["coverage"] is not None else
+                f'<tr><td>{row["year"]}</td><td>{row["papers"]:,}</td><td>{row["abstracts"]:,}</td><td>—</td></tr>'
+                for row in data_coverage["rows"]
+            )
+            exclusions = "".join(
+                f'<p class="exclusion">{escape(t(item["message"]))}</p>'
+                for item in data_coverage["exclusions"]
+            )
+            st.markdown(
+                f'<section class="pt-coverage-panel"><h2>{escape(t("Data definition and annual coverage"))}</h2>'
+                f'<p class="caveat">{escape(t(data_coverage["caveat"]))}</p>{exclusions}'
+                f'<table class="pt-coverage-table"><thead><tr>'
+                f'<th>{escape(field_label("year", LANG))}</th><th>{escape(field_label("papers", LANG))}</th>'
+                f'<th>{escape(field_label("abstracts", LANG))}</th><th>{escape(field_label("coverage", LANG))}</th>'
+                f'</tr></thead><tbody>{table_rows}</tbody></table></section>',
+                unsafe_allow_html=True,
+            )
 st.markdown(
     f'<nav class="pt-sections" aria-label="{escape(t("Explore sections"))}">'
     + links_row([(lbl, link(section=None if k == "trends" else k), k == section) for k, lbl in SECTIONS])
@@ -764,9 +803,17 @@ if section == "trends":
         if phrase:
             st.query_params["term"] = phrase
 
-    with st.form("phrase_search", clear_on_submit=True):
-        phrase = st.text_input(t("Find another phrase"), placeholder=t("Type a two- or three-word phrase"), key="phrase_search_input")
-        st.form_submit_button(t("Explore phrase"), on_click=find_phrase)
+    with st.container(key="phrase_tool"):
+        with st.form("phrase_search", clear_on_submit=True):
+            st.markdown(f'<div class="pt-phrase-label">{escape(t("Custom phrase"))}</div>', unsafe_allow_html=True)
+            phrase_input, phrase_action = st.columns([6, 1.15], gap="small", vertical_alignment="bottom")
+            with phrase_input:
+                phrase = st.text_input(
+                    t("Custom phrase"), placeholder=t("Type a two- or three-word phrase"),
+                    key="phrase_search_input", label_visibility="collapsed",
+                )
+            with phrase_action:
+                st.form_submit_button(t("Analyze phrase"), on_click=find_phrase, width="stretch", key="phrase_submit")
     initial_term = st.query_params.get("term", "")
     loading_slot = st.empty()
     with loading_slot.container(key="explore_loading"):
