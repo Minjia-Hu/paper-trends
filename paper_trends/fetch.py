@@ -10,26 +10,42 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .openalex import OpenAlex, reconstruct_abstract, year_filter
+from .openalex import OpenAlex, OpenAlexError, reconstruct_abstract, year_filter
 from .store import parse_years, write_jsonl
 
 OR_LIMIT = 50  # OpenAlex allows at most 50 values in one OR filter
+
+
+class ConferenceNotFound(OpenAlexError):
+    """The supplied venue has no fetchable OpenAlex sources or DOI prefixes."""
 
 # Proceedings front matter that OpenAlex indexes as "works". OpenAlex flags some of it
 # (is_paratext / type=paratext); the rest is caught by title.
 _FRONT_MATTER_RE = re.compile(
     r"^\s*(?:"
-    r"\[?front cover|\[?back cover|title page|copyright|table of contents|foreword|preface|"
+    r"title page|copyright|table of contents|foreword|preface|"
     r"(?:author|subject|keyword) index|index(?: to authors)?$|message from|welcome|"
     r"(?:program|executive|organizing|technical|steering) committee|committees?$|"
     r"(?:[a-z]+ )?\d{4} (?:program|executive|organizing|technical program) committee|"
-    r"(?:[a-z]+ )?\d{4} (?:timetable|awards?|foreword|reflections|tutorials?|panel discussion|index to authors|"
+    r"(?:[a-z]+ )?\d{4} (?:timetable|foreword|reflections|tutorials?|panel discussion|index to authors|"
     r"session \d+|committees?|sponsors?|short course|forums?|highlights?)\b|"
     r"conference (?:info|committees|sponsors|guide)|\d{4} ieee \d+\w* electronic components|"
     r"sponsors?$|timetable|list of (?:reviewers|contributors)|reviewers$|"
     r"session \d+ overview|panel discussion|panel session|tutorials?\b|short course|"
     r"[a-z]{1,3}\d{1,2}:\s"  # ISSCC-style forum / evening-event codes: "F6: ...", "EE3: ..."
     r")",
+    re.I,
+)
+# Cover and awards pages are often prefixed with an acronym/year. Match the entire
+# short metadata title and require no abstract below; "cover materials" or a study
+# of awards must not get caught merely because those words appear in its title.
+_META_VENUE_PREFIX_RE = re.compile(r"^(?:[A-Z][A-Z0-9/&-]{1,11}\s+)?(?:\d{4}\s+)?")
+_META_PAGE_RE = re.compile(
+    r"(?:(?:front|back)\s+cover(?:\s+page)?|cover\s+page"
+    r"|awards?(?:\s*\[\d+\s+awards?\])?"
+    # ISSCC's award listing contains this spelling error in OpenAlex.
+    r"|a(?:w)?ards\s*&\s*ieee\s+solid[- ]state\s+circuits\s+society\s+awards"
+    r"(?:\s*\[\d+\s+awards?\])?)",
     re.I,
 )
 # Invited talks / panels whose "abstract" says there is no paper.
@@ -49,11 +65,18 @@ def is_front_matter(work: dict[str, Any]) -> bool:
     title = work.get("title") or ""
     if _FRONT_MATTER_RE.match(title) or _NO_PAPER_RE.search(title) or _TRANSLATION_RE.search(title):
         return True
+    if not (work.get("abstract_inverted_index") or work.get("abstract")):
+        meta_title = title.strip()
+        if meta_title.startswith("[") and meta_title.endswith("]"):
+            meta_title = meta_title[1:-1].strip()
+        if (_META_PAGE_RE.fullmatch(meta_title)
+                or _META_PAGE_RE.fullmatch(_META_VENUE_PREFIX_RE.sub("", meta_title, count=1))):
+            return True
     if not work.get("doi") and not (work.get("abstract_inverted_index") or work.get("abstract")) and _PROCEEDINGS_RE.match(title):
         return True  # unambiguously named, textless proceedings catalog entries
-    inv = work.get("abstract_inverted_index") or {}
-    if inv and len(inv) < 60:  # short blurbs only; a real abstract is longer
-        return bool(_NO_PAPER_RE.search(" ".join(inv)))
+    abstract = reconstruct_abstract(work.get("abstract_inverted_index")) or work.get("abstract")
+    if abstract and len(abstract.split()) < 60:  # short blurbs only; a real abstract is longer
+        return bool(_NO_PAPER_RE.search(abstract))
     return False
 
 
@@ -246,8 +269,12 @@ def resolve_venue(client: OpenAlex, text: str, years: tuple[int, int] = (2016, 2
 
 
 def resolve_roots(client: OpenAlex, records: list[dict[str, Any]], log=print) -> None:
-    """Fill `root_name` / `root_country` on every institution entry. Names of parents that
-    never appear as a direct affiliation are looked up in batches of 50."""
+    """Resolve parent institutions without sacrificing a completed paper fetch.
+
+    Unresolved parents keep their IDs and original direct affiliation, but no invented
+    parent name: ranking then falls back to the direct institution. Resolution status
+    is retained in the corpus so a partial lookup remains visible after fetching.
+    """
     known: dict[str, tuple[str, str | None]] = {}
     for r in records:
         for a in r.get("authorships") or []:
@@ -259,15 +286,28 @@ def resolve_roots(client: OpenAlex, records: list[dict[str, Any]], log=print) ->
         log(f"[institutions] resolving {len(missing)} parent institutions")
     for i in range(0, len(missing), OR_LIMIT):
         ids = "|".join(m.rsplit("/", 1)[-1] for m in missing[i : i + OR_LIMIT])
-        page = client.get("institutions", {"filter": f"ids.openalex:{ids}", "select": "id,display_name,country_code", "per-page": OR_LIMIT})
+        try:
+            page = client.get("institutions", {"filter": f"ids.openalex:{ids}", "select": "id,display_name,country_code", "per-page": OR_LIMIT})
+        except OpenAlexError:
+            # The client already exhausted its retry policy. Preserve earlier batches
+            # and stop here instead of repeating a budget/network failure for each batch.
+            break
         for inst in page.get("results", []):
             known[inst["id"]] = (inst["display_name"], inst.get("country_code"))
+    unresolved: set[str] = set()
     for r in records:
         for a in r.get("authorships") or []:
             for inst in a.get("institutions") or []:
                 root = inst.get("root_id") or inst.get("id")
-                name, country = known.get(root, (inst.get("name"), inst.get("country")))
+                name, country = known.get(root, (None, None))
                 inst["root_name"], inst["root_country"] = name, country
+                inst["root_resolution"] = "resolved" if name else "unresolved"
+                if root and not name:
+                    unresolved.add(root)
+    if unresolved:
+        log(f"[warning] {len(unresolved)} parent institutions could not be resolved; "
+            "paper records and original affiliations were retained. Unresolved parents "
+            "will use direct institution names in rankings.")
 
 
 def to_record(work: dict[str, Any]) -> dict[str, Any]:
@@ -344,7 +384,7 @@ def fetch_conference(
             log(f"  {s['id'].rsplit('/', 1)[-1]:>12}  {s.get('works_count', 0):>6} works  {s['display_name']}")
     prefixes = [doi_prefix] if isinstance(doi_prefix, str) else list(doi_prefix or [])
     if not source_ids and not prefixes:
-        raise SystemExit(
+        raise ConferenceNotFound(
             f"No OpenAlex source matched '{query}'. Try a different spelling, "
             "or pass --doi-prefix (e.g. 10.1109/ectc) / --source S123."
         )
@@ -421,15 +461,19 @@ def main(argv: list[str] | None = None) -> int:
     slug = (args.name or re.sub(r"[^a-z0-9]+", "-", args.query.lower()).strip("-"))
     out = args.out or Path("data") / f"{slug}.jsonl"
 
-    client = OpenAlex()
-    records = fetch_conference(
-        client,
-        args.query,
-        doi_prefix=args.doi_prefix,
-        source_ids=args.source,
-        years=parse_years(args.years),
-        log=lambda m: print(m, file=sys.stderr),
-    )
+    try:
+        client = OpenAlex()
+        records = fetch_conference(
+            client,
+            args.query,
+            doi_prefix=args.doi_prefix,
+            source_ids=args.source,
+            years=parse_years(args.years),
+            log=lambda m: print(m, file=sys.stderr),
+        )
+    except OpenAlexError as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
     write_jsonl(records, out, fetched_at=datetime.now(timezone.utc))
     print(f"[done] wrote {len(records)} records -> {out}", file=sys.stderr)
     print()

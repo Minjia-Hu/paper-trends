@@ -5,8 +5,12 @@ from __future__ import annotations
 import os
 import re
 import time
+import math
 from collections.abc import Iterator
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 from typing import Any
+from urllib.parse import quote, quote_plus
 
 import requests
 from dotenv import load_dotenv
@@ -77,7 +81,7 @@ class OpenAlex:
             try:
                 resp = self.session.get(url, params=params, timeout=60)
             except requests.RequestException as e:  # SSL EOF, connection reset, timeout ...
-                last = f"{type(e).__name__}: {_redact(str(e))[:200]}"
+                last = f"{type(e).__name__}: {_redact(str(e), (self.mailto, self.api_key))[:200]}"
             else:
                 if resp.status_code == 200:
                     try:
@@ -86,14 +90,19 @@ class OpenAlex:
                         last = "truncated/non-JSON body"
                 elif resp.status_code == 429 or resp.status_code >= 500:
                     last = f"HTTP {resp.status_code}"
-                    retry_after = resp.headers.get("Retry-After")
-                    if retry_after and retry_after.isdigit():
-                        wait = max(wait, float(retry_after))
-                    if resp.status_code == 429 and wait > MAX_BACKOFF:
-                        # Daily budget exhausted: retrying is pointless until it resets.
-                        raise OpenAlexError(_budget_message(resp, self.api_key))
+                    retry_after = _retry_after_seconds(resp.headers.get("Retry-After"))
+                    if retry_after is not None:
+                        wait = max(wait, retry_after)
+                    if resp.status_code == 429 and (wait > MAX_BACKOFF or _budget_exhausted(resp)):
+                        # Do not hammer a spent daily budget or truncate a long cooldown
+                        # into several immediate retries. The caller can try again later.
+                        raise OpenAlexError(_redact(
+                            _budget_message(resp, self.api_key, retry_after),
+                            (self.mailto, self.api_key),
+                        )[:800])
                 else:
-                    raise OpenAlexError(f"HTTP {resp.status_code} for {_redact(resp.url)}: {resp.text[:300]}")
+                    message = f"HTTP {resp.status_code} for {resp.url}: {resp.text}"
+                    raise OpenAlexError(_redact(message, (self.mailto, self.api_key))[:500])
             if attempt == MAX_RETRIES - 1:
                 break
             time.sleep(min(wait, MAX_BACKOFF))
@@ -144,24 +153,71 @@ class OpenAlex:
         return {int(g["key"]): g["count"] for g in page.get("group_by", []) if g["key"]}
 
 
-def _budget_message(resp: Any, api_key: str | None) -> str:
+def _retry_after_seconds(value: str | None, *, now: float | None = None) -> float | None:
+    """Accept HTTP Retry-After dates and finite, nonnegative delay seconds."""
+    if not value:
+        return None
     try:
-        detail = resp.json().get("message", "")
+        seconds = float(value.strip())
+        return seconds if math.isfinite(seconds) and seconds >= 0 else None
     except ValueError:
-        detail = ""
-    hours = int(resp.headers.get("Retry-After", "0") or 0) // 3600
+        try:
+            date = parsedate_to_datetime(value)
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=timezone.utc)
+            return max(0.0, date.timestamp() - (time.time() if now is None else now))
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+
+def _response_detail(resp: Any) -> str:
+    try:
+        body = resp.json()
+    except ValueError:
+        return ""
+    if isinstance(body, dict):
+        return str(body.get("message") or body.get("error") or "")
+    return ""
+
+
+def _budget_exhausted(resp: Any) -> bool:
+    detail = _response_detail(resp).lower()
+    return any(phrase in detail for phrase in (
+        "insufficient budget", "budget exhausted", "budget is exhausted",
+        "daily budget", "daily quota exceeded", "daily limit exceeded",
+    ))
+
+
+def _budget_message(resp: Any, api_key: str | None, retry_after: float | None = None) -> str:
+    detail = _response_detail(resp)
+    if retry_after is None:
+        retry_after = _retry_after_seconds(resp.headers.get("Retry-After"))
+    if retry_after is None:
+        reset = "reset time not provided"
+    elif retry_after >= 3600:
+        reset = f"resets in ~{int(retry_after) // 3600} h"
+    else:
+        reset = f"retry in ~{max(1, round(retry_after / 60))} min"
+    if not _budget_exhausted(resp):
+        return f"OpenAlex rate limit: {reset}; retry later. OpenAlex says: {detail}"
     who = "your API key's" if api_key else "the free per-IP"
     hint = (
         "" if api_key else
         " Get a free key (https://help.openalex.org/api/authentication/) and put OPENALEX_API_KEY=... in .env; "
         "anonymous requests share one daily budget with everyone behind your IP address (VPNs/proxies included)."
     )
-    return f"OpenAlex rate limit: {who} daily budget is used up (resets in ~{hours} h).{hint} OpenAlex says: {detail[:300]}"
+    return f"OpenAlex rate limit: {who} daily budget is used up ({reset}).{hint} OpenAlex says: {detail}"
 
 
-def _redact(text: str) -> str:
-    """Strip the mailto address from URLs/messages that may be shown to users."""
-    return re.sub(r"mailto=[^&\s'\"]+", "mailto=<redacted>", text)
+def _redact(text: str, secrets: tuple[str | None, ...] = ()) -> str:
+    """Remove request credentials before a URL, response or error is displayed."""
+    text = re.sub(r"(mailto|api_key)=[^&\s'\"]+", r"\1=<redacted>", text, flags=re.I)
+    text = re.sub(r"\bBearer\s+[^\s'\"]+", "Bearer <redacted>", text, flags=re.I)
+    for secret in secrets:
+        if secret:
+            for value in {secret, quote(secret, safe=""), quote_plus(secret)}:
+                text = text.replace(value, "<redacted>")
+    return text
 
 
 def reconstruct_abstract(inverted: dict[str, list[int]] | None) -> str | None:

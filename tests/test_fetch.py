@@ -31,6 +31,37 @@ def test_front_matter_detection():
     assert not is_front_matter({"title": "Committee-less Consensus for Chiplet Test Scheduling"})
 
 
+def test_textless_cover_and_award_metadata_in_raw_and_saved_records():
+    from paper_trends.fetch import to_record
+
+    titles = [
+        "ISSCC Aards & IEEE Solid-State Circuits Society Awards [15 awards]",
+        "ISSCC awards [16 awards]", "ISSCC awards", "ISSCC AWARDS",
+        "ISSCC 2021 Back Cover", "[ISSCC 2021 Front cover]",
+        "ISSCC 2024 Back Cover Page", "ISSCC 2024 Cover Page", "ISSCC Awards",
+        "Cover Page", "Awards", "ECTC 2023 Back Cover", "2024 Awards",
+        "FRONT COVER", "BACK COVER PAGE", "AWARDS [16 awards]",
+    ]
+    for title in titles:
+        raw = {"id": "W1", "title": title, "doi": "https://doi.org/10.1109/test.1",
+               "publication_year": 2024, "abstract_inverted_index": None, "type": "article"}
+        assert is_front_matter(raw), title
+        assert is_front_matter(to_record(raw)), title
+
+
+def test_cover_materials_and_awards_research_are_not_metadata():
+    for title in ["Front Cover Materials for Photonic Packaging", "Back Cover Reliability",
+                  "Cover Page Design for Automated Document Classification",
+                  "ISSCC 2024 Awards as Signals of Research Impact", "Research Awards",
+                  "Awards and Innovation in Semiconductor Research", "Cover Materials", "Cover"]:
+        assert not is_front_matter({"title": title}), title
+        assert not is_front_matter({"title": title, "abstract": "We present a research study."}), title
+    # Even an otherwise ambiguous short title is retained when usable text exists.
+    assert not is_front_matter({"title": "Awards", "abstract": "An empirical analysis of research prizes."})
+    assert not is_front_matter({"title": "ISSCC 2024 Front Cover",
+                                "abstract_inverted_index": {"Research": [0], "results": [1]}})
+
+
 def test_session_overviews_and_forums_are_front_matter():
     for t in ["Session 26 overview: Wireless for IoE", "ISSCC 2024 Timetable", "ISSCC 2019 Panel Discussion",
               "F6: Advances in energy efficient analog design", "EE3: Industry showcase [multiple abstracts]",
@@ -204,3 +235,119 @@ def test_slash_delimited_dois_do_not_inflate_a_venue_to_a_publisher_prefix():
     result = resolve_venue(Fake(), name)
     assert result["source_ids"] == ["S1"] and result["doi_prefixes"] == []
     assert result["n_papers"] == 603
+
+
+def test_no_matching_source_is_a_library_error_and_cli_message(tmp_path, monkeypatch, capsys):
+    import pytest
+    from paper_trends import fetch
+    from paper_trends.openalex import OpenAlexError
+
+    class NoMatches:
+        def search_sources(self, query):
+            return []
+
+    with pytest.raises(OpenAlexError, match="No OpenAlex source matched"):
+        fetch.fetch_conference(NoMatches(), "Unknown conference", log=lambda _: None)
+    monkeypatch.setattr(fetch, "OpenAlex", NoMatches)
+    path = tmp_path / "unknown.jsonl"
+    assert fetch.main(["Unknown conference", "--out", str(path)]) == 1
+    assert "No OpenAlex source matched" in capsys.readouterr().err
+    assert not path.exists()
+
+
+def test_cli_openalex_failure_preserves_existing_corpus_and_provenance(tmp_path, monkeypatch, capsys):
+    from datetime import datetime, timezone
+    from paper_trends import fetch
+    from paper_trends.openalex import OpenAlexError
+    from paper_trends.store import metadata_path, write_jsonl
+
+    path = tmp_path / "existing.jsonl"
+    write_jsonl([{"id": "W1"}], path, fetched_at=datetime(2026, 10, 7, tzinfo=timezone.utc))
+    corpus_bytes = path.read_bytes()
+    metadata_bytes = metadata_path(path).read_bytes()
+
+    def fail_client():
+        raise OpenAlexError("temporary network failure")
+
+    monkeypatch.setattr(fetch, "OpenAlex", fail_client)
+    assert fetch.main(["Test conference", "--out", str(path)]) == 1
+    assert "temporary network failure" in capsys.readouterr().err
+    assert path.read_bytes() == corpus_bytes
+    assert metadata_path(path).read_bytes() == metadata_bytes
+
+
+def test_front_matter_abstract_preserves_repeated_words_and_order():
+    # Insertion order is not abstract order, and the first "not" precedes the
+    # publication disclaimer. Joining unique keys loses the second occurrence.
+    abstract = "This is not an abstract. The talk has not been made available for publication"
+    inv = {}
+    for position, word in enumerate(abstract.split()):
+        inv.setdefault(word, []).append(position)
+    inv = dict(reversed(list(inv.items())))
+    assert is_front_matter({"title": "Invited lecture", "abstract_inverted_index": inv})
+    assert is_front_matter({"title": "Invited lecture", "abstract": abstract})
+    # Many repeated words still constitute a long abstract, not a short disclaimer.
+    assert not is_front_matter({"title": "Publishing research", "abstract": "research " * 65 + abstract})
+
+
+def test_completed_fetch_retains_papers_when_parent_lookup_fails(tmp_path, capsys):
+    from paper_trends.fetch import fetch_conference
+    from paper_trends.openalex import OpenAlexError
+    from paper_trends.store import read_jsonl, write_jsonl
+    from paper_trends.rank import compute_ranking
+
+    class Fake:
+        def works_by_filter(self, filter_expr):
+            yield {
+                "id": "W1", "title": "Hybrid bonding", "publication_year": 2020,
+                "authorships": [{"author": {"id": "A1"}, "institutions": [{
+                    "id": "I/child", "display_name": "Chip Lab", "country_code": "GB",
+                    "lineage": ["I/parent", "I/child"],
+                }], "raw_affiliation_strings": ["Chip Lab, Great Britain"]}],
+            }
+
+        def get(self, path, params):
+            raise OpenAlexError("network unavailable")
+
+    records = fetch_conference(Fake(), "Test", source_ids=["S1"])
+    inst = records[0]["authorships"][0]["institutions"][0]
+    assert inst == {
+        "id": "I/child", "name": "Chip Lab", "country": "GB", "root_id": "I/parent",
+        "root_name": None, "root_country": None, "root_resolution": "unresolved",
+    }
+    assert records[0]["authorships"][0]["raw_affiliations"] == ["Chip Lab, Great Britain"]
+    assert "paper records and original affiliations were retained" in capsys.readouterr().out
+    path = tmp_path / "retained.jsonl"
+    write_jsonl(records, path)
+    assert read_jsonl(path) == records
+    # An unknown parent's ID must never get paired with its child's name in rankings.
+    ranking = compute_ranking(records, "institution", roll_up=True)
+    assert ranking.names == {"I/child": "Chip Lab"}
+
+
+def test_partial_parent_batches_remain_resolved_after_later_failure():
+    from paper_trends.fetch import OR_LIMIT, resolve_roots
+    from paper_trends.openalex import OpenAlexError
+
+    insts = [{"id": f"I/child{i:03}", "name": f"Lab {i}", "country": "GB",
+              "root_id": f"I/parent{i:03}"} for i in range(OR_LIMIT + 2)]
+    records = [{"authorships": [{"institutions": insts}]}]
+
+    class Fake:
+        calls = 0
+
+        def get(self, path, params):
+            self.calls += 1
+            if self.calls > 1:
+                raise OpenAlexError("budget exhausted")
+            return {"results": [{"id": f"I/parent{i:03}", "display_name": f"University {i}",
+                                 "country_code": "US"} for i in range(OR_LIMIT)]}
+
+    client = Fake()
+    messages = []
+    resolve_roots(client, records, log=messages.append)
+    assert client.calls == 2
+    assert insts[0]["root_name"] == "University 0"
+    assert insts[0]["root_resolution"] == "resolved"
+    assert insts[-1]["root_name"] is None and insts[-1]["root_resolution"] == "unresolved"
+    assert "2 parent institutions could not be resolved" in messages[-1]

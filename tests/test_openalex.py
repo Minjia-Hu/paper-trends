@@ -69,3 +69,81 @@ def test_search_sources_strips_commas():
     client.search_sources("Thermal, Mechanical and Multi-Physics Simulation")
     sent = session.get.call_args.kwargs["params"]["filter"]
     assert "," not in sent and "Thermal  Mechanical" in sent
+
+
+@pytest.mark.parametrize("header, expected", [("2.5", 2.5), (" 5 ", 5.0),
+                                              ("Wed, 21 Oct 2015 07:28:03 GMT", 3.0)])
+def test_retry_after_seconds_or_http_date_controls_retry(monkeypatch, header, expected):
+    from datetime import datetime, timezone
+
+    now = datetime(2015, 10, 21, 7, 28, tzinfo=timezone.utc).timestamp()
+    monkeypatch.setattr(openalex.time, "time", lambda: now)
+    waits = []
+    monkeypatch.setattr(openalex.time, "sleep", waits.append)
+    client, session = _client([_resp(429, headers={"Retry-After": header}), _resp(200, {"ok": 1})])
+    assert client.get("works") == {"ok": 1}
+    assert session.get.call_count == 2 and waits == [expected]
+
+
+@pytest.mark.parametrize("value", [None, "", "invalid", "NaN", "inf", "-2", "1e999"])
+def test_invalid_retry_after_does_not_break_client(value):
+    assert openalex._retry_after_seconds(value) is None
+
+
+def test_retry_after_in_past_is_zero():
+    assert openalex._retry_after_seconds("Wed, 21 Oct 2015 07:28:00 GMT", now=2_000_000_000) == 0
+
+
+@pytest.mark.parametrize("header", ["3600.0", "Wed, 21 Oct 2015 08:28:00 GMT"])
+def test_budget_exhaustion_with_float_or_date_fails_fast(monkeypatch, header):
+    from datetime import datetime, timezone
+
+    now = datetime(2015, 10, 21, 7, 28, tzinfo=timezone.utc).timestamp()
+    monkeypatch.setattr(openalex.time, "time", lambda: now)
+    monkeypatch.setenv("OPENALEX_API_KEY", "")
+    waits = []
+    monkeypatch.setattr(openalex.time, "sleep", waits.append)
+    client, session = _client([_resp(429, {"message": "Insufficient budget"}, headers={"Retry-After": header})])
+    with pytest.raises(OpenAlexError, match="daily budget.*1 h"):
+        client.get("works")
+    assert session.get.call_count == 1 and waits == []
+
+
+def test_budget_exhaustion_without_retry_after_fails_fast(monkeypatch):
+    waits = []
+    monkeypatch.setattr(openalex.time, "sleep", waits.append)
+    client, session = _client([_resp(429, {"message": "Insufficient budget"})])
+    with pytest.raises(OpenAlexError, match="reset time not provided"):
+        client.get("works")
+    assert session.get.call_count == 1 and waits == []
+
+
+def test_long_nonbudget_cooldown_does_not_claim_daily_budget_exhaustion(monkeypatch):
+    waits = []
+    monkeypatch.setattr(openalex.time, "sleep", waits.append)
+    client, session = _client([_resp(429, {"message": "Slow down"}, headers={"Retry-After": "90"})])
+    with pytest.raises(OpenAlexError) as caught:
+        client.get("works")
+    assert "retry later" in str(caught.value) and "daily budget" not in str(caught.value)
+    assert session.get.call_count == 1 and waits == []
+
+
+@pytest.mark.parametrize("status", [400, 429])
+def test_response_errors_redact_credentials_before_truncating(monkeypatch, status):
+    from urllib.parse import quote
+
+    key = "sensitive-api-key"
+    mailto = "contact+private@example.com"
+    message = f"mailto={quote(mailto)}&api_key={key} Bearer {key}; contact {mailto} key {key}"
+    response = _resp(status, {"message": "Insufficient budget: " + message}, headers={"Retry-After": "3600.0"})
+    response.url = "https://api.openalex.org/works?" + message
+    response.text = message
+    session = MagicMock()
+    session.headers = {}
+    session.get.return_value = response
+    client = OpenAlex(mailto=mailto, api_key=key, session=session)
+    with pytest.raises(OpenAlexError) as caught:
+        client.get("works")
+    displayed = str(caught.value)
+    assert key not in displayed and mailto not in displayed and quote(mailto) not in displayed
+    assert "redacted" in displayed
