@@ -1,4 +1,4 @@
-"""Render static report pages: `paper-trends report data/ectc.jsonl --name "..." --short ECTC`."""
+"""Render static pages: `python -m paper_trends report data/ectc.jsonl --name "..." --out site`."""
 
 from __future__ import annotations
 
@@ -21,48 +21,7 @@ TAGLINE = "Publication trends for any academic conference"
 # Preset conferences grouped in two real levels: domain, then research direction.
 # A None direction means the domain is already specific enough to list venues directly.
 # These are curated reports rather than an exhaustive conference directory.
-GROUPS = [
-    ("Semiconductor & microelectronics", [
-        ("Packaging & integration", ["ectc", "eptc", "icept"]),
-        ("Thermal management & multiphysics", ["itherm", "eurosime"]),
-        ("Reliability", ["irps"]),
-        ("Devices & circuits", ["iedm", "isscc", "vlsi", "imw"]),
-    ]),
-    ("Artificial intelligence & perception", [
-        ("Computer vision", ["cvpr"]),
-        ("Speech technology", ["interspeech"]),
-    ]),
-    ("Communications & signal processing", [
-        ("Signal processing", ["icassp"]),
-        ("Communications & networking", ["globecom", "infocom"]),
-    ]),
-    ("Information security", [(None, ["sp"])]),
-    ("Robotics", [(None, ["icra"])]),
-    ("Biomedical engineering", [(None, ["embc"])]),
-]
-FULL = {
-    "ectc": "Electronic Components and Technology Conference",
-    "eptc": "Electronics Packaging Technology Conference",
-    "icept": "International Conference on Electronic Packaging Technology",
-    "itherm": "ITherm: Thermal and Thermomechanical Phenomena in Electronic Systems",
-    "irps": "International Reliability Physics Symposium",
-    "eurosime": "EuroSimE: Thermal, Mechanical and Multi-Physics Simulation in Microelectronics",
-    "iedm": "International Electron Devices Meeting",
-    "isscc": "International Solid-State Circuits Conference",
-    "vlsi": "Symposium on VLSI Technology and Circuits",
-    "imw": "International Memory Workshop",
-    "cvpr": "Conference on Computer Vision and Pattern Recognition",
-    "interspeech": "Interspeech",
-    "icra": "International Conference on Robotics and Automation",
-    "icassp": "International Conference on Acoustics, Speech and Signal Processing",
-    "embc": "Annual International Conference of the IEEE Engineering in Medicine and Biology Society",
-    "sp": "IEEE Symposium on Security and Privacy",
-    "globecom": "Global Communications Conference",
-    "infocom": "IEEE Conference on Computer Communications",
-}
-SHORT = {"ectc": "ECTC", "eptc": "EPTC", "icept": "ICEPT", "itherm": "ITherm", "irps": "IRPS", "eurosime": "EuroSimE", "iedm": "IEDM",
-         "isscc": "ISSCC", "vlsi": "VLSI", "imw": "IMW", "cvpr": "CVPR", "interspeech": "Interspeech", "icra": "ICRA",
-         "icassp": "ICASSP", "embc": "EMBC", "sp": "IEEE S&P", "globecom": "GLOBECOM", "infocom": "INFOCOM"}
+from ..presets import FULL, SHORT, GROUPS
 
 
 def asset_version(root: Path | None = None) -> tuple[tuple[str, int], ...]:
@@ -73,6 +32,9 @@ def asset_version(root: Path | None = None) -> tuple[tuple[str, int], ...]:
     """
     package = root or HERE.parent
     files = [package / "i18n.py"]
+    files.extend(package / name for name in ("text.py", "keywords.py", "topics.py", "rank.py",
+                                             "background.py", "coverage.py", "presets.py"))
+    files.extend(sorted((package / "report").glob("*.py")))
     files.extend(sorted((package / "report" / "templates").glob("*")))
     files.extend(sorted((package / "report" / "static").glob("*")))
     return tuple((str(file.relative_to(package)), file.stat().st_mtime_ns) for file in files if file.is_file())
@@ -130,16 +92,19 @@ def _css() -> str:
 
 
 def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False,
-                lang: str = "en", explore_href: str | None = None) -> str:
+                lang: str = "en", explore_href: str | None = None, generated_on: str | None = None) -> str:
     """HTML for one report. `embedded=True` inlines the CSS (for a Streamlit iframe);
     `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`)."""
     lang = language(lang)
+    if generated_on is not None:
+        r = {**r, "generated": generated_on}
+    entities = {k: v for k, v in (r.get("entities") or {}).items() if k != "explorer"}
     return _env().get_template("report.html.j2").render(
         r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), nav=nav or [], tagline=TAGLINE,
         short=SHORT.get(r.get("slug")), explore_href=explore_href,
         specs=chart_labels(figure_specs(r), lang), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
         embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
-        entities=r.get("entities"), map_lines=r.get("map_lines") or {},
+        entities=entities, map_lines=r.get("map_lines") or {},
         entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
     )
 
@@ -153,7 +118,7 @@ def render_explorer_page(r: dict[str, Any], *, lang: str = "en", initial_term: s
     """
     lang = language(lang)
     return _env().get_template("explorer_page.html.j2").render(
-        r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), inline_css=_css(), standalone_explorer=True,
+        r=r, lang=lang, _=lambda s: tr(s, lang), inline_css=_css(), standalone_explorer=True,
         entities=r.get("entities"), initial_term=initial_term,
         entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
         explorer_js=(HERE / "static" / "explorer.js").read_text(encoding="utf-8"),

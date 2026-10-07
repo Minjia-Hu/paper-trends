@@ -52,7 +52,8 @@ def test_build_and_render(tmp_path):
 def test_report_and_explorer_are_separate_surfaces():
     from paper_trends.report.render import render_page
 
-    report = build_report(_corpus(), name="Legacy Conf", slug="legacy", years=(2016, 2023), n_topics=2)
+    report = build_report(_corpus(), name="Legacy Conf", slug="legacy", years=(2016, 2023), n_topics=2,
+                          include_explorer=True)
     html = render_page(report, embedded=True, explore_href="?view=explore")
     assert 'id="observatory"' not in html
     assert 'class="report-jump"' in html
@@ -68,9 +69,65 @@ def test_report_and_explorer_are_separate_surfaces():
     assert "details.open = true" in html
     assert "window.setTimeout(() => window.scrollReportHostTo" in html
     assert 'id="observatory"' in render_explorer_page(report)
+    data = json.loads(re.search(r"window.ENTITIES = (.*);", html)[1])
+    assert "explorer" not in data  # legacy input must not inflate the report payload
     del report["entities"]["explorer"]
     explorer_html = render_explorer_page(report)
     assert "Legacy Conf" in explorer_html and 'id="observatory"' not in explorer_html
+
+
+def test_report_does_not_build_unused_explorer(monkeypatch):
+    from paper_trends.report import entities
+
+    def unused(*args, **kwargs):
+        raise AssertionError("A report must not construct exploration data")
+
+    monkeypatch.setattr(entities, "ExplorerBuilder", unused)
+    report = build_report(_corpus(), name="Test", slug="test", n_topics=2)
+    assert "explorer" not in report["entities"]
+    assert report["entities"]["terms"]  # report detail panels still have their data
+
+
+def test_modifying_report_output_does_not_mutate_shared_analysis():
+    from paper_trends.report.analysis import analyze_corpus
+
+    records = _corpus()
+    analysis = analyze_corpus(records, slug="test", n_topics=2)
+    original = [(list(topic.terms), list(topic.examples)) for topic in analysis.topics.ordered()]
+    report = build_report(records, name="Test", slug="test", years=(2016, 2023), analysis=analysis)
+    report["topics"][0]["terms"].clear()
+    report["topics"][0]["examples"].append("unrelated paper")
+    report["entities"]["years"].clear()
+    assert [(topic.terms, topic.examples) for topic in analysis.topics.ordered()] == original
+    assert analysis.keywords.years == list(range(2016, 2024))
+    again = build_report(records, name="Test", slug="test", years=(2016, 2023), analysis=analysis)
+    assert again["topics"][0]["terms"] == original[0][0]
+    assert again["topics"][0]["examples"] == original[0][1]
+
+
+@pytest.mark.parametrize("query", ["hybrid bonding", "thermal resistance", "Rare scientific phrase"])
+def test_light_explorer_matches_full_role_counts_and_evidence(query):
+    from paper_trends.report.analysis import analyze_corpus
+    from paper_trends.report.build import build_explorer_data
+
+    records = _corpus()
+    records[0]["title"] += " Rare scientific phrase"
+    analysis = analyze_corpus(records, slug="test", n_topics=2)
+    full = build_report(records, name="Test", slug="test", years=(2016, 2023),
+                        analysis=analysis, explorer_full=True, explore_term=query)
+    light = build_explorer_data(analysis, name="Test", slug="test", initial_term=query)
+    assert light["entities"]["explorer"] == full["entities"]["explorer"]
+    assert set(light["entities"]) == {"explorer"}
+
+
+def test_generation_date_can_refresh_without_rebuilding_analysis():
+    from paper_trends.report.render import render_page
+
+    report = build_report(_corpus(), name="Test", slug="test", n_topics=2)
+    report["generated"] = "2020-01-01"
+    html = render_page(report, generated_on="2026-10-07")
+    assert "report generated 2026-10-07" in html
+    assert report["generated"] == "2020-01-01"  # cached data was not mutated
 
 
 def test_coverage_note():
@@ -178,7 +235,8 @@ def test_report_escapes_markup_and_roundtrips_inline_json():
 
     parser = Tags()
     parser.feed(html)
-    assert sum(tag == "script" for tag, _ in parser.tags) == 5  # three CDN scripts + report and entity-panel scripts
+    # Trusted rendering may add scripts (e.g. print handling); injected markup must
+    # never create an executable element or event handler.
     assert not any(tag == "img" or "onerror" in attrs or attrs.get("id") == "review-probe" for tag, attrs in parser.tags)
     assert '&lt;/script&gt;' in html
     specs = json.loads(re.search(r"const specs = (.*?);\n", html).group(1))

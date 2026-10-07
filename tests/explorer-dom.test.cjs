@@ -9,7 +9,8 @@ let html;
 function fixture() {
   if (html) return html;
   const result = spawnSync('.venv/bin/python', ['-c', `
-from paper_trends.report.build import build_report
+from paper_trends.report.analysis import analyze_corpus
+from paper_trends.report.build import build_explorer_data
 from paper_trends.report.render import render_explorer_page
 records=[]
 for y, roles in [(2018, ['title']*2+['repeated']*2+['once']*2+['none']*2), (2020, ['title','repeated']+['once']*2+['none']*4)]:
@@ -19,7 +20,7 @@ for y, roles in [(2018, ['title']*2+['repeated']*2+['once']*2+['none']*2), (2020
           'abstract':'Hybrid bonding improves hybrid bonding.' if role=='repeated' else 'Hybrid bonding is used.' if role=='once' else 'Thermal resistance heat sink cooling.',
           'doi':'javascript:alert(1)' if i==0 else f'10.1109/test.{y}.{i}', 'cited_by_count':i,
           'authorships':[{'institutions':[{'id':'I1','name':'Lab Alpha'}]},{'institutions':[{'id':'I1','name':'Lab Alpha'}]}]})
-print(render_explorer_page(build_report(records,name='Test conference',slug='test',years=(2018,2020),n_topics=2,explorer_full=True)))
+print(render_explorer_page(build_explorer_data(analyze_corpus(records,slug='test',n_topics=2),name='Test conference',slug='test')))
 `], { encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   html = result.stdout;
@@ -35,7 +36,6 @@ function mount(edit, lang = 'en') {
   win.setInterval = fn => { timers.set(++next, fn); return next; };
   win.clearInterval = id => timers.delete(id);
   win.eval(fs.readFileSync('paper_trends/report/static/explorer.js', 'utf8'));
-  win.eval(fs.readFileSync('paper_trends/report/static/entities.js', 'utf8'));
   const get = id => win.document.getElementById('obs-' + id);
   const input = (id, value, event='input') => { get(id).value = value; get(id).dispatchEvent(new win.Event(event, { bubbles: true })); };
   input('term', data.explorer.terms.findIndex(t => t.key === 'hybrid bonding'), 'change');
@@ -82,10 +82,8 @@ test('changing counting rules and time updates real explorer DOM, evidence and i
     assert.equal(get('matches').textContent, '10 of 16 records');
     assert.equal(win.document.querySelector('#probe'), null);
     assert.ok([...get('papers').querySelectorAll('a')].every(a => a.href.startsWith('https://doi.org/')));
-    win.openEntity('term', 'hybrid bonding');
-    win.document.querySelector('[data-obs-phrase]').click();
-    assert.equal(win.document.querySelector('#ent-drawer').getAttribute('aria-hidden'), 'true');
-    assert.equal(win.document.activeElement, get('term'));
+    assert.equal(win.document.querySelector('#ent-drawer'), null);
+    assert.deepEqual(Object.keys(win.ENTITIES), ['explorer']);
   } finally { dom.window.close(); }
 });
 test('Chinese interactions keep counts and original evidence while updating translated copy', { skip: !JSDOM }, () => {
@@ -106,9 +104,6 @@ test('Chinese interactions keep counts and original evidence while updating tran
     get('play').click();
     assert.equal(get('play').textContent, '▶ 逐年播放');
     assert.equal(timers.size, 0);
-    win.openEntity('term', 'hybrid bonding');
-    assert.match(win.document.querySelector('#ent-body').textContent, /篇匹配论文/);
-    assert.equal(win.document.querySelector('#ent-close').textContent, '关闭 ✕');
   } finally { dom.window.close(); }
 });
 
@@ -147,19 +142,6 @@ test('complete evidence paginates and exports all filtered rows, not just the vi
     assert.equal(csv.split('\r\n').length, 2);
     assert.match(csv, /"title","2020","2020"/);
     assert.doesNotMatch(csv, /Extra evidence/);
-  } finally { dom.window.close(); }
-});
-
-test('report phrase links are available outside the observatory shortlist', { skip: !JSDOM }, () => {
-  const { dom, win } = mount();
-  try {
-    win.EXPLORE_URL = '?conference=test&period=custom&years=2018&years=2020&view=explore';
-    win.ENTITIES.explorer.terms = [];
-    let target;
-    win.navigateHost = url => { target = url; return true; };
-    win.openEntity('term', 'hybrid bonding');
-    win.document.querySelector('[data-obs-phrase]').click();
-    assert.equal(target, win.EXPLORE_URL + '&term=hybrid%20bonding');
   } finally { dom.window.close(); }
 });
 

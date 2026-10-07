@@ -172,6 +172,71 @@ def test_query_param_selects_preset(tmp_path, monkeypatch):
     assert any("International Memory Workshop" in m.value for m in at.markdown)
 
 
+def test_phrase_and_language_changes_reuse_the_fitted_analysis(tmp_path, monkeypatch):
+    from paper_trends.report import analysis
+
+    monkeypatch.chdir(tmp_path)
+    _write_corpus(tmp_path / "data" / "ectc.jsonl")
+    fits = []
+    fit = analysis.compute_nmf
+
+    def track_fit(*args, **kwargs):
+        fits.append(1)
+        return fit(*args, **kwargs)
+
+    monkeypatch.setattr(analysis, "compute_nmf", track_fit)
+    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
+    at.query_params.update({"conference": "ectc", "lang": "en"})
+    at.run()
+    assert not at.exception and len(fits) == 1
+    at.query_params.update({"view": "explore", "term": "hybrid bonding"})
+    at.run()
+    assert not at.exception and len(fits) == 1
+    at.query_params.update({"term": "thermal resistance", "lang": "zh"})
+    at.run()
+    assert not at.exception and len(fits) == 1
+    at.query_params["period"] = "5"
+    at.run()
+    assert not at.exception and len(fits) == 2
+
+
+def test_search_residual_text_does_not_reset_explore_controls(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_corpus(tmp_path / "data" / "imw.jsonl")
+    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
+    at.run()
+    at.text_input(key="search").set_value("IMW").run()
+    assert not at.exception and at.query_params["conference"] == ["imw"]
+    at.query_params.update({"view": "explore", "section": "papers", "period": "5"})
+    at.run()
+    assert not at.exception and at.query_params["view"] == ["explore"]
+    at.text_input(key="paper_filter").set_value("hybrid").run()
+    assert not at.exception
+    assert at.query_params["section"] == ["papers"] and at.query_params["period"] == ["5"]
+
+
+def test_failed_resolve_is_not_cached(tmp_path, monkeypatch):
+    import paper_trends.fetch as fetch
+    from paper_trends.openalex import OpenAlexError
+
+    monkeypatch.chdir(tmp_path)
+    calls = []
+
+    def lookup(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise OpenAlexError("Temporary lookup failure")
+        return None
+
+    monkeypatch.setattr(fetch, "resolve_venue", lookup)
+    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
+    at.query_params["q"] = "Uncached conference lookup"
+    at.run()
+    assert not at.exception and len(calls) == 1
+    at.run()
+    assert not at.exception and len(calls) == 2
+
+
 def test_language_switch_and_search_preserve_locale(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write_corpus(tmp_path / 'data' / 'ectc.jsonl')

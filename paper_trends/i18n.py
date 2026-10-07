@@ -12,6 +12,7 @@ def language(value=None, accept_language=""):
 
 
 ZH = {
+    "Some parent institutions could not be resolved. Institution rankings use the original affiliations for these records.": "部分上级机构信息未能获取；相关论文按原始署名机构参与排名。",
     "Compare the share of the same phrase across conferences.": "比较同一关键词在不同会议中的论文占比。",
     "Choose a topic method and follow how the research mix changes over time.": "选择分析方法，查看研究主题的分布与演进。",
     "Compare publication rankings and changes in research participation.": "比较发文排名，观察研究参与格局的变化。",

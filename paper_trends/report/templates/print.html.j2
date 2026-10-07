@@ -1,0 +1,17 @@
+<script>
+// Closed native disclosures suppress their contents even under print CSS.
+// Expand them for printing, then restore the reader's current page state.
+(function () {
+  let closed = [], printing = false;
+  window.addEventListener("beforeprint", () => {
+    if (printing) return;
+    printing = true;
+    closed = [...document.querySelectorAll("details:not([open])")];
+    closed.forEach(details => { details.open = true; });
+  });
+  window.addEventListener("afterprint", () => {
+    closed.forEach(details => { details.open = false; });
+    closed = []; printing = false;
+  });
+})();
+</script>

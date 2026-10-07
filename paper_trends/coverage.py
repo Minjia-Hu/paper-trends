@@ -54,9 +54,10 @@ def default_period(records: list[Record], span: int = 10, *, current_year: int |
     return period_decision(records, span, current_year=current_year)["period"]
 
 
-def coverage_details(records: list[Record], years: tuple[int, int], *, default_span: int | None = None) -> dict:
+def coverage_details(records: list[Record], years: tuple[int, int], *, default_span: int | None = None,
+                     current_year: int | None = None) -> dict:
     """User-facing evidence for the selection and limitations; no completeness claim."""
-    decision = period_decision(records, default_span or 10)
+    decision = period_decision(records, default_span or 10, current_year=current_year)
     recommended = decision["period"]
     if default_span and recommended:
         selection = f"Default period: {years[0]}–{years[1]} (up to {default_span} calendar years ending before the current year)."
@@ -83,5 +84,9 @@ def coverage_details(records: list[Record], years: tuple[int, int], *, default_s
         low = [f"{r['year']} ({r['coverage']:.1%})" for r in rows if r["coverage"] is not None and r["coverage"] < 0.9]
         if low:
             notices.append("Abstract coverage below 90%: " + ", ".join(low) + ". Changes in abstract availability can affect phrase trends.")
+    if any(inst.get("root_resolution") == "unresolved"
+           for record in selected for author in record.get("authorships") or []
+           for inst in author.get("institutions") or []):
+        notices.append("Some parent institutions could not be resolved. Institution rankings use the original affiliations for these records.")
     return {"selection": selection, "exclusions": decision["excluded"], "notices": notices, "rows": rows,
             "caveat": "Coverage describes cached OpenAlex records, not completeness against the official proceedings."}

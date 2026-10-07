@@ -10,11 +10,11 @@
 
   // ---- markup
   document.body.insertAdjacentHTML("beforeend",
-    '<div class="ent-scrim" id="ent-scrim"></div>' +
-    '<aside class="ent-drawer" id="ent-drawer" aria-hidden="true"><div class="bar"><button type="button" id="ent-back">' + L("← back", "← 返回") + '</button>' +
+    '<div class="ent-scrim" id="ent-scrim" hidden aria-hidden="true"></div>' +
+    '<aside class="ent-drawer" id="ent-drawer" role="dialog" aria-modal="true" aria-labelledby="ent-heading" aria-hidden="true" tabindex="-1" hidden><div class="bar"><button type="button" id="ent-back">' + L("← back", "← 返回") + '</button>' +
     '<button type="button" id="ent-close">' + L("close ✕", "关闭 ✕") + '</button></div><div class="crumbs" id="ent-crumbs"></div><div id="ent-body"></div></aside>');
   const drawer = document.getElementById("ent-drawer"), scrim = document.getElementById("ent-scrim"), body = document.getElementById("ent-body"), crumbs = document.getElementById("ent-crumbs");
-  let stack = [];
+  let stack = [], opener = null, background = [];
   const label = (e) => e.t === "term" ? E.terms[e.id].term : e.t === "inst" ? E.insts[e.id].name : E.topics[e.id].label;
 
   // ---- tiny line chart (no library): series = [{y, s|n}]
@@ -35,9 +35,10 @@
   }
   const bars = (rows, max, color = GREY) => rows.map(([html, n, right]) =>
     `<div class="ent-row"><span>${html}</span><span><span class="ent-bar" style="width:${Math.max(3, (n / (max || 1)) * 100)}%;background:${color}"></span></span><span class="n">${right ?? n}</span></div>`).join("");
-  const termChip = (id, extra = "") => `<span class="ent-chip" data-ent="term" data-id="${id}">${esc(E.terms[id].term)}${extra ? `<small>${extra}</small>` : ""}</span>`;
-  const instLink = (id) => `<span class="ent" data-ent="inst" data-id="${id}">${esc(E.insts[id].name)}</span>`;
-  const topicLink = (id) => `<span class="ent" data-ent="topic" data-id="${id}"><span class="ent-dot" style="background:${E.topics[id].color}"></span>${esc(E.topics[id].label)}</span>`;
+  const dialogAttrs = 'type="button" aria-haspopup="dialog" aria-controls="ent-drawer"';
+  const termChip = (id, extra = "") => `<button ${dialogAttrs} class="ent-chip" data-ent="term" data-id="${id}">${esc(E.terms[id].term)}${extra ? `<small>${extra}</small>` : ""}</button>`;
+  const instLink = (id) => `<button ${dialogAttrs} class="ent" data-ent="inst" data-id="${id}">${esc(E.insts[id].name)}</button>`;
+  const topicLink = (id) => `<button ${dialogAttrs} class="ent" data-ent="topic" data-id="${id}"><span class="ent-dot" style="background:${E.topics[id].color}" aria-hidden="true"></span>${esc(E.topics[id].label)}</button>`;
   const blk = (tag, html) => `<div class="ent-blk"><span class="ent-tag">${tag}</span>${html}</div>`;
   const paper = (i) => { const p = E.papers[i]; const link = p.d ? `<a href="https://doi.org/${esc(p.d)}" target="_blank" rel="noopener">${esc(p.t)}</a>` : esc(p.t);
     return `<div class="ent-paper">${link}<small>${p.y} · ${L(`cited ${p.c}`, `被引 ${p.c} 次`)}${p.tp != null ? " · " + esc(E.topics[p.tp].label) : ""}</small></div>`; };
@@ -45,7 +46,7 @@
 
   function renderTerm(id) {
     const t = E.terms[id];
-    return `<div class="ent-kicker">${L("Phrase", "关键词")}</div><h2>${esc(t.term)}</h2><p class="ent-meta">${L(`${t.total} matching papers · first seen ${t.first} · share`, `${t.total} 篇匹配论文 · 首次出现于 ${t.first} 年 · 占比`)} ${trend(t.early, t.late, t.delta, t.series[0].s)}</p>`
+    return `<div class="ent-kicker">${L("Phrase", "关键词")}</div><h2 id="ent-heading" tabindex="-1">${esc(t.term)}</h2><p class="ent-meta">${L(`${t.total} matching papers · first seen ${t.first} · share`, `${t.total} 篇匹配论文 · 首次出现于 ${t.first} 年 · 占比`)} ${trend(t.early, t.late, t.delta, t.series[0].s)}</p>`
       + lineSvg(t.series, "s", t.delta >= 0 ? RED : BLUE, pct)
       + blk(L("Who writes about it", "匹配论文来自哪些机构"), t.insts.length ? bars(t.insts.map(([i, n]) => [instLink(i), n]), t.insts[0][1]) : '<span class="ent-meta">' + L("No institution data.", "暂无机构数据。") + '</span>')
       + blk(L("Topics it belongs to", "相关研究主题"), t.topics.length ? bars(t.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), 1) : '<span class="ent-meta">—</span>')
@@ -55,7 +56,7 @@
   }
   function renderInst(id) {
     const i = E.insts[id];
-    return `<div class="ent-kicker">${L("Institution", "机构")}</div><h2>${esc(i.name)}</h2><p class="ent-meta">${i.total} ${L("papers · share", "篇论文 · 占比")} ${trend(i.early, i.late, i.delta, i.series[0].s)}</p>`
+    return `<div class="ent-kicker">${L("Institution", "机构")}</div><h2 id="ent-heading" tabindex="-1">${esc(i.name)}</h2><p class="ent-meta">${i.total} ${L("papers · share", "篇论文 · 占比")} ${trend(i.early, i.late, i.delta, i.series[0].s)}</p>`
       + lineSvg(i.series, "n", INK, (v) => v)
       + blk(L("Signature phrases (over-represented here)", "特色关键词（相对更常出现）"), i.terms.length ? i.terms.map(([t, lift, n]) => termChip(t, `${n} ${L("papers", "篇论文")} · ${lift}×`)).join("") : '<span class="ent-meta">' + L("Too few papers for a clear signature.", "论文太少，暂无法识别特色词。") + '</span>')
       + blk(L("Topic mix", "主题分布"), i.topics.length ? bars(i.topics.map(([k, s]) => [topicLink(k), s, pct(s, 0)]), i.topics[0][1]) : '<span class="ent-meta">—</span>')
@@ -64,7 +65,7 @@
   }
   function renderTopic(id) {
     const t = E.topics[id];
-    return `<div class="ent-kicker">${L("Topic", "主题")}</div><h2><span class="ent-dot big" style="background:${t.color}"></span>${esc(t.label)}</h2><p class="ent-meta">${t.total} ${L("papers", "篇论文")} · ${trend(t.early, t.late, t.delta, t.series[0].s)} ${L("of papers", "占比")}</p>`
+    return `<div class="ent-kicker">${L("Topic", "主题")}</div><h2 id="ent-heading" tabindex="-1"><span class="ent-dot big" style="background:${t.color}" aria-hidden="true"></span>${esc(t.label)}</h2><p class="ent-meta">${t.total} ${L("papers", "篇论文")} · ${trend(t.early, t.late, t.delta, t.series[0].s)} ${L("of papers", "占比")}</p>`
       + lineSvg(t.series, "s", t.color, pct)
       + blk(L("Key phrases", "主要关键词"), t.key_terms.length ? t.key_terms.map((k) => termChip(k)).join("") : `<span class="ent-meta">${t.terms.map(esc).join(", ")}</span>`)
       + blk(L("Main institutions", "主要机构"), t.insts.length ? bars(t.insts.map(([i, n]) => [instLink(i), n]), t.insts[0][1]) : '<span class="ent-meta">—</span>')
@@ -74,25 +75,46 @@
   // the panel is placed next to the click instead (body.embedded is set by the template).
   const embedded = document.body.classList.contains("embedded");
   let lastY = 0;
-  document.addEventListener("click", (ev) => { lastY = ev.pageY; }, true);
+  document.addEventListener("click", (ev) => {
+    // Keyboard activation has no pointer coordinates. Place embedded drawers
+    // beside the focused control rather than at the top of a tall iframe.
+    lastY = ev.detail === 0 ? ev.target.getBoundingClientRect().top + window.scrollY : ev.pageY;
+  }, true);
   function place() {
     if (!embedded) return;
     const h = Math.min(760, Math.max(420, Math.round(document.documentElement.clientWidth * 0.6)));
     const top = Math.max(0, Math.min(lastY - 80, document.documentElement.scrollHeight - h - 10));
     drawer.style.top = top + "px"; drawer.style.height = h + "px";
   }
-  function open(t, id, push = true) {
-    if (id == null || id < 0) return;
+  function open(t, id, push = true, trigger = null) {
+    const collection = ({ term: E.terms, inst: E.insts, topic: E.topics })[t];
+    if (!collection || id == null || !collection[id]) return;
+    if (!stack.length) {
+      opener = trigger || document.activeElement;
+      opener?.setAttribute("aria-expanded", "true");
+      background = [...document.body.children].filter(el => ![drawer, scrim].includes(el) && !["SCRIPT", "STYLE"].includes(el.tagName)).map(el => ({ el, inert: el.inert, hidden: el.getAttribute("aria-hidden") }));
+      background.forEach(({ el }) => { el.inert = true; el.setAttribute("aria-hidden", "true"); });
+    }
     if (push) { stack.push({ t, id }); place(); }
+    drawer.hidden = false; scrim.hidden = false;
     drawer.classList.add("open"); scrim.classList.add("open"); drawer.setAttribute("aria-hidden", "false");
-    crumbs.innerHTML = stack.map((e, i) => `<span data-i="${i}">${esc(label(e))}</span>`).join(" › ");
-    document.getElementById("ent-back").style.visibility = stack.length > 1 ? "visible" : "hidden";
+    crumbs.innerHTML = stack.map((e, i) => i === stack.length - 1 ? `<span aria-current="page">${esc(label(e))}</span>` : `<button type="button" data-i="${i}">${esc(label(e))}</button>`).join(" › ");
+    document.getElementById("ent-back").hidden = stack.length < 2;
     body.innerHTML = ({ term: renderTerm, inst: renderInst, topic: renderTopic })[t](id);
     drawer.scrollTop = 0;
+    document.getElementById("ent-heading").focus({ preventScroll: true });
   }
-  function close() { drawer.classList.remove("open"); scrim.classList.remove("open"); drawer.setAttribute("aria-hidden", "true"); stack = []; }
+  function close() {
+    if (drawer.hidden) return;
+    drawer.classList.remove("open"); scrim.classList.remove("open"); drawer.setAttribute("aria-hidden", "true");
+    drawer.hidden = true; scrim.hidden = true; stack = [];
+    background.forEach(({ el, inert, hidden }) => { el.inert = inert; if (hidden === null) el.removeAttribute("aria-hidden"); else el.setAttribute("aria-hidden", hidden); });
+    background = [];
+    if (opener?.isConnected) { opener.setAttribute("aria-expanded", "false"); opener.focus({ preventScroll: true }); }
+    opener = null;
+  }
   const byName = { term: E.term_index, inst: E.inst_index, topic: E.topic_index };
-  window.openEntity = (t, nameOrId) => open(t, typeof nameOrId === "number" ? nameOrId : byName[t][nameOrId]);
+  window.openEntity = (t, nameOrId, trigger = null) => open(t, typeof nameOrId === "number" ? nameOrId : byName[t]?.[nameOrId], true, trigger);
 
   document.addEventListener("click", (ev) => {
     const explore = ev.target.closest("[data-obs-phrase]");
@@ -107,12 +129,22 @@
       return;
     }
     const el = ev.target.closest("[data-ent]");
-    if (el) { const id = el.dataset.id != null ? +el.dataset.id : byName[el.dataset.ent][el.dataset.name]; open(el.dataset.ent, id); return; }
-    const c = ev.target.closest("#ent-crumbs span");
+    if (el) { const id = el.dataset.id != null ? +el.dataset.id : byName[el.dataset.ent]?.[el.dataset.name]; open(el.dataset.ent, id, true, el); return; }
+    const c = ev.target.closest("#ent-crumbs button");
     if (c) { stack = stack.slice(0, +c.dataset.i + 1); const e = stack[stack.length - 1]; open(e.t, e.id, false); }
   });
   document.getElementById("ent-back").onclick = () => { stack.pop(); const e = stack[stack.length - 1]; if (e) open(e.t, e.id, false); else close(); };
   document.getElementById("ent-close").onclick = close;
   scrim.onclick = close;
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  window.addEventListener("beforeprint", close);
+  document.addEventListener("keydown", (e) => {
+    if (drawer.hidden) return;
+    if (e.key === "Escape") { e.preventDefault(); close(); return; }
+    if (e.key !== "Tab") return;
+    const controls = [...drawer.querySelectorAll('a[href], button, input, select, textarea, [tabindex="0"]')].filter(el => !el.disabled && !el.hidden);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (!first) { e.preventDefault(); drawer.focus(); return; }
+    if (e.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !controls.includes(document.activeElement))) { e.preventDefault(); first.focus(); }
+  });
 })();

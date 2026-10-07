@@ -4,13 +4,40 @@ Counts and affiliations use every matching record. Only evidence examples are sa
 at most three highest-cited records per phrase, year and exclusive mention role.
 """
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from ..rank import entities_of
+from ..text import ngrams
 
 ROLES = {"title": 0, "repeated": 1, "once": 2}
 SAMPLES_PER_BUCKET = 3
 MAX_TERMS = 20
+
+
+def selected_phrase_roles(title_tokens, abstract_tokens, terms, *, n_min=2, n_max=3, stopwords):
+    """Count only requested phrases from cached tokens, using the shared role rules.
+
+    This avoids generating every possible n-gram when the user changes one query.
+    Invalid/unsupported phrases retain a zero result instead of changing the basis.
+    """
+    candidates = defaultdict(list)
+    for term in dict.fromkeys(terms):
+        words = term.split()
+        if words and term in ngrams(words, n_min, n_max, stopwords):
+            candidates[words[0]].append((term, words))
+
+    def counts(tokens):
+        found = Counter()
+        for i, token in enumerate(tokens):
+            for term, words in candidates.get(token, ()):
+                if tokens[i:i + len(words)] == words:
+                    found[term] += 1
+        return found
+
+    roles = {term: "title" for term in counts(title_tokens)}
+    for term, count in counts(abstract_tokens).items():
+        roles.setdefault(term, "repeated" if count >= 2 else "once")
+    return roles
 
 
 class ExplorerBuilder:
@@ -28,14 +55,15 @@ class ExplorerBuilder:
         self.examples = {t: defaultdict(list) for t in self.chosen}
 
     def add(self, i, roles):
+        matched = [(term, roles[term]) for term in self.chosen if term in roles]
+        if not matched:
+            return
         record = self.records[i]
         year = self.year_index[record["publication_year"]]
         institutions = entities_of(record, "institution", roll_up=True)
         topic = self.tt.assignments.get(i)
-        for term in self.chosen:
-            if term not in roles:
-                continue
-            role = ROLES[roles[term]]
+        for term, mention_role in matched:
+            role = ROLES[mention_role]
             if self.full_results:
                 self.matches[term].append([year, role, i])
             self.counts[term][year][role] += 1
@@ -49,6 +77,7 @@ class ExplorerBuilder:
             del bucket[SAMPLES_PER_BUCKET:]
 
     def finish(self):
+        abstracts = Counter(r["publication_year"] for r in self.records if r.get("abstract"))
         used = sorted({i for buckets in self.examples.values() for ids in buckets.values() for i in ids})
         index = {old: new for new, old in enumerate(used)}
         result_ids = sorted({i for matches in self.matches.values() for _, _, i in matches})
@@ -73,7 +102,7 @@ class ExplorerBuilder:
         return {
             "years": self.years,
             "papers_per_year": [self.kt.papers_per_year.get(y, 0) for y in self.years],
-            "abstracts_per_year": [sum(bool(r.get("abstract")) for r in self.records if r["publication_year"] == y) for y in self.years],
+            "abstracts_per_year": [abstracts[y] for y in self.years],
             "text_mode": self.kt.text_mode, "terms": terms, "samples_per_bucket": SAMPLES_PER_BUCKET,
             # Full evidence stores only listing metadata; abstracts stay in bounded examples.
             **({"results": [{"id": self.records[i].get("id") or "", "title": self.records[i].get("title") or "Untitled",

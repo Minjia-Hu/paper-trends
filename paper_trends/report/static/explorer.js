@@ -55,7 +55,7 @@
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const pct = value => value == null ? "—" : (value * 100).toFixed(1) + "%";
   const modes = data.text_mode === "title" ? ["title"] : ["title", "topical", "any"];
-  const colors = { title: "#1F4E79", topical: "#E3120B", any: "#8A877F" };
+  const colors = { title: "#1F4E79", topical: "#E3120B", any: "#716E67" };
   const requested = String(window.EXPLORER_TERM || "").trim().toLowerCase();
   const requestedTerm = data.terms.findIndex(t => t.key.toLowerCase() === requested || t.label.toLowerCase() === requested);
   let state = { lo: 0, hi: data.years.length - 1,
@@ -92,7 +92,7 @@
       });
     }
     data.years.forEach((year, i) => { if (data.years.length <= 12 || i % 2 === 0 || i === data.years.length-1)
-      html += `<text x="${x(i)}" y="${h-12}" text-anchor="middle" fill="${i>=state.lo && i<=state.hi ? '#1B1B1B' : '#8A877F'}">${year}</text>`; });
+      html += `<text x="${x(i)}" y="${h-12}" text-anchor="middle" fill="${i>=state.lo && i<=state.hi ? '#1B1B1B' : '#716E67'}">${year}</text>`; });
     $("chart").innerHTML = html + "</svg>";
     $("chart").setAttribute("aria-label", `${term.label}${L(", annual share: ", "，年度占比：")}` + series(data, term, state.mode).map((v, i) => `${data.years[i]} ${v == null ? L("no records", "无记录") : pct(v)}`).join("; "));
   }

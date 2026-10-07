@@ -5,7 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ r.name }} · paper-trends</title>
 <link rel="icon" type="image/svg+xml" href="{{ favicon_uri }}">
-<meta name="description" content="How {{ r.name }} changed {{ r.year_range[0] }}–{{ r.year_range[1] }}: rising and fading topics, new vocabulary, who publishes. Built from OpenAlex.">
+{% set description = ('从 OpenAlex 收录的会议论文中，了解 ' ~ r.name ~ ' 在 ' ~ r.year_range[0] ~ '–' ~ r.year_range[1] ~ ' 年的关键词、研究主题与发文机构。') if lang == 'zh' else ('Research trends in ' ~ r.name ~ ', ' ~ r.year_range[0] ~ '–' ~ r.year_range[1] ~ ': keywords, topics and publishing institutions, based on OpenAlex records.') %}
+<meta name="description" content="{{ description }}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ r.name }} · paper-trends">
+<meta property="og:description" content="{{ description }}">
+<meta property="og:site_name" content="paper-trends">
+<meta property="og:locale" content="{{ 'zh_CN' if lang == 'zh' else 'en_US' }}">
+{% if not embedded %}<link rel="alternate" hreflang="en" href="{{ r.slug }}.html">
+<link rel="alternate" hreflang="zh-CN" href="{{ r.slug }}.zh.html">
+<link rel="alternate" hreflang="x-default" href="{{ r.slug }}.html">{% endif %}
 {% if inline_css %}<style>{{ inline_css|safe }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
 <script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
@@ -78,9 +87,9 @@
   <div class="grid">
   {% for t in r.rising[:4] %}
     <figure>
-      <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
+      <p class="term"><button type="button" class="ent" data-ent="term" data-name="{{ t.term }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ t.term }}</button></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="up">{{ "%.1f"|format(t.late*100) }}%</span></p>
-      {% if t.variants %}<p class="variants">{{ _('also') }} {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+      {% if t.variants %}<p class="variants">{{ _('also') }} {% for v in t.variants %}<button type="button" class="ent" data-ent="term" data-name="{{ v }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ v }}</button>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
       <div class="viz" id="fig-rise-{{ loop.index }}"></div>
     </figure>
   {% endfor %}
@@ -90,9 +99,9 @@
   <div class="grid">
   {% for t in r.falling[:4] %}
     <figure class="fading">
-      <p class="term"><span class="ent" data-ent="term" data-name="{{ t.term }}">{{ t.term }}</span></p>
+      <p class="term"><button type="button" class="ent" data-ent="term" data-name="{{ t.term }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ t.term }}</button></p>
       <p class="move">{{ "%.1f"|format(t.early*100) }}% → <span class="down">{{ "%.1f"|format(t.late*100) }}%</span></p>
-      {% if t.variants %}<p class="variants">{{ _('also') }} {% for v in t.variants %}<span class="ent" data-ent="term" data-name="{{ v }}">{{ v }}</span>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+      {% if t.variants %}<p class="variants">{{ _('also') }} {% for v in t.variants %}<button type="button" class="ent" data-ent="term" data-name="{{ v }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ v }}</button>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
       <div class="viz" id="fig-fall-{{ loop.index }}"></div>
     </figure>
   {% endfor %}
@@ -101,6 +110,7 @@
   <p class="lede">{% if lang == 'zh' %}这些词在 {{ r.split_year }} 年前几乎未出现，后半时段的论文占比达到至少 1%。✚ 标记首次出现的年份。{% else %}Phrases that were almost absent before {{ r.split_year }} and now appear in at least one paper in a hundred. ✚ marks the first year a phrase shows up.{% endif %}</p>
   <figure style="max-width: 760px">
     <div class="viz" id="fig-emerging"></div>
+    <details class="chart-detail-links"><summary>{{ '查看关键词详情' if lang == 'zh' else 'Phrase details' }}</summary><div>{% for t in r.emerging %}<button type="button" class="ent" data-ent="term" data-name="{{ t.term }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ t.term }}</button>{% endfor %}</div></details>
   </figure>{% endif %}
   <p class="source">OpenAlex · paper-trends</p>
   {% if explore_href %}<a class="explore-cta" href="{{ explore_href }}" target="_top">{{ _('Explore trends and supporting papers →') }}</a>{% endif %}
@@ -117,11 +127,11 @@
   </figure>{% endif %}
   <ul class="topic-list">
   {% for t in r.topics[:5] %}
-    <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><b class="ent" data-ent="topic" data-name="{{ t.label }}">{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} {{ _('papers') }})</span></li>
+    <li><span class="swatch" style="background: {{ topic_colors[loop.index0] if loop.index0 < topic_colors|length else other_color }}"></span><button type="button" class="ent" data-ent="topic" data-name="{{ t.label }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ t.label }}</button> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} {{ _('papers') }})</span></li>
   {% endfor %}
   </ul>
   {% if r.topics|length > 5 %}<details class="topic-more"><summary>{{ _('Show all topics') }}</summary><ul class="topic-list">
-  {% for t in r.topics[5:] %}<li><span class="swatch" style="background: {{ topic_colors[loop.index0 + 5] if loop.index0 + 5 < topic_colors|length else other_color }}"></span><b class="ent" data-ent="topic" data-name="{{ t.label }}">{{ t.label }}</b> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} {{ _('papers') }})</span></li>{% endfor %}
+  {% for t in r.topics[5:] %}<li><span class="swatch" style="background: {{ topic_colors[loop.index0 + 5] if loop.index0 + 5 < topic_colors|length else other_color }}"></span><button type="button" class="ent" data-ent="topic" data-name="{{ t.label }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ t.label }}</button> — {{ t.terms[:6]|join(', ') }} <span style="color: var(--faint)">({{ t.papers }} {{ _('papers') }})</span></li>{% endfor %}
   </ul></details>{% endif %}
 </section>{% endif %}
 
@@ -145,6 +155,7 @@
     <figure>
       <figcaption><span class="headline">{{ _('Institutions') }}</span></figcaption>
       <div class="viz" id="fig-inst"></div>
+      {% if r.institutions %}<details class="chart-detail-links"><summary>{{ '查看机构详情' if lang == 'zh' else 'Institution details' }}</summary><div>{% for inst in r.institutions %}<button type="button" class="ent" data-ent="inst" data-name="{{ inst.name }}" aria-haspopup="dialog" aria-controls="ent-drawer">{{ inst.name }}</button>{% endfor %}</div></details>{% endif %}
     </figure>
     <figure>
       <figcaption><span class="headline">{{ _('Countries') }}</span></figcaption>
@@ -165,15 +176,12 @@
   <p>This report uses metadata for {{ r.name }} papers from {{ r.year_range[0] }} to {{ r.year_range[1] }} indexed by <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (CC0); coverage depends on its indexing. Front matter such as title pages and session overviews is removed. Phrases are word sequences taken from titles and abstracts; OpenAlex has no full text. {{ 'This report counts title mentions only because abstracts are sparse.' if r.text_mode == 'title' else 'A paper counts when the phrase is in its title or appears more than once in its abstract after acronym normalization.' }} This is a relevance heuristic, not a topic label: repeated background or application mentions can still count. Acronyms the corpus defines (“redistribution layer (RDL)”) are read as the same phrase. Fragments that almost always sit inside a longer phrase (“level packaging”) are folded into it, and the lists show one phrase per family. {% if r.n_common_hidden %}{{ r.n_common_hidden }} phrases from a reviewed boilerplate list ({{ r.common_examples|join(", ") }}…) are left out of rankings when used in three or more other fields. Cross-field technical phrases, such as deep learning, remain eligible. {% endif %}“Rising” and “fading” compare the pooled share of the first half of the period with the second.</p>
   {% endif %}
   <p>{{ _("Topics come from non-negative matrix factorisation of TF-IDF vectors with a fixed seed, so they are reproducible; labels are the topic's top terms. Institution names and parent relationships are OpenAlex's, which are good but not perfect.") }}</p>
-  <details><summary>{{ _('Coverage by year') }}</summary>
-    <table><thead><tr><th>{{ _('Year') }}</th><th class="num">{{ _('Papers') }}</th><th class="num">{{ _('With abstract') }}</th></tr></thead><tbody>
-    {% for row in r.data_coverage.rows %}<tr><td>{{ row.year }}</td><td class="num">{{ row.papers if row.papers else _("No cached records") }}</td><td class="num">{{ "%.1f%%"|format(row.coverage * 100) if row.coverage is not none else "—" }}</td></tr>{% endfor %}
-    </tbody></table>
-  </details>
+  <p><a href="#report-data" data-open-details="report-data">{{ _('Coverage by year') }} →</a></p>
   </details>
   <p style="margin-top: 20px">{% if lang == 'zh' %}由 <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a> 生成于 {{ r.generated }}。{% else %}Generated {{ r.generated }} by <a href="https://github.com/Minjia-Hu/paper-trends" target="_blank" rel="noopener">paper-trends</a>.{% endif %}</p>
 </footer>
 </main>
+<noscript><p class="page chart-fallback">{{ '启用 JavaScript 后可查看交互图表与详情。报告文字和数据说明仍可阅读。' if lang == 'zh' else 'Enable JavaScript to view interactive charts and details. Report text and data notes remain available.' }}</p></noscript>
 
 <script>
 const specs = {{ specs|tojson }};
@@ -227,7 +235,7 @@ document.addEventListener("click", (ev) => {
   const link = ev.target.closest("a.explore-cta");
   if (link && window.navigateHost(link.getAttribute("href"))) ev.preventDefault();
 });
-document.querySelectorAll('.report-jump a[href^="#"]').forEach((link) => {
+[...document.querySelectorAll('.report-jump a[href^="#"]'), ...document.querySelectorAll('#about a[data-open-details]')].forEach((link) => {
   link.addEventListener("click", (ev) => {
     const details = link.dataset.openDetails && document.getElementById(link.dataset.openDetails);
     if (details) {
@@ -244,16 +252,70 @@ document.querySelectorAll('.report-jump a[href^="#"]').forEach((link) => {
   }, true);
 });
 window.VIEWS = {};
-const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec, opts).then((res) => {
-  window.VIEWS[id] = res.view;
-  // marks of some figures open the detail panel
-  const kind = { "fig-inst": ["inst", "name"], "fig-bump": ["inst", "name"], "fig-heat": ["inst", "name"], "fig-topics": ["topic", "topic"], "fig-emerging": ["term", "term"] }[id] || null;
-  if (kind) {  // openEntity is defined by a later script, so look it up when the click happens
-    res.view.addEventListener("click", (ev, item) => { const v = item && item.datum && item.datum[kind[1]]; if (v != null && v !== "Other" && window.openEntity) window.openEntity(kind[0], v); });
-    document.getElementById(id).style.cursor = "pointer";
+// Every chart fails independently. Report copy and the detail drawer remain
+// usable offline, and local values provide a table when the CDN is unavailable.
+function chartFallback(target, spec) {
+  const zh = window.REPORT_LANG === "zh", block = document.createElement("div");
+  block.className = "chart-fallback";
+  const note = document.createElement("p");
+  note.textContent = zh ? "图表暂时无法加载，以下为对应数据。" : "The chart could not load. Its data is shown below.";
+  block.appendChild(note);
+  const datasets = [];
+  function collect(node) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node.values) && node.values.some(row => row && typeof row === "object" && !Array.isArray(row))) datasets.push(...node.values);
+    Object.entries(node).forEach(([key, value]) => { if (key !== "values") collect(value); });
   }
-  return res;
-}));
+  collect(spec);
+  const labels = zh ? { year: "年份", name: "名称", term: "关键词", topic: "主题", papers: "论文数", share: "占比" } : { year: "Year", name: "Name", term: "Phrase", topic: "Topic", papers: "Papers", share: "Share" };
+  const keys = Object.keys(labels).filter(key => datasets.some(row => row[key] != null));
+  const seen = new Set(), rows = datasets.filter(row => {
+    const key = JSON.stringify(keys.map(field => row[field]));
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+  if (keys.length && rows.length) {
+    const wrap = document.createElement("div"), table = document.createElement("table"), head = document.createElement("thead"), tr = document.createElement("tr"), body = document.createElement("tbody");
+    wrap.className = "table-wrap";
+    keys.forEach(key => { const th = document.createElement("th"); th.scope = "col"; th.textContent = labels[key]; tr.appendChild(th); });
+    head.appendChild(tr); table.appendChild(head);
+    rows.forEach(row => { const tr = document.createElement("tr"); keys.forEach(key => { const td = document.createElement("td"), value = row[key]; td.textContent = value == null ? "—" : key === "share" ? (Number(value) * 100).toFixed(1) + "%" : String(value); tr.appendChild(td); }); body.appendChild(tr); });
+    table.appendChild(body); wrap.appendChild(table); block.appendChild(wrap);
+  }
+  target.replaceChildren(block);
+  if (target.id === "fig-map") { const ctl = document.getElementById("map-ctl"); if (ctl) ctl.hidden = true; }
+}
+const jobs = Object.entries(specs).map(async ([id, spec]) => {
+  const target = document.getElementById(id);
+  if (!target) return;
+  try {
+    if (typeof window.vegaEmbed !== "function") throw new Error("Chart library unavailable");
+    let canvas = target;
+    // Long institution names, topic end labels and the year matrix need more
+    // room than a phone provides. Keep those charts at a readable width inside
+    // a scrollable region; ordinary time-series still fit their container.
+    if (["fig-inst", "fig-topics", "fig-emerging"].includes(id)) {
+      target.classList.add("chart-scroll");
+      target.tabIndex = 0; target.setAttribute("role", "region");
+      const zh = window.REPORT_LANG === "zh";
+      const label = { "fig-inst": {{ _('Institutions')|tojson }}, "fig-topics": {{ _('Share of papers by dominant topic')|tojson }}, "fig-emerging": {{ _('New vocabulary')|tojson }} }[id];
+      target.dataset.scrollLabel = zh ? "左右滑动查看完整图表" : "Scroll sideways to view the full chart";
+      target.setAttribute("aria-label", label + (zh ? "；小屏幕可左右滚动" : "; scroll horizontally on a small screen"));
+      canvas = document.createElement("div"); canvas.className = "chart-canvas";
+      target.appendChild(canvas);
+    }
+    const res = await window.vegaEmbed(canvas, spec, opts);
+    window.VIEWS[id] = res.view;
+    const kind = { "fig-inst": ["inst", "name"], "fig-topics": ["topic", "topic"], "fig-emerging": ["term", "term"] }[id];
+    if (kind) {
+      if (!target.classList.contains("chart-scroll")) target.tabIndex = -1;
+      res.view.addEventListener("click", (ev, item) => { const value = item?.datum?.[kind[1]]; if (value != null && value !== "Other") window.openEntity?.(kind[0], value, target); });
+      target.style.cursor = "pointer";
+    }
+    return res;
+  } catch (_) { chartFallback(target, spec); }
+});
+window.REPORT_CHARTS_READY = Promise.all(jobs);
 // the map's year control: 0 = the whole period, otherwise a three-year rolling view
 (function () {
   const ctl = document.getElementById("map-ctl");
@@ -269,7 +331,10 @@ const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec,
     if (y) { range.value = y; yearEl.textContent = y; }
     line.textContent = lines[String(y)] || "";
     const view = window.VIEWS["fig-map"];
-    if (view) view.signal("year", y).runAsync();
+    if (view) view.signal("year", y).runAsync().catch(() => {
+      chartFallback(document.getElementById("fig-map"), specs["fig-map"]);
+      stop();
+    });
   }
   range.addEventListener("input", () => { stop(); set(+range.value); });
   all.addEventListener("click", (ev) => { ev.preventDefault(); stop(); set(0); });
@@ -283,5 +348,6 @@ const jobs = Object.entries(specs).map(([id, spec]) => vegaEmbed("#" + id, spec,
 })();
 </script>
 <script>{{ entities_js|safe }}</script>
+{% include "print.html.j2" %}
 </body>
 </html>

@@ -52,3 +52,17 @@ def test_coverage_explains_abstract_gaps_without_treating_them_as_empty_editions
     assert any("not evidence of zero research output" in note for note in details["notices"])
     sparse = coverage_details(corpus({2020: 100, 2021: 100}, .2), (2020, 2021))
     assert any("titles only" in note and "topic analysis" in note for note in sparse["notices"])
+
+
+def test_coverage_decision_uses_the_requested_calendar_year():
+    records = corpus({2024: 10, 2025: 10})
+    details = coverage_details(records, (2024, 2025), current_year=2025)
+    assert details["exclusions"][0]["year"] == 2025
+    assert "Recommended default: 2024–2024" in details["selection"]
+
+
+def test_unresolved_parent_affiliations_remain_visible_in_data_notes():
+    records = corpus({2024: 1})
+    records[0]["authorships"] = [{"institutions": [{"id": "I1", "name": "Lab", "root_resolution": "unresolved"}]}]
+    details = coverage_details(records, (2024, 2024))
+    assert any("original affiliations" in notice for notice in details["notices"])

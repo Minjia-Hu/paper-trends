@@ -22,77 +22,15 @@ from paper_trends.fetch import coverage_table, fetch_conference, resolve_venue
 from paper_trends.keywords import compute_trends
 from paper_trends.openalex import OpenAlex, OpenAlexError
 from paper_trends.rank import ENTITIES, compute_ranking
-from paper_trends.report.build import build_report, country_name, inst_rank_rows, inst_topic_rows
+from paper_trends.report.analysis import analyze_corpus, analysis_version
+from paper_trends.report.build import build_explorer_data, build_report, country_name, inst_rank_rows, inst_topic_rows
 from paper_trends.report.render import FULL, SHORT, TAGLINE, asset_version as report_asset_version, nav_for, render_explorer_page, render_page
 from paper_trends.store import filter_years, metadata_path, provenance_label, read_jsonl, read_provenance, write_jsonl
 from paper_trends.text import load_stopwords
 from paper_trends.topics import InsufficientTopicData, compute_nmf, compute_openalex
 
 DATA_DIR = Path("data")
-PRESETS = {
-    # ---- semiconductor & microelectronics ---------------------------------------------
-    "Packaging & integration · ECTC — Electronic Components and Technology Conference": {
-        "query": "Electronic Components and Technology Conference", "doi_prefixes": ["10.1109/ectc"], "slug": "ectc",
-    },
-    "Packaging & integration · EPTC — Electronics Packaging Technology Conference": {
-        "query": "Electronics Packaging Technology Conference", "doi_prefixes": ["10.1109/eptc"], "slug": "eptc",
-    },
-    "Packaging & integration · ICEPT — International Conference on Electronic Packaging Technology": {
-        "query": "International Conference on Electronic Packaging Technology", "doi_prefixes": ["10.1109/icept"], "slug": "icept",
-    },
-    "Thermal management & multiphysics · ITherm — Thermal and Thermomechanical Phenomena in Electronic Systems": {
-        "query": "Thermal and Thermomechanical Phenomena in Electronic Systems", "doi_prefixes": ["10.1109/itherm"], "slug": "itherm",
-    },
-    "Reliability · IRPS — International Reliability Physics Symposium": {
-        "query": "International Reliability Physics Symposium", "doi_prefixes": ["10.1109/irps"], "slug": "irps",
-    },
-    "Thermal management & multiphysics · EuroSimE — Thermal, Mechanical and Multi-Physics Simulation in Microelectronics": {
-        "query": "Thermal, Mechanical and Multi-Physics Simulation and Experiments in Microelectronics and Microsystems",
-        "doi_prefixes": ["10.1109/eurosime"], "slug": "eurosime",
-    },
-    # ---- devices and circuits ----------------------------------------------------------
-    "Devices & circuits · IEDM — International Electron Devices Meeting": {
-        "query": "International Electron Devices Meeting", "doi_prefixes": ["10.1109/iedm"], "slug": "iedm",
-    },
-    "Devices & circuits · ISSCC — International Solid-State Circuits Conference": {
-        "query": "International Solid-State Circuits Conference", "doi_prefixes": ["10.1109/isscc"], "slug": "isscc",
-    },
-    "Devices & circuits · VLSI Symposium — Symposium on VLSI Technology and Circuits": {
-        "query": "Symposium on VLSI Technology and Circuits",
-        # the DOI prefix changed almost every year (IEEE / JSAP alternate as publisher)
-        "doi_prefixes": [f"{reg}/{acr}" for reg in ("10.1109", "10.23919")
-                         for acr in ("vlsit", "vlsic", "vlsitechnology", "vlsicircuits", "vlsitechnologyandcir")],
-        "slug": "vlsi",
-    },
-    "Devices & circuits · IMW — International Memory Workshop": {
-        "query": "International Memory Workshop", "doi_prefixes": ["10.1109/imw"], "slug": "imw",
-    },
-    # ---- broader research communities: curated examples, not an exhaustive directory ---
-    "Computer vision · CVPR — Conference on Computer Vision and Pattern Recognition": {
-        "query": "Conference on Computer Vision and Pattern Recognition", "doi_prefixes": ["10.1109/cvpr"], "slug": "cvpr",
-    },
-    "Speech technology · Interspeech — Conference of the International Speech Communication Association": {
-        "query": "Interspeech", "doi_prefixes": ["10.21437/interspeech"], "slug": "interspeech",
-    },
-    "Robotics · ICRA — International Conference on Robotics and Automation": {
-        "query": "International Conference on Robotics and Automation", "doi_prefixes": ["10.1109/icra"], "slug": "icra",
-    },
-    "Signal processing · ICASSP — International Conference on Acoustics, Speech and Signal Processing": {
-        "query": "International Conference on Acoustics Speech and Signal Processing", "doi_prefixes": ["10.1109/icassp"], "slug": "icassp",
-    },
-    "Biomedical engineering · EMBC — Engineering in Medicine and Biology Society": {
-        "query": "Annual International Conference of the IEEE Engineering in Medicine and Biology Society", "doi_prefixes": ["10.1109/embc"], "slug": "embc",
-    },
-    "Information security · IEEE S&P — Symposium on Security and Privacy": {
-        "query": "Symposium on Security and Privacy", "doi_prefixes": ["10.1109/sp"], "slug": "sp", "aliases": ["S&P", "IEEE SP"],
-    },
-    "Communications & networking · GLOBECOM — Global Communications Conference": {
-        "query": "Global Communications Conference", "doi_prefixes": ["10.1109/glocom", "10.1109/globecom"], "slug": "globecom",
-    },
-    "Communications & networking · INFOCOM — Conference on Computer Communications": {
-        "query": "Conference on Computer Communications", "doi_prefixes": ["10.1109/infocom"], "slug": "infocom",
-    },
-}
+from paper_trends.presets import PRESETS
 FETCH_YEARS = (2016, 2026)
 
 st.set_page_config(page_title="paper-trends", page_icon=str(FAVICON), layout="wide", initial_sidebar_state="collapsed")
@@ -103,214 +41,9 @@ def t(text: str, **values) -> str:
     return tr(text, LANG, **values)
 
 
-st.markdown(
-    """<style>
-    @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-    #MainMenu, [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
-    header[data-testid="stHeader"] { background: transparent; height: 2.6rem; pointer-events: none; }
-    [data-testid="stToolbar"] { pointer-events: none; }
-    .block-container { padding-top: 0.2rem; padding-bottom: 0; max-width: 1240px; }
-    iframe[title="st.iframe"] { display: block; }
-    /* masthead rendered by Streamlit (outside the iframe, so links can change the query string) */
-    .pt-masthead { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; padding: 10px 24px 12px; margin: 0; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-masthead .brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 20px; font-weight: 500; line-height: 1; color: #1B1B1B; text-decoration: none; letter-spacing: -0.01em; white-space: nowrap; }
-    .pt-masthead .brand-mark { display: block; width: 28px; height: 28px; flex-shrink: 0; }
-    .pt-masthead .tagline { font-size: 13.5px; color: #5C5C5C; }
-    .pt-masthead .all { margin-left: auto; font-size: 13.5px; color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
-    .pt-masthead .all:hover { color: #E3120B; border-color: #E3120B; }
-    [data-testid="stExpandSidebarButton"] { display: none !important; }
-    .st-key-controls_search { padding: 10px 24px 0; }
-    .st-key-controls_row { padding: 6px 24px 0; }
-    /* search box: white, hairline border, red underline on focus */
-    .st-key-controls_search div[data-baseweb="input"], .st-key-controls_search div[data-baseweb="input"] > div, .st-key-controls_search div[data-baseweb="base-input"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; }
-    .st-key-controls_search div[data-baseweb="input"]:focus-within { border-color: #1B1B1B !important; box-shadow: none !important; }
-    .st-key-controls_search input { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 14.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
-    /* buttons: ink, square corners, quiet */
-    .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13.5px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; box-shadow: none !important; }
-    .st-key-fetch_btn button, .st-key-fetch_prefix_btn button { background: #1B1B1B !important; color: #FFFFFF !important; border-color: #1B1B1B !important; padding: 6px 18px !important; letter-spacing: 0.02em; }
-    .st-key-fetch_btn button:hover, .st-key-fetch_prefix_btn button:hover { background: #E3120B !important; border-color: #E3120B !important; }
-    /* compact editorial toolbar: each label owns one clearly separated group */
-    .pt-controls { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 13.5px; color: #5C5C5C; margin: 14px 24px 0; padding: 0 0 13px; display: grid; grid-template-columns: max-content max-content 1fr; align-items: end; gap: 28px; border-bottom: 1px solid #E6E3DC; }
-    .pt-control-group { display: grid; gap: 6px; }
-    .pt-controls .lbl { font-size: 10px; line-height: 1; letter-spacing: 0.14em; text-transform: uppercase; color: #8A877F; }
-    .pt-control-links { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; }
-    .pt-control-actions { justify-self: end; }
-    .pt-controls a { color: #5C5C5C; text-decoration: none; padding-bottom: 3px; border-bottom: 2px solid transparent; white-space: nowrap; }
-    .pt-controls a:hover { color: #E3120B; }
-    .pt-controls a.current { color: #E3120B; border-bottom-color: #E3120B; }
-    .st-key-custom_period { padding: 4px 24px 0; max-width: 520px; }
-    .st-key-options_form { margin: 10px 24px 0; padding: 12px 18px 6px; border: 1px solid #E6E3DC; border-radius: 2px; background: #FFFFFF; }
-    .pt-options-head { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8A877F; margin-bottom: 4px; }
-    .pt-options-head a { color: #E3120B; text-decoration: none; margin-left: 12px; text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .st-key-options_form label p, .st-key-options_form label { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13px !important; color: #5C5C5C !important; }
-    .st-key-options_form div[data-baseweb="input"], .st-key-options_form div[data-baseweb="input"] > div, .st-key-options_form div[data-baseweb="base-input"], .st-key-options_form div[data-baseweb="textarea"], .st-key-options_form textarea { background-color: #FCFBF8 !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 14px !important; }
-    .st-key-refresh_btn button { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; }
-    .st-key-refresh_btn button:hover { border-color: #1B1B1B !important; }
-    /* Reserve the report surface while its first analysis is being built. */
-    .st-key-report_loading { margin: 0 24px; padding: 30px 0 0; }
-    .pt-report-loading { padding: 0 0 18px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-report-loading .kicker { margin: 0 0 9px; color: #E3120B; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
-    .pt-report-loading h2 { margin: 0 0 8px !important; padding: 0 !important; color: #1B1B1B; font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; font-size: 30px !important; font-weight: 500 !important; line-height: 1.1; }
-    .pt-report-loading p { max-width: 68ch; margin: 0; color: #5C5C5C; font-size: 14px; line-height: 1.6; }
-    /* Keep the explorer responsive while its embedded analysis is assembled. */
-    .st-key-explore_loading { margin: 8px 24px 0; }
-    .pt-explore-loading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 14px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-explore-loading .kicker { color: #E3120B; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-    .pt-explore-loading p { margin: 0; color: #5C5C5C; font-size: 13.5px; line-height: 1.5; }
-    /* explore view header: the report's hierarchy, with an interactive workbench below */
-    .pt-head { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 0 24px; padding: 30px 0 18px; border-bottom: 1px solid #1B1B1B; }
-    .pt-head-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 36px; }
-    .pt-head-identity { min-width: 0; }
-    .pt-head .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 10px; }
-    .pt-head h1 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 12px; max-width: 18ch; color: #1B1B1B; padding: 0; overflow-wrap: anywhere; }
-    .pt-head .full-name { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; color: #5C5C5C; font-size: 21px; line-height: 1.25; margin: -3px 0 0; max-width: 40ch; }
-    .pt-head-stats { display: grid; grid-template-columns: repeat(3, minmax(92px, auto)); border-top: 1px solid #E6E3DC; }
-    .pt-head-stats > span { display: grid; align-content: start; gap: 2px; padding: 11px 18px 2px; border-left: 1px solid #E6E3DC; }
-    .pt-head-stats > span:first-child { padding-left: 0; border-left: 0; }
-    .pt-head-stats b { color: #1B1B1B; font: 500 22px/1 Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; }
-    .pt-head-stats small { color: #5C5C5C; font: 12px/1.35 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; white-space: nowrap; }
-    .pt-head-provenance { display: flex; gap: 8px 24px; flex-wrap: wrap; margin-top: 20px; padding-top: 10px; border-top: 1px solid #E6E3DC; color: #8A877F; font-size: 12px; }
-    .pt-head-provenance a { color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #C9C6BE; }
-    .pt-head-provenance a:hover { color: #E3120B; border-bottom-color: #E3120B; }
-    .st-key-explore_context { box-sizing: border-box; padding: 0 24px; }
-    .pt-coverage-notice { margin: 10px 0 0; color: #5C5C5C; font: 12.5px/1.55 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-coverage-panel { padding: 18px 0 20px; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-coverage-panel h2 { margin: 0 0 6px !important; padding: 0 !important; color: #1B1B1B; font: 500 20px/1.25 Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; }
-    .pt-coverage-panel .caveat { margin: 0 0 14px; color: #5C5C5C; font-size: 13px; line-height: 1.55; }
-    .pt-coverage-panel .exclusion { margin: 0 0 8px; color: #5C5C5C; font-size: 12.5px; line-height: 1.5; }
-    .pt-coverage-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-    .pt-coverage-table th { padding: 8px 10px; border-top: 1px solid #1B1B1B; border-bottom: 1px solid #E6E3DC; color: #8A877F; font-weight: 500; text-align: right; }
-    .pt-coverage-table td { padding: 8px 10px; border-bottom: 1px solid #EEECE6; color: #3D3D3D; text-align: right; }
-    .pt-coverage-table th:first-child, .pt-coverage-table td:first-child { padding-left: 0; text-align: left; }
-    /* Phrase search is an editorial tool row rather than a boxed Streamlit form. */
-    .st-key-phrase_tool { margin: 0; padding: 0 0 18px !important; border-bottom: 1px solid #E6E3DC; }
-    .st-key-phrase_tool [data-testid="stForm"] { padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; }
-    .pt-phrase-label { margin: 0 0 8px; color: #E3120B; font: 600 11px/1 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
-    .st-key-phrase_tool div[data-baseweb="input"], .st-key-phrase_tool div[data-baseweb="input"] > div, .st-key-phrase_tool div[data-baseweb="base-input"] { min-height: 40px; background: #FFFFFF !important; border-color: #D8D5CE !important; border-radius: 2px !important; box-shadow: none !important; }
-    .st-key-phrase_tool div[data-baseweb="input"]:focus-within { border-color: #1B1B1B !important; }
-    .st-key-phrase_tool input { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13.5px !important; color: #1B1B1B !important; background: #FFFFFF !important; }
-    .st-key-phrase_submit button { min-height: 40px; border: 1px solid #1B1B1B !important; border-radius: 2px !important; background: #1B1B1B !important; color: #FFFFFF !important; box-shadow: none !important; font: 500 13px/1 "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; }
-    .st-key-phrase_submit button:hover { border-color: #E3120B !important; background: #E3120B !important; color: #FFFFFF !important; }
-    /* Explore tasks are page navigation, not another copy of the global toolbar. */
-    .pt-sections { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px 24px; margin: 12px 24px 0; padding: 10px 0; border-top: 1px solid #E6E3DC; border-bottom: 1px solid #E6E3DC; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 13.5px; }
-    .pt-sections a { color: #5C5C5C; text-decoration: none; padding-bottom: 3px; border-bottom: 2px solid transparent; white-space: nowrap; }
-    .pt-sections a:hover { color: #E3120B; }
-    .pt-sections a.current { color: #E3120B; border-bottom-color: #E3120B; }
-    .pt-h2 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; font-weight: 500 !important; font-size: 26px !important; letter-spacing: -0.01em; margin: 26px 0 4px !important; padding: 0 !important; color: #1B1B1B; }
-    .pt-subhead { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif !important; font-size: 21px !important; font-weight: 500 !important; margin: 14px 0 5px !important; }
-    .block-container [data-testid="stMarkdownContainer"] p.pt-lede { font-family: var(--pt-sans); color: #5C5C5C; font-size: 14px; line-height: 1.65; max-width: 72ch; margin: 0 0 12px; }
-    /* One content measure for every Explore task, including native controls. */
-    :root { --pt-sans: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; --pt-serif: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; }
-    .st-key-explore_body { box-sizing: border-box; padding: 0 24px 24px; min-width: 0; font-family: var(--pt-sans); }
-    .pt-section-head { margin: 22px 0 8px; }
-    .pt-section-head .pt-h2 { margin: 0 0 6px !important; font-family: var(--pt-serif) !important; line-height: 1.3; }
-    .pt-section-head p.pt-lede { margin-bottom: 0 !important; }
-    .st-key-explore_controls { padding: 0 0 16px; border-bottom: 1px solid #E6E3DC; }
-    .st-key-explore_controls [data-testid="stToggle"] { min-height: 40px; display: flex; align-items: center; }
-    .pt-control-label { margin: 0 0 8px; font: 400 12.5px/20px var(--pt-sans); color: #5C5C5C; }
-    .st-key-explore_body [data-testid="stSelectbox"], .st-key-explore_body [data-testid="stMultiSelect"], .st-key-explore_body input, .st-key-explore_body button, .st-key-explore_body [data-testid="stMultiSelectTagsContainer"] { font-family: var(--pt-sans) !important; }
-    .st-key-explore_body [data-testid="stMultiSelectTagsContainer"] span[data-tag] { font-size: 13px !important; line-height: 1.5; font-family: var(--pt-sans) !important; }
-    .st-key-explore_body [data-testid="stWidgetLabel"] p { font-size: 12.5px !important; line-height: 20px; }
-    .st-key-explore_body [data-testid="stMarkdownContainer"] p.pt-method-note { font: 400 12.5px/1.65 var(--pt-sans); color: #77746D; margin: 0 0 10px; max-width: 88ch; }
-    .pt-method-note b { font-weight: 500; color: #5C5C5C; margin-right: 10px; }
-    .st-key-explore_body .pt-h2, .st-key-explore_body .pt-fig .headline { font-family: var(--pt-serif) !important; }
-    .st-key-explore_body .pt-fig { margin-top: 16px; }
-    .st-key-explore_body .pt-fig .sub { font-size: 13px; line-height: 1.6; }
-    .st-key-explore_body [data-testid="stExpander"] { border-radius: 2px; border-color: #E6E3DC; }
-    .st-key-explore_body .st-key-explore_loading { margin: 0; }
-    @media (max-width: 700px) {
-        .st-key-explore_body { padding-left: 16px; padding-right: 16px; }
-        .st-key-explore_body .st-key-phrase_tool, .st-key-explore_body .st-key-explore_loading { margin-left: 0; margin-right: 0; }
-        .pt-section-head { margin-top: 18px; }
-    }
-    .block-container [data-testid="stMarkdownContainer"] p { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    /* explore widgets: quiet */
-    .block-container label p, .block-container label { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 12.5px !important; color: #5C5C5C !important; }
-    .block-container div[data-baseweb="select"] > div, .block-container div[data-baseweb="input"] > div, .block-container div[data-baseweb="textarea"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 14px !important; }
-    .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
-    .block-container [data-testid="stToggle"] label p { font-size: 13px !important; }
-    .block-container [data-testid="stSlider"] { padding-top: 4px; }
-    /* figures in Explore, same anatomy as the report */
-    .pt-fig { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 6px; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-fig .headline { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 19px; font-weight: 500; line-height: 1.25; color: #1B1B1B; }
-    .pt-fig .sub { color: #5C5C5C; font-size: 13.5px; }
-    .pt-source { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #8A877F; font-size: 12.5px; margin: 2px 0 14px; }
-    .pt-sm { border-top: 2px solid #1B1B1B; padding-top: 6px; margin-top: 10px; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
-    .pt-sm .term { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 17px; font-weight: 500; line-height: 1.2; margin: 0 0 2px; color: #1B1B1B; }
-    .pt-sm .move { font-size: 12.5px; color: #5C5C5C; margin: 0; }
-    [data-testid="stVegaLiteChart"] { margin-top: -6px; }
-    /* tables in the report's style */
-    .pt-table-wrap { overflow-x: auto; margin: 4px 0 6px; }
-    .pt-table { border-collapse: collapse; width: 100%; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 13.5px; font-variant-numeric: tabular-nums; color: #1B1B1B; }
-    .pt-table th { text-align: left; font-weight: 500; color: #5C5C5C; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 12px 6px 0; border-bottom: 1px solid #1B1B1B; white-space: nowrap; }
-    .pt-table td { padding: 7px 12px 7px 0; border-bottom: 1px solid #E6E3DC; vertical-align: top; }
-    .pt-table th.num, .pt-table td.num { text-align: right; }
-    .pt-table td a { color: #1B1B1B; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
-    .pt-table td a:hover { border-bottom-color: #E3120B; }
-    .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; background: #F3F1EC; padding: 1px 6px; border-radius: 2px; }
-    /* selects, chips, sliders: quiet (Streamlit >= 1.6x uses react-aria widgets, hence data-rac) */
-    .block-container [data-testid="stSelectbox"] > div[data-rac] > div, .block-container [data-testid="stMultiSelect"] > div[data-rac] > div,
-    .block-container [data-testid="stSelectbox"] [role="combobox"], .block-container [data-testid="stMultiSelect"] [role="combobox"] { background-color: #FFFFFF !important; border-color: #E6E3DC !important; border-radius: 2px !important; box-shadow: none !important; }
-    .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] { background-color: #F3F1EC !important; color: #1B1B1B !important; border-radius: 2px !important; border: 1px solid #E6E3DC; }
-    .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] span, .block-container [data-testid="stMultiSelectTagsContainer"] span[data-tag] button { color: #1B1B1B !important; }
-    .block-container [data-testid="stSliderThumbValue"] p { color: #1B1B1B !important; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 12px !important; }
-    .block-container [data-testid="stSliderTickBar"] p { color: #8A877F !important; font-size: 11px !important; }
-    .st-key-dl_results button, .st-key-dl_corpus button, .st-key-dl_keywords button, .st-key-dl_institutions button { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif !important; font-size: 13px !important; border-radius: 2px !important; border: 1px solid #E6E3DC !important; background: #FFFFFF !important; color: #1B1B1B !important; width: 100%; }
-    .st-key-dl_results button:hover, .st-key-dl_corpus button:hover, .st-key-dl_keywords button:hover, .st-key-dl_institutions button:hover { border-color: #1B1B1B !important; }
-    .block-container [data-testid="stDataFrame"] { border: 1px solid #E6E3DC; border-radius: 2px; }
-    /* resolution card */
-    .pt-found { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 14px 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid #E3120B; max-width: 820px; }
-    .pt-found .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin-bottom: 4px; }
-    .pt-found .name { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 26px; font-weight: 500; line-height: 1.15; color: #1B1B1B; letter-spacing: -0.01em; }
-    .pt-found .meta { color: #5C5C5C; font-size: 14px; margin-top: 6px; }
-    .pt-found .warn { color: #1B1B1B; font-size: 14px; margin-top: 8px; }
-    .pt-found .warn b { color: #E3120B; }
-    .st-key-fetch_row { padding: 10px 24px 4px 45px; }
-    .pt-note { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #5C5C5C; font-size: 14px; padding: 4px 24px 0; }
-    /* home page, rendered by Streamlit so its links can change the query string */
-    .pt-home { font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: #1B1B1B; padding: 8px 24px 40px; max-width: 1120px; }
-    .pt-home .kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #E3120B; font-weight: 600; margin: 12px 0 14px; }
-    .pt-home h1 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 18px; max-width: 18ch; color: #1B1B1B; }
-    .pt-home .lede { color: #5C5C5C; font-size: 16px; max-width: 66ch; margin: 0 0 16px; }
-    .pt-home h2 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-weight: 500; font-size: 30px; letter-spacing: -0.01em; margin: 44px 0 8px; color: #1B1B1B; }
-    .pt-home .collection-note { max-width: 78ch; margin: 0 0 2px; color: #8A877F; font-size: 13px; }
-    .pt-home .domain-jump { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 18px 0 4px; font-size: 13px; }
-    .pt-home .domain-jump a { color: #5C5C5C; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
-    .pt-home .domain-jump a:hover { color: #E3120B; border-bottom-color: #E3120B; }
-    .pt-home .domains { max-width: 1120px; }
-    .pt-home .domain-section { padding: 28px 0 12px; border-top: 1px solid #E6E3DC; }
-    .pt-home .domain-section h2 { font-size: 31px; margin: 0 0 18px; padding: 0; }
-    .pt-home .directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
-    .pt-home .direction h3 { font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; color: #1B1B1B; }
-    .pt-language { display: inline-flex; gap: 12px; white-space: nowrap; font-size: 13px; margin-left: auto; }
-    .pt-language a { color: #5C5C5C; text-decoration: none; padding: 5px 0; }
-    .pt-language a.current { color: #E3120B; border-bottom: 2px solid #E3120B; }
-    .pt-home:lang(zh) h1 { font-family: "Songti SC", "Noto Serif CJK SC", serif; line-height: 1.35; max-width: 18em; }
-    @media (max-width: 900px) { .pt-head-grid { grid-template-columns: 1fr; gap: 22px; } .pt-head-stats { width: min(100%, 430px); } }
-    @media (max-width: 700px) { .pt-masthead { gap: 12px; flex-wrap: wrap; } .pt-masthead .tagline { display: none; } .pt-controls { grid-template-columns: 1fr auto; gap: 16px 22px; } .pt-control-group:first-child { grid-column: 1 / -1; } .pt-control-actions { align-self: end; } .st-key-report_loading { margin-left: 16px; margin-right: 16px; padding-top: 22px; } .st-key-explore_loading { margin-left: 16px; margin-right: 16px; } .pt-head { margin: 0 16px; padding-top: 22px; } .pt-head-stats { grid-template-columns: repeat(3, 1fr); width: 100%; } .pt-head-stats > span { min-width: 0; padding: 10px 9px 0; } .pt-head-stats b { font-size: 19px; } .pt-head-stats small { white-space: normal; } .pt-head-provenance { display: grid; gap: 4px; } .st-key-explore_context { padding-left: 16px; padding-right: 16px; } .pt-sections { margin-left: 16px; margin-right: 16px; gap: 7px 18px; } .pt-home .directions { grid-template-columns: 1fr; gap: 28px; } .pt-home .domain-section { padding-top: 30px; } .pt-home .domain-section > h2 { font-size: 27px; } }
-    .pt-home ul { list-style: none; margin: 0; padding: 0; font-family: Newsreader, Georgia, "Songti SC", "Noto Serif CJK SC", serif; font-size: 20px; line-height: 1.4; }
-    @media (max-width: 700px) {
-      .pt-masthead { column-gap: 10px; padding-left: 16px; padding-right: 16px; }
-      .pt-masthead .brand { gap: 7px; font-size: 18px; }
-      .pt-masthead .brand-mark { width: 24px; height: 24px; }
-      .pt-masthead .all { font-size: 12px; }
-      .pt-home .domain-section h2 { font-size: 27px; }
-    }
-    .pt-home li { padding: 14px 0; border-bottom: 1px solid #E6E3DC; }
-    .pt-home li:first-child { border-top: 1px solid #E6E3DC; }
-    .pt-home li a { color: #1B1B1B; text-decoration: none; border-bottom: 1px solid #E6E3DC; }
-    .pt-home li a:hover { border-bottom-color: #E3120B; }
-    .pt-home li a em { font-style: normal; color: #E3120B; font-weight: 600; }
-    .pt-home li .n { color: #8A877F; font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 14px; margin-left: 8px; }
-    .pt-home p { font-size: 16px; color: #5C5C5C; max-width: 66ch; }
-    .pt-home .collection-footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #E6E3DC; }
-    .pt-home .collection-footer p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.65; color: #8A877F; max-width: 78ch; }
-    .pt-home .collection-footer a { color: #5C5C5C; border-bottom: 1px solid #E6E3DC; }
-    .pt-home .collection-footer summary { cursor: pointer; color: #5C5C5C; font-size: 12.5px; }
-    .pt-home .collection-footer details[open] p { margin-top: 10px; }
-    </style>""",
-    unsafe_allow_html=True,
-)
+_STATIC = Path(__file__).resolve().parent / "paper_trends" / "report" / "static"
+st.html("<style>" + (_STATIC / "report.css").read_text(encoding="utf-8")
+        + (_STATIC / "app.css").read_text(encoding="utf-8") + "</style>")
 
 
 def home_page(available: dict[str, dict]) -> str:
@@ -379,7 +112,7 @@ def corpus_path(slug: str) -> Path:
     return DATA_DIR / f"{slug}.jsonl"
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=8)
 def load_records(path: str, mtime: float) -> list[dict]:
     return read_jsonl(Path(path))
 
@@ -440,9 +173,9 @@ def run_fetch(query: str, doi_prefixes: list[str], slug: str) -> None:
 # ---- cached analyses ---------------------------------------------------------------
 
 
-@st.cache_data(show_spinner=t("Counting keywords…"))
-def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, ngram: tuple[int, int], extra_stop: str,
-                    basis: str = "topical", keep_common: bool = False):
+@st.cache_data(show_spinner=t("Counting keywords…"), max_entries=12)
+def _cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, ngram: tuple[int, int], extra_stop: str,
+                     basis: str, keep_common: bool, revision: tuple[tuple[str, int], ...]):
     """Count phrases with reviewed boilerplate and case-aware plurals (revision 5)."""
     recs = filter_years(load_records(path, mtime), years)
     stop = load_stopwords(extra_stop.split())
@@ -450,57 +183,81 @@ def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, 
                           field=field_of(Path(path).stem), keep_common=keep_common)
 
 
-@st.cache_data(show_spinner=t("Fitting topic model…"))
-def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, n_topics: int, extra_stop: str):
+def cached_keywords(path: str, mtime: float, years: tuple[int, int], text: str, ngram: tuple[int, int], extra_stop: str,
+                    basis: str = "topical", keep_common: bool = False):
+    return _cached_keywords(path, mtime, years, text, ngram, extra_stop, basis, keep_common, analysis_version())
+
+
+@st.cache_data(show_spinner=t("Fitting topic model…"), max_entries=8)
+def _cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, n_topics: int, extra_stop: str,
+                   revision: tuple[tuple[str, int], ...]):
     recs = filter_years(load_records(path, mtime), years)
     if method == "nmf":
         return compute_nmf(recs, n_topics=n_topics, stopwords=load_stopwords(extra_stop.split()))
     return compute_openalex(recs, level="subfield" if method.endswith("subfield") else "topic")
 
 
-@st.cache_data(show_spinner=t("Looking the conference up in OpenAlex…"), ttl=3600)
+def cached_topics(path: str, mtime: float, years: tuple[int, int], method: str, n_topics: int, extra_stop: str):
+    return _cached_topics(path, mtime, years, method, n_topics, extra_stop, analysis_version())
+
+
+@st.cache_data(show_spinner=t("Looking the conference up in OpenAlex…"), ttl=3600, max_entries=128)
 def cached_resolve(text: str) -> dict | None:
     """Use conservative short-name and DOI-prefix matching (resolver revision 2)."""
-    try:
-        return resolve_venue(OpenAlex(), text)
-    except OpenAlexError as e:
-        return {"error": str(e)}
+    return resolve_venue(OpenAlex(), text)
 
 
-@st.cache_data(show_spinner=t("Writing the report…"))
+@st.cache_resource(show_spinner=False, max_entries=4)
+def cached_analysis(path: str, mtime: float, years: tuple[int, int], slug: str, extra_stop: str,
+                    revision: tuple[tuple[str, int], ...]):
+    """Share a read-only fitted analysis, avoiding copies of large tokenized corpora."""
+    return analyze_corpus(filter_years(load_records(path, mtime), years), slug=slug,
+                          stopwords=load_stopwords(extra_stop.split()))
+
+
+@st.cache_data(show_spinner=False, max_entries=16)
 def cached_report_data(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
                        provenance: dict | None = None, default_span: int | None = None,
-                       calendar_year: int | None = None, explore_term: str = "", explorer_full: bool = False) -> dict:
+                       calendar_year: int | None = None,
+                       revision: tuple[tuple[str, int], ...] = ()) -> dict:
     """Share the same analysis between languages (report data revision 1)."""
     recs = load_records(path, mtime)
     return build_report(recs, name=name, slug=slug, years=years, stopwords=load_stopwords(extra_stop.split()),
-                     provenance=provenance, default_span=default_span, explore_term=explore_term, explorer_full=explorer_full)
+                         provenance=provenance, default_span=default_span, current_year=calendar_year,
+                         analysis=cached_analysis(path, mtime, years, slug, extra_stop, revision))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=16)
 def cached_report_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
                        provenance: dict | None = None, default_span: int | None = None,
-                       calendar_year: int | None = None, lang: str = "en", explore_href: str = "",
+                       report_day: str = "", lang: str = "en", explore_href: str = "",
                        asset_version: tuple[tuple[str, int], ...] = ()) -> str:
     """Render a language-specific report without changing analysis (revision 13)."""
-    r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year)
-    return render_page(r, None, embedded=True, app_links=True, lang=lang, explore_href=explore_href)
+    r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span,
+                           int(report_day[:4]) if report_day else None, analysis_version())
+    return render_page(r, None, embedded=True, app_links=True, lang=lang, explore_href=explore_href,
+                       generated_on=report_day or None)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=12)
 def cached_explorer_html(path: str, mtime: float, years: tuple[int, int], name: str, slug: str, extra_stop: str,
                          provenance: dict | None = None, default_span: int | None = None,
                          calendar_year: int | None = None, lang: str = "en", initial_term: str = "",
                          asset_version: tuple[tuple[str, int], ...] = ()) -> str:
     """Focused time-window workspace, sharing exactly the report's analysis data."""
-    r = cached_report_data(path, mtime, years, name, slug, extra_stop, provenance, default_span, calendar_year,
-                           initial_term, True)
+    analysis = cached_analysis(path, mtime, years, slug, extra_stop, analysis_version())
+    r = build_explorer_data(analysis, name=name, slug=slug, initial_term=initial_term)
     return render_explorer_page(r, lang=lang, initial_term=r["explore_term"])
 
 
-@st.cache_data(show_spinner=t("Ranking…"))
-def cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str, roll_up: bool = False):
+@st.cache_data(show_spinner=t("Ranking…"), max_entries=12)
+def _cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str, roll_up: bool,
+                    revision: tuple[tuple[str, int], ...]):
     return compute_ranking(filter_years(load_records(path, mtime), years), entity, roll_up=roll_up)
+
+
+def cached_ranking(path: str, mtime: float, years: tuple[int, int], entity: str, roll_up: bool = False):
+    return _cached_ranking(path, mtime, years, entity, roll_up, analysis_version())
 
 
 # ---- charts: the report's Vega-Lite specs, rendered by Streamlit -------------------------
@@ -544,7 +301,7 @@ def html_table(df: pd.DataFrame, pct: list[str] | None = None, links: list[str] 
             v = r[c]
             if c in pct:
                 if pd.isna(v):
-                    txt = ""
+                    txt = "—"
                 elif c in signed:
                     txt = f"{v * 100:+.1f}" + (" 个百分点" if LANG == "zh" else " pp")
                 else:
@@ -552,7 +309,7 @@ def html_table(df: pd.DataFrame, pct: list[str] | None = None, links: list[str] 
             elif c in links and isinstance(v, str) and v:
                 txt = f'<a href="{_html.escape(v)}" target="_blank" rel="noopener">{_html.escape(v.replace("https://doi.org/", ""))}</a>'
             elif isinstance(v, float):
-                txt = "" if pd.isna(v) else (f"{v:.0f}" if c in plain else f"{v:,.0f}")
+                txt = "—" if pd.isna(v) else (f"{v:.0f}" if c in plain else f"{v:,.0f}")
             elif isinstance(v, (int,)) or (hasattr(v, "item") and not isinstance(v, str)):
                 try:
                     txt = f"{int(v)}" if c in plain else f"{int(v):,}"
@@ -592,7 +349,10 @@ masthead_slot = st.empty()  # filled after the search row is resolved, so a new 
 with st.container(key="controls_search"):
     typed = st.text_input(t("Search"), value=custom_q, placeholder=t("Any conference in OpenAlex — an acronym like DAC or ISCAS, or the name as OpenAlex spells it"),
                           label_visibility="collapsed", key="search")
-    if typed.strip() and typed.strip() != custom_q:
+    search_changed = typed.strip() != st.session_state.get("search_last_handled", custom_q)
+    if search_changed:
+        st.session_state["search_last_handled"] = typed.strip()
+    if typed.strip() and search_changed:
         # a new search replaces whatever was selected; update the URL in this run (no st.rerun —
         # a rerun issued right after changing query params can drop the URL update)
         st.query_params.clear()
@@ -657,9 +417,10 @@ preset = next((v for v in PRESETS.values() if v["slug"] == wanted), None)
 if preset:
     query, doi_prefixes, slug = preset["query"], preset["doi_prefixes"], preset["slug"]
 elif custom_q:
-    resolved = cached_resolve(custom_q) or {}
-    if "error" in resolved:
-        st.markdown(f'<div class="pt-note">{escape(t("Unable to look up this conference. Details: {error}", error=resolved["error"]))}</div>', unsafe_allow_html=True)
+    try:
+        resolved = cached_resolve(custom_q) or {}
+    except OpenAlexError as exc:
+        st.markdown(f'<div class="pt-note">{escape(t("Unable to look up this conference. Details: {error}", error=str(exc)))}</div>', unsafe_allow_html=True)
         resolved = {}
     query = resolved.get("name") or custom_q
     doi_prefixes = (doi_prefix_in or custom_prefix).split() or resolved.get("doi_prefixes", [])
@@ -695,7 +456,7 @@ if not records:
             b1, b2 = st.columns([1, 4])
             if b1.button(t("Fetch from OpenAlex"), key="fetch_btn"):
                 run_fetch(query, doi_prefixes, slug)
-            b2.markdown('<div style="font-family: IBM Plex Sans, system-ui, sans-serif; color: #8A877F; font-size: 13px; padding-top: 8px">' + t("One to fifteen minutes depending on the venue's size; the data is then cached on this machine.") + '</div>', unsafe_allow_html=True)
+            b2.markdown('<div style="font-family: IBM Plex Sans, system-ui, sans-serif; color: var(--faint); font-size: 13px; padding-top: 8px">' + t("One to fifteen minutes depending on the venue's size; the data is then cached on this machine.") + '</div>', unsafe_allow_html=True)
     st.markdown(home_page(available), unsafe_allow_html=True)
     st.stop()
 
@@ -761,7 +522,7 @@ if mode == "Report":
         )
         with st.skeleton(height=360):
             report_html = cached_report_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                                             date.today().year, LANG, link(view="explore", section=None, term=None),
+                                             date.today().isoformat(), LANG, link(view="explore", section=None, term=None),
                                              report_asset_version())
     loading_slot.empty()
     st.iframe(report_html, height="content")
@@ -787,7 +548,7 @@ st.markdown(
     f'<h1>{escape(display_name)}</h1>{full_name}</div>'
     f'<div class="pt-head-stats" aria-label="{escape(t("Conference summary"))}">'
     f'<span><b>{len(recs):,}</b><small>{escape(t("papers"))}</small></span>'
-    f'<span><b>{years[1] - years[0] + 1}</b><small>{escape(t("editions"))}</small></span>'
+    f'<span><b>{len(cov_y)}</b><small>{escape(t("editions"))}</small></span>'
     f'<span><b>{cov_y["abstracts"].sum() / max(len(recs), 1):.0%}</b><small>{escape(t("with abstracts"))}</small></span>'
     f'</div></div><div class="pt-head-provenance"><span>{escape(t(provenance_label(provenance)))}</span>'
     f'<span>{escape(t(data_coverage["selection"]))}</span>'
@@ -989,7 +750,7 @@ with st.container(key="explore_body"):
             for k in others:
                 cp = corpus_path(local[k]["slug"])
                 trends[k.split(" — ")[0].split("· ")[-1]] = cached_keywords(str(cp), cp.stat().st_mtime, years, text_mode, (2, 3), extra_stop, "topical", True)
-            df = pd.DataFrame(compare.term_shares(trends, cmp_terms))
+            df = pd.DataFrame(compare.term_shares(trends, cmp_terms, years=list(range(years[0], years[1] + 1))))
             names = list(trends)
             yrs = sorted(df["year"].unique().tolist())
             cols = st.columns(2)
@@ -998,7 +759,7 @@ with st.container(key="explore_body"):
                 with cols[i % 2]:
                     vl(charts.multi_line(rows_t, names, yrs, title=term), key=f"cmp-{term}")
             source_line()
-            wide = df.pivot_table(index=["term", "conference"], columns="year", values="share").reset_index()
+            wide = df.pivot(index=["term", "conference"], columns="year", values="share").reset_index()
             wide.columns = [str(c) for c in wide.columns]
             ycols = [c for c in wide.columns if c.isdigit()]
             html_table(wide, pct=ycols)

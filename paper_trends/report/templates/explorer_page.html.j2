@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ _('Trends & evidence') }} · {{ r.name }}</title>
 <link rel="icon" type="image/svg+xml" href="{{ favicon_uri }}">
+<meta name="description" content="{{ ('探索 ' ~ r.name ~ ' 的关键词趋势与相关论文。') if lang == 'zh' else ('Explore keyword trends and supporting papers from ' ~ r.name ~ '.') }}">
 <style>{{ inline_css|safe }}</style>
 </head>
 <body class="embedded explorer-only">
@@ -19,7 +20,7 @@ window.REPORT_LANG = {{ lang|tojson }};
 window.ENTITIES = {{ entities|tojson }};
 window.EXPLORER_TERM = {{ initial_term|tojson }};
 </script>
-<script>{{ entities_js|safe }}</script>
 <script>{{ explorer_js|safe }}</script>
+{% include "print.html.j2" %}
 </body>
 </html>

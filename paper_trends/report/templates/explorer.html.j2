@@ -3,7 +3,7 @@
   <div class="obs-mast">
     <div><p class="obs-eyebrow">{{ _('The field, in motion') }}</p><h2 id="obs-heading">{{ _('Follow a change.') }}<br><em>{{ _('Question the evidence.') }}</em></h2>
     <p class="obs-intro">{{ _('Move through time. Change what counts. Read the papers behind the curve.') }}</p></div>
-    <div class="obs-period"><span>{{ _('YOUR TIME WINDOW') }}</span><strong id="obs-period">{{ r.years[0] }}—{{ r.years[-1] }}</strong><span id="obs-denominator"></span></div>
+    <div class="obs-period"><span>{{ _('YOUR TIME WINDOW') }}</span><strong id="obs-period">{{ entities.explorer.years[0] }}—{{ entities.explorer.years[-1] }}</strong><span id="obs-denominator"></span></div>
   </div>
   <div class="obs-timeline">
     <div class="obs-transport"><button type="button" id="obs-play" aria-pressed="false">{{ _('▶ Play years') }}</button><button type="button" id="obs-reset">{{ _('Full period') }}</button></div>
@@ -59,6 +59,6 @@
   <noscript><p>{{ _('This explorer needs JavaScript. Use Report for the full-period summary.') if standalone_explorer else _('This explorer needs JavaScript. The full-period report is available below.') }}</p></noscript>
 </section>
 {% if not standalone_explorer %}
-<div class="obs-divider"><span>{{ _('The full-period report') }}</span><span>{{ r.year_range[0] }}—{{ r.year_range[1] }}</span></div>
+<div class="obs-divider"><span>{{ _('The full-period report') }}</span><span>{{ entities.explorer.years[0] }}—{{ entities.explorer.years[-1] }}</span></div>
 {% endif %}
 {% endif %}

@@ -8,15 +8,15 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from ..background import field_of
 from ..coverage import coverage_details, default_period
-from ..keywords import KeywordTrends, compute_trends, display_form, group_families, hyphen_forms
-from ..rank import compute_ranking, entities_of
+from ..keywords import KeywordTrends, group_families
+from ..rank import entities_of
 from ..store import Record, filter_years, provenance_label
 from ..text import STOPWORDS, paper_tokens
-from ..topics import InsufficientTopicData, TopicTrends, compute_nmf
+from .analysis import CorpusAnalysis, analyze_corpus
 from .charts import TOPIC_COLORS
 from .entities import build_entities
+from .explorer import ExplorerBuilder, selected_phrase_roles
 
 
 COUNTRY = {
@@ -155,13 +155,37 @@ def growth_sentence(papers: dict[int, int]) -> str:
     return f"output {verb} about {abs(rate):.0%} a year, from {papers[ys[0]]:,} to {papers[ys[-1]]:,} papers"
 
 
+def build_explorer_data(analysis: CorpusAnalysis, *, name: str, slug: str,
+                        initial_term: str = "") -> dict[str, Any]:
+    """Prepare just the exploration payload from an already-fitted corpus analysis."""
+    kt = analysis.keywords
+    if kt.tokenized_papers is None:
+        raise ValueError("Exploration needs reusable tokens from analyze_corpus.")
+    requested = " ".join(paper_tokens(initial_term, None, kt.acronyms, kt.stopwords, kt.n_max)[0])
+    terms = list(dict.fromkeys([
+        *([requested] if requested else []),
+        *analysis.exploration_terms,
+    ]))[:20]
+    builder = ExplorerBuilder(analysis.records, kt, analysis.topics, analysis.institutions,
+                              analysis.display, terms, full_results=True)
+    # analyze_corpus always retains tokens. No model fitting or text cleaning occurs here.
+    for i, (title, abstract) in enumerate(kt.tokenized_papers):
+        roles = selected_phrase_roles(title, abstract, terms, n_min=kt.n_min, n_max=kt.n_max,
+                                      stopwords=kt.stopwords)
+        builder.add(i, roles)
+    return {"name": name, "slug": slug, "explore_term": requested,
+            "entities": {"explorer": builder.finish()}}
+
+
 def build_report(records: list[Record], *, name: str, slug: str, years: tuple[int, int] | None = None,
                  n_topics: int = 8, n_multiples: int = 8, stopwords: frozenset[str] = STOPWORDS,
                  provenance: dict | None = None, default_span: int | None = None,
-                 explore_term: str = "", explorer_full: bool = False) -> dict[str, Any]:
+                 explore_term: str = "", explorer_full: bool = False, include_explorer: bool = False,
+                 analysis: CorpusAnalysis | None = None, current_year: int | None = None) -> dict[str, Any]:
+    current_year = date.today().year if current_year is None else current_year
     if years is None:
         default_span = default_span or 10
-        years = default_period(records, default_span)
+        years = default_period(records, default_span, current_year=current_year)
     recs = [r for r in filter_years(records, years) if r.get("publication_year")]
     if not recs:
         raise ValueError("No papers with a publication year in the selected period.")
@@ -175,47 +199,37 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
                 with_abs[y] += 1
     ys = sorted(per_year)
     y0, y1 = ys[0], ys[-1]
-    data_coverage = coverage_details(records, years or (y0, y1), default_span=default_span)
+    data_coverage = coverage_details(records, years or (y0, y1), default_span=default_span,
+                                     current_year=current_year)
     has_trends = len(ys) >= 2
     analysis_notes = []
     if not has_trends:
         analysis_notes.append("Only one year is available. Rising, fading and other comparisons over time need at least two years.")
-    suggested = default_period(records)
-    if y1 >= date.today().year or (suggested and y1 > suggested[1]):
+    suggested = default_period(records, current_year=current_year)
+    if y1 >= current_year or (suggested and y1 > suggested[1]):
         analysis_notes.append("The latest selected editions may be incompletely indexed. Counts and trends for these years are provisional.")
 
     coverage = sum(with_abs.values()) / max(len(recs), 1)
-    # Venues whose abstracts OpenAlex mostly lacks (Interspeech) are analysed on titles only,
-    # otherwise the years with abstracts would dominate every share.
-    text_mode = "title+abstract" if coverage >= 0.6 else "title"
-    kt = compute_trends(recs, text=text_mode, n_min=2, n_max=3, stopwords=stopwords, field=field_of(slug))
+    analysis = analysis or analyze_corpus(recs, slug=slug, n_topics=n_topics, stopwords=stopwords)
+    kt, tt = analysis.keywords, analysis.topics
+    text_mode = kt.text_mode
+    inst, country = analysis.institutions, analysis.countries
+    show = analysis.display
+    analysis_notes.extend(analysis.notes)
     rising = _families(kt.rising(n_multiples * 4, min_total=10), n_multiples, kt) if has_trends else []
     falling = _families(kt.falling(n_multiples * 4, min_total=10), n_multiples, kt) if has_trends else []
     emerging = _families(kt.emerging(30, min_total=10), 10, kt) if has_trends else []
-    forms = hyphen_forms(recs, text=text_mode)
-    surface = kt.acronyms.surface if kt.acronyms else {}
-    show = lambda t: display_form(t, forms, surface)  # noqa: E731  display form only; counts stay keyed by the plain form
     # A displayed spelling (hyphens, case, acronym expansion) resolves to the same
     # counting key. Explicit searches may include rare phrases excluded from rankings.
     requested = " ".join(paper_tokens(explore_term, None, kt.acronyms, stopwords, kt.n_max)[0])
 
-    try:
-        tt = compute_nmf(recs, n_topics=n_topics, stopwords=stopwords)
-    except InsufficientTopicData as exc:
-        tt = TopicTrends(ys, dict(per_year), [], {}, "nmf")
-        analysis_notes.append(f"Topics are unavailable: {exc}")
     topics = tt.ordered()
-    for t in topics:  # display forms for labels and term lists (counts are keyed by topic id)
-        t.label = " / ".join(show(x) for x in t.label.split(" / "))
-        t.terms = [show(x) for x in t.terms]
     topic_rows = []
     for rank, t in enumerate(topics):
         for y in tt.years:
             topic_rows.append({"topic": t.label, "rank": rank, "year": y, "share": tt.share(t.id, y), "papers": tt.by_year[t.id].get(y, 0)})
     topic_moves = sorted(((t.label, *tt.momentum(t.id)) for t in topics), key=lambda x: x[3])
 
-    inst = compute_ranking(recs, "institution", roll_up=True)
-    country = compute_ranking(recs, "country")
     inst_top = inst.top(15)
     country_top = country.top(12)
     inst_mov = {k: inst.momentum(k) for k in inst_top}
@@ -286,7 +300,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
             *[row[0] for row, _ in emerging[:4]],
             *[row[0] for row, _ in falling[:4]],
             *kt.top_terms(20),
-        ], explorer_full=explorer_full),
+        ], explorer_full=explorer_full, include_explorer=include_explorer or explorer_full),
         "explore_term": requested,
         "name": name,
         "slug": slug,
@@ -310,7 +324,7 @@ def build_report(records: list[Record], *, name: str, slug: str, years: tuple[in
         "rising": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t), "variants": [show(v) for v in var]} for (t, e, l, d), var in rising],
         "falling": [{"term": show(t), "early": e, "late": l, "delta": d, "series": _series(kt, t), "variants": [show(v) for v in var]} for (t, e, l, d), var in falling],
         "emerging": [{"term": show(t), "first": f, "early": e, "late": l, "series": _series(kt, t), "variants": [show(v) for v in var]} for (t, f, e, l), var in emerging],
-        "topics": [{"label": t.label, "terms": t.terms, "examples": t.examples, "papers": tt.total(t.id)} for t in topics],
+        "topics": [{"label": t.label, "terms": list(t.terms), "examples": list(t.examples), "papers": tt.total(t.id)} for t in topics],
         "topic_rows": topic_rows,
         "topic_sentence": topic_sentence,
         "institutions": [

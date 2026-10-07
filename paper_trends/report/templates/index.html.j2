@@ -4,6 +4,16 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>paper-trends</title>
 <link rel="icon" type="image/svg+xml" href="{{ favicon_uri }}">
+{% set description = '从会议论文中追踪关键词、研究主题与发文机构的历年变化。数据来自 OpenAlex。' if lang == 'zh' else 'Follow keyword, topic and institution trends in academic conference papers, based on OpenAlex records.' %}
+<meta name="description" content="{{ description }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="paper-trends">
+<meta property="og:description" content="{{ description }}">
+<meta property="og:site_name" content="paper-trends">
+<meta property="og:locale" content="{{ 'zh_CN' if lang == 'zh' else 'en_US' }}">
+{% if not embedded %}<link rel="alternate" hreflang="en" href="index.html">
+<link rel="alternate" hreflang="zh-CN" href="index.zh.html">
+<link rel="alternate" hreflang="x-default" href="index.html">{% endif %}
 {% if inline_css %}<style>{{ inline_css|safe }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
 </head>
 <body>
@@ -34,8 +44,8 @@
 <section>
   <h2>{{ _('Your own conference') }}</h2>
   <p class="lede">{{ '用以下两条命令，为 OpenAlex 收录的会议生成同样的中英文报告：' if lang == 'zh' else 'Two commands give any conference indexed by OpenAlex a page like these:' }}</p>
-  <pre class="code">uv run python -m paper_trends fetch "Design Automation Conference" --doi-prefix 10.1109/dac --years 2016-2026 --name dac
-uv run python -m paper_trends report data/dac.jsonl --years 2016-2025 --out site</pre>
+  <pre class="code">uv run python -m paper_trends fetch "Electronic Components and Technology Conference" --doi-prefix 10.1109/ectc --years 2016-2025 --name ectc
+uv run python -m paper_trends report data/ectc.jsonl --years 2016-2025 --out site</pre>
   <p class="lede">{{ '如需交互探索、阅读关键词对应论文或比较会议，启动应用：' if lang == 'zh' else 'For live exploration — pick a term, see the papers behind it, compare venues — run the interactive app:' }} <span class="mono">uv run streamlit run app.py</span>. {{ '代码与说明：' if lang == 'zh' else 'Source and instructions:' }} <a href="https://github.com/Minjia-Hu/paper-trends">github.com/Minjia-Hu/paper-trends</a>.</p>
 </section>
 <footer class="collection-footer">
@@ -43,5 +53,6 @@ uv run python -m paper_trends report data/dac.jsonl --years 2016-2025 --out site
   <details><summary>{{ _('About this collection') }}</summary><p>{{ _('This directory features selected conferences, not a complete list. Paper counts reflect available OpenAlex records and may differ from official proceedings; the number of listed conferences does not indicate the size of a field.') }}</p></details>
 </footer>
 </main>
+{% include "print.html.j2" %}
 </body>
 </html>
