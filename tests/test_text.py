@@ -142,3 +142,40 @@ def test_extension_pairs_tell_fragments_from_phrases():
     assert lp == [("wafer level packaging", None), ("panel level packaging", "level packaging hybrid")]   # "and" cannot extend; punctuation is invisible
     hb = [(l, r) for t, l, r in pairs if t == "hybrid bonding"]
     assert hb == [("packaging hybrid bonding", None), (None, "hybrid bonding process")]
+
+
+def test_acronym_cache_keeps_results_independent_and_stopwords_separate():
+    from paper_trends.text import STOPWORDS, acronym_definitions, _acronym_definitions_cached
+
+    _acronym_definitions_cached.cache_clear()
+    text = "Redistribution layer (RDL); thermal interface material (TIM)."
+    expected = {"rdl": ("RDL", ["redistribution", "layer"]),
+                "tim": ("TIM", ["thermal", "interface", "material"])}
+    first = acronym_definitions(text)
+    assert first == expected
+    first["rdl"][1].append("corrupted")
+    del first["tim"]
+    assert acronym_definitions(text) == expected
+    assert acronym_definitions(text, STOPWORDS | {"rdl"}) == {"tim": expected["tim"]}
+    assert acronym_definitions(text) == expected
+    assert _acronym_definitions_cached.cache_info().hits >= 2
+
+
+def test_acronym_cache_skips_repeated_prefix_scans(monkeypatch):
+    from paper_trends import text
+
+    text._acronym_definitions_cached.cache_clear()
+    real_tokenize = text.tokenize
+    calls = []
+
+    def counted_tokenize(*args, **kwargs):
+        calls.append(args[0])
+        return real_tokenize(*args, **kwargs)
+
+    monkeypatch.setattr(text, "tokenize", counted_tokenize)
+    source = "Redistribution layer (RDL); thermal interface material (TIM); through silicon via (TSV)."
+    first = text.acronym_definitions(source)
+    scans = len(calls)
+    assert scans == 3
+    assert text.acronym_definitions(source) == first
+    assert len(calls) == scans

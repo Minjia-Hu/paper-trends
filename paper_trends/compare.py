@@ -20,16 +20,24 @@ def trends_for(corpora: dict[str, list[Record]], **kwargs) -> dict[str, KeywordT
     return {name: compute_trends(recs, field=field_of(name), **kwargs) for name, recs in corpora.items()}
 
 
-def term_shares(trends: dict[str, KeywordTrends], terms: list[str]) -> list[dict]:
-    """Long rows: conference, term, year, papers, share (0 when the term never occurs)."""
+def term_shares(trends: dict[str, KeywordTrends], terms: list[str], *, years: list[int] | None = None) -> list[dict]:
+    """Long rows over a shared calendar range.
+
+    A venue without papers for a year has unknown counts/shares (None), whereas a
+    year containing papers but no matching term has a measured zero. An explicit
+    range also preserves empty leading/trailing years selected by the caller.
+    """
+    if years is None:
+        known_years = sorted({y for kt in trends.values() for y in kt.years})
+        years = list(range(known_years[0], known_years[-1] + 1)) if known_years else []
     rows = []
     for name, kt in trends.items():
         for term in terms:
             normalized = " ".join(paper_tokens(term, None, kt.acronyms, kt.stopwords, kt.n_max)[0])
-            for y in kt.years:
-                n = kt.doc_freq.get(normalized, {}).get(y, 0)
+            for y in years:
                 tot = kt.papers_per_year.get(y, 0)
-                rows.append({"conference": name, "term": term, "year": y, "papers": n, "share": n / tot if tot else 0.0})
+                n = kt.doc_freq.get(normalized, {}).get(y, 0) if tot else None
+                rows.append({"conference": name, "term": term, "year": y, "papers": n, "share": n / tot if tot else None})
     return rows
 
 
@@ -46,7 +54,7 @@ def shared_risers(trends: dict[str, KeywordTrends], k: int = 15, min_total: int 
 
 def render(rows: list[dict], conferences: list[str], years: list[int]) -> str:
     out = []
-    by_term: dict[str, dict[tuple[str, int], float]] = {}
+    by_term: dict[str, dict[tuple[str, int], float | None]] = {}
     for r in rows:
         by_term.setdefault(r["term"], {})[(r["conference"], r["year"])] = r["share"]
     w = max(len(c) for c in conferences) + 2
@@ -54,7 +62,8 @@ def render(rows: list[dict], conferences: list[str], years: list[int]) -> str:
         out.append(f"{term}")
         out.append(f"{'':<{w}}" + " ".join(f"{y:>6}" for y in years))
         for c in conferences:
-            out.append(f"{c:<{w}}" + " ".join(f"{cells.get((c, y), 0.0):>6.1%}" for y in years))
+            shares = [cells.get((c, y)) for y in years]
+            out.append(f"{c:<{w}}" + " ".join(f"{'—':>6}" if share is None else f"{share:>6.1%}" for share in shares))
         out.append("")
     return "\n".join(out)
 
@@ -80,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     if not years:
         print("[error] No papers with a publication year in the selected range.", file=sys.stderr)
         return 1
+    years = list(range(yrs[0], yrs[1] + 1)) if yrs else list(range(years[0], years[-1] + 1))
     names = list(corpora)
 
     terms = [t.strip() for t in args.term]
@@ -92,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{t:<{w}} " + " ".join(f"{ds[n]:>+10.1%}" for n in names))
         terms = [t for t, _ in common[:3]]
         print()
-    rows = term_shares(trends, terms)
+    rows = term_shares(trends, terms, years=years)
     print(render(rows, names, years))
     if args.csv:
         args.csv.parent.mkdir(parents=True, exist_ok=True)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Iterable, Iterator
+from functools import lru_cache
 
 # Generic English + academic-boilerplate stopwords. Domain-specific terms are NOT listed
 # here; users can add their own with --stopwords.
@@ -124,9 +125,16 @@ _ACRONYM_MAX_WORDS = 2  # the long form may have this many words beyond the acro
 def acronym_definitions(text: str | None, stopwords: frozenset[str] = STOPWORDS) -> dict[str, tuple[str, list[str]]]:
     """Acronyms defined in `text` as "long form (ACR)": lower-cased acronym ->
     (acronym as written, long-form tokens)."""
-    defs: dict[str, tuple[str, list[str]]] = {}
     if not text or "(" not in text:
-        return defs
+        return {}
+    # The corpus pass and per-paper pass read the same definitions. Keep the cache
+    # bounded and immutable; every caller receives its own dict and token lists.
+    return {acr: (raw, list(form)) for acr, raw, form in _acronym_definitions_cached(text, frozenset(stopwords))}
+
+
+@lru_cache(maxsize=16_384)
+def _acronym_definitions_cached(text: str, stopwords: frozenset[str]) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    defs: dict[str, tuple[str, list[str]]] = {}
     for m in _ACRONYM_RE.finditer(text):
         raw = m.group(1).replace("-", "")
         acr = raw.lower()
@@ -137,7 +145,7 @@ def acronym_definitions(text: str | None, stopwords: frozenset[str] = STOPWORDS)
         long_form = _match_long_form(acr, words)
         if long_form and long_form != [acr] and sum(len(w) for w in long_form) > len(acr):
             defs[acr] = (raw, long_form)
-    return defs
+    return tuple((acr, raw, tuple(form)) for acr, (raw, form) in defs.items())
 
 
 class Acronyms:
