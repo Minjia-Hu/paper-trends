@@ -1,5 +1,7 @@
 # secrets
 .env
+.env.*
+!.env.example
 
 # data
 data/
@@ -7,6 +9,8 @@ data/
 # python
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
 .venv/
 *.egg-info/
 dist/

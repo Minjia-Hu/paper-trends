@@ -39,7 +39,8 @@
     const cell = value => {
       let s = String(value ?? "");
       // Treat paper metadata as text when opened by a spreadsheet.
-      if (/^[=+@\-\t\r\n]/.test(s)) s = "'" + s;
+      // Same text-only rule as paper_trends/csv_export.py, including spaces/BOM.
+      if (typeof value === "string" && /^[ \uFEFF]*[=+@\-\t\r\n]/.test(s)) s = "'" + s;
       return '"' + s.replace(/"/g, '""') + '"';
     };
     const rows = [["term", "counting_rule", "from_year", "to_year", "year", "title", "citations", "doi", "id"]];

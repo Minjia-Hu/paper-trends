@@ -6,6 +6,7 @@ import csv
 import sys
 from pathlib import Path
 
+from .csv_export import safe_cell
 from .keywords import KeywordTrends, compute_trends
 from .store import Record, filter_years, parse_years, read_jsonl
 from .text import STOPWORDS, paper_tokens
@@ -109,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         with args.csv.open("w", newline="", encoding="utf-8") as fh:
             wr = csv.DictWriter(fh, fieldnames=["conference", "term", "year", "papers", "share"])
             wr.writeheader()
-            wr.writerows(rows)
+            wr.writerows({key: safe_cell(value) for key, value in row.items()} for row in rows)
         print(f"[csv] wrote {args.csv}", file=sys.stderr)
     return 0
 

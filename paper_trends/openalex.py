@@ -16,7 +16,7 @@ import requests
 from dotenv import load_dotenv
 
 BASE_URL = "https://api.openalex.org"
-PER_PAGE = 200
+PER_PAGE = 100
 MAX_RETRIES = 8
 MAX_BACKOFF = 60.0
 
@@ -42,8 +42,10 @@ class OpenAlexError(RuntimeError):
 
 
 def get_api_key() -> str | None:
-    """Optional OpenAlex API key (OPENALEX_API_KEY). Without one, requests draw on a free
-    daily budget shared by every anonymous user behind the same IP address."""
+    """Read the API key required for cursor paging beyond the first page.
+
+    Basic anonymous queries share a small daily budget with the caller's IP.
+    """
     load_dotenv()
     return os.environ.get("OPENALEX_API_KEY", "").strip() or None
 
@@ -88,6 +90,19 @@ class OpenAlex:
                         return resp.json()
                     except ValueError:
                         last = "truncated/non-JSON body"
+                elif resp.status_code == 401:
+                    if not self.api_key:
+                        raise OpenAlexError(
+                            "OpenAlex requires an API key for complete fetches: cursor paging "
+                            "beyond the first page is unavailable without one (HTTP 401). "
+                            "Get a free key at https://help.openalex.org/api/authentication/ "
+                            "and set OPENALEX_API_KEY in .env or the environment."
+                        )
+                    raise OpenAlexError(
+                        "OpenAlex rejected the API key (HTTP 401). Check that OPENALEX_API_KEY "
+                        "is valid and activated, or replace it in .env or the environment. "
+                        "See https://help.openalex.org/api/authentication/."
+                    )
                 elif resp.status_code == 429 or resp.status_code >= 500:
                     last = f"HTTP {resp.status_code}"
                     retry_after = _retry_after_seconds(resp.headers.get("Retry-After"))

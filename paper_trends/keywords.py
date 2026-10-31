@@ -9,6 +9,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .csv_export import safe_row
 from .store import Record, filter_years, parse_years, read_jsonl
 from . import background as bg
 from .text import STOPWORDS, TOPICAL_ROLES, Acronyms, acronym_definitions, extension_pairs, load_stopwords, mention_role, paper_tokens, phrase_roles
@@ -414,11 +415,11 @@ def write_csv(kt: KeywordTrends, terms: list[str], path: Path) -> None:
         wr = csv.writer(fh)
         wr.writerow(["term", "total", *[f"count_{y}" for y in kt.years], *[f"share_{y}" for y in kt.years]])
         for t in terms:
-            wr.writerow(
+            wr.writerow(safe_row(
                 [t, kt.total(t)]
                 + [kt.doc_freq[t].get(y, 0) for y in kt.years]
                 + [f"{kt.share(t, y):.4f}" for y in kt.years]
-            )
+            ))
 
 
 def main(argv: list[str] | None = None) -> int:

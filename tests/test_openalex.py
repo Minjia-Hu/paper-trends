@@ -64,6 +64,39 @@ def test_api_key_header():
     assert session.headers["Authorization"] == "Bearer k123"
 
 
+def test_cursor_paging_uses_supported_page_size_and_follows_cursor():
+    client, session = _client([
+        _resp(200, {"results": [{"id": "W1"}], "meta": {"next_cursor": "next"}}),
+        _resp(200, {"results": [{"id": "W2"}], "meta": {"next_cursor": None}}),
+    ])
+    params = {"filter": "publication_year:2025"}
+    assert list(client.paginate("works", params)) == [{"id": "W1"}, {"id": "W2"}]
+    requests_sent = [call.kwargs["params"] for call in session.get.call_args_list]
+    assert [p["cursor"] for p in requests_sent] == ["*", "next"]
+    assert all(p["per-page"] == 100 for p in requests_sent)
+    assert params == {"filter": "publication_year:2025"}
+
+
+@pytest.mark.parametrize("key", ["", "private-rejected-key"])
+def test_unauthorized_gives_actionable_advice_without_retrying_or_leaking(monkeypatch, key):
+    monkeypatch.setenv("OPENALEX_API_KEY", key)
+    response = _resp(401)
+    response.text = f"Rejected credential {key}, contact x@example.com"
+    client, session = _client([response])
+    waits = []
+    monkeypatch.setattr(openalex.time, "sleep", waits.append)
+    with pytest.raises(OpenAlexError) as caught:
+        client.get("works", {"cursor": "next"})
+    message = str(caught.value)
+    assert "HTTP 401" in message and "OPENALEX_API_KEY" in message
+    assert "x@example.com" not in message
+    assert session.get.call_count == 1 and waits == []
+    if key:
+        assert key not in message and "rejected" in message
+    else:
+        assert "free key" in message and "beyond the first page" in message
+
+
 def test_search_sources_strips_commas():
     client, session = _client([_resp(200, {"results": [], "meta": {"next_cursor": None}})])
     client.search_sources("Thermal, Mechanical and Multi-Physics Simulation")

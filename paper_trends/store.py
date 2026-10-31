@@ -4,11 +4,32 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
+from contextlib import contextmanager
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from tempfile import NamedTemporaryFile
+from typing import Any, TextIO
 
 Record = dict[str, Any]
+
+
+@contextmanager
+def _atomic_text(path: Path) -> Iterator[TextIO]:
+    """Publish a complete UTF-8 file, leaving the old file intact on write failure."""
+    temporary = None
+    try:
+        with NamedTemporaryFile(mode="w", encoding="utf-8", newline="\n", dir=path.parent,
+                                prefix=f".{path.name}.", suffix=".tmp", delete=False) as fh:
+            temporary = Path(fh.name)
+            yield fh
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def write_jsonl(records: list[Record], path: Path, *, fetched_at: datetime | None = None) -> None:
@@ -20,16 +41,22 @@ def write_jsonl(records: list[Record], path: Path, *, fetched_at: datetime | Non
     if fetched_at is not None and fetched_at.utcoffset() is None:
         raise ValueError("fetched_at must include a timezone")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
+    digest = hashlib.sha256()
+    with _atomic_text(path) as fh:
         for r in records:
-            fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+            line = json.dumps(r, ensure_ascii=False) + "\n"
+            fh.write(line)
+            digest.update(line.encode("utf-8"))
     if fetched_at is not None:
-        metadata_path(path).write_text(json.dumps({
-            "version": 1, "source": "OpenAlex",
-            "fetched_at": fetched_at.astimezone(timezone.utc).isoformat(timespec="seconds"),
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-            "records": len(records),
-        }, indent=2) + "\n", encoding="utf-8")
+        # The two replacements are individually atomic. Between them (or if the
+        # sidecar write fails), a digest mismatch safely reports unknown provenance.
+        with _atomic_text(metadata_path(path)) as fh:
+            fh.write(json.dumps({
+                "version": 1, "source": "OpenAlex",
+                "fetched_at": fetched_at.astimezone(timezone.utc).isoformat(timespec="seconds"),
+                "sha256": digest.hexdigest(),
+                "records": len(records),
+            }, indent=2) + "\n")
 
 
 def metadata_path(path: Path) -> Path:

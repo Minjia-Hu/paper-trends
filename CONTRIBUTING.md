@@ -13,7 +13,9 @@ npm test                     # Node core + jsdom interaction tests
 
 Run the tool in place with `uv run python -m paper_trends ...`; the project is not
 installed into the virtual environment (see the note on `package = false` in
-`pyproject.toml`). Put `OPENALEX_MAILTO` and `OPENALEX_API_KEY` in a git-ignored `.env`.
+`pyproject.toml`). Copy `.env.example` to a git-ignored `.env` and fill in
+`OPENALEX_MAILTO` and an activated `OPENALEX_API_KEY`. Complete fetches require the key
+because OpenAlex cursor paging beyond the first page is authenticated.
 
 ## Ground rules
 

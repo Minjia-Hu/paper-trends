@@ -14,6 +14,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .csv_export import safe_row
 from .store import Record, filter_years, parse_years, read_jsonl
 from .text import STOPWORDS, _is_number, load_stopwords, tokenize
 
@@ -250,11 +251,11 @@ def write_csv(tt: TopicTrends, topics: list[Topic], path: Path) -> None:
         wr = csv.writer(fh)
         wr.writerow(["topic_id", "label", "terms", "papers", *[f"count_{y}" for y in tt.years], *[f"share_{y}" for y in tt.years]])
         for t in topics:
-            wr.writerow(
+            wr.writerow(safe_row(
                 [t.id, t.label, "; ".join(t.terms), tt.total(t.id)]
                 + [tt.by_year[t.id].get(y, 0) for y in tt.years]
                 + [f"{tt.share(t.id, y):.4f}" for y in tt.years]
-            )
+            ))
 
 
 def main(argv: list[str] | None = None) -> int:

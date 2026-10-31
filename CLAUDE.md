@@ -31,10 +31,11 @@ with this.
   Never pull from or cite non-public sources.
 - Every OpenAlex request carries `mailto=`; the value comes from the `OPENALEX_MAILTO`
   env var (loaded from `.env` via python-dotenv). Never hard-code an address.
-- `OPENALEX_API_KEY` (optional, sent as `Authorization: Bearer`) is effectively required:
-  since 2026 OpenAlex meters anonymous requests against a small daily budget shared by
-  every user behind the same IP address (`HTTP 429`, `Retry-After` in hours, "Insufficient
-  budget"). The client fails fast on that instead of retrying; get a free key at
+- `OPENALEX_API_KEY` (sent as `Authorization: Bearer`) is required for complete fetches:
+  cursor paging beyond the first page requires an activated key (HTTP 401 otherwise).
+  Use the supported page size of 100. Anonymous requests also share a small daily budget
+  with every user behind the same IP (`HTTP 429`, `Retry-After` in hours, "Insufficient
+  budget"). Authentication and daily-budget failures fail fast; get a free key at
   https://help.openalex.org/api/authentication/. Never log or display the key or mailto
   (`openalex._redact` strips mailto from error text).
 - `.env` and `data/` are git-ignored and must stay that way.

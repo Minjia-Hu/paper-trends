@@ -1,6 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { aggregate, series, rankContext, examples, advance, doiUrl } = require('../paper_trends/report/static/explorer.js');
+const { aggregate, series, rankContext, examples, advance, doiUrl, resultsCsv } = require('../paper_trends/report/static/explorer.js');
+const csvCases = require('./csv-export-cases.json');
+
+test('CSV text protection matches Python exports and preserves numeric cells', () => {
+  const state = { lo: 0, hi: 0, mode: 'title' };
+  for (const [value, expected] of csvCases) {
+    const input = { years: [2025], results: [{ year: 2025, title: value, citations: 2, doi: null, id: 'W1' }] };
+    const phrase = { label: 'term', matches: [[0, 0, 0]] };
+    const row = ['term', 'title', 2025, 2025, 2025, expected, 2, null, 'W1'];
+    const quoted = row.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',');
+    assert.ok(resultsCsv(input, phrase, state).endsWith('\r\n' + quoted), JSON.stringify(value));
+  }
+});
 const data = { years: [2020, 2021, 2022], papers_per_year: [10, 0, 100], papers: [
   { title: 'A', year: 2020, citations: 1 }, { title: 'B', year: 2022, citations: 9 }, { title: 'C', year: 2022, citations: 4 }
 ] };

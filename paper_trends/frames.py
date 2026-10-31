@@ -6,10 +6,16 @@ from collections import Counter
 
 import pandas as pd
 
+from .csv_export import safe_cell, safe_row
 from .keywords import KeywordTrends
 from .rank import Ranking
 from .store import Record
 from .topics import TopicTrends
+
+
+def csv_text(frame: pd.DataFrame) -> str:
+    """Export a copy with formula-like text escaped, leaving displayed data intact."""
+    return frame.map(safe_cell).to_csv(index=False, header=safe_row(frame.columns))
 
 
 def coverage_frame(records: list[Record]) -> pd.DataFrame:

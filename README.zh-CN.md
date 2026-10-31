@@ -21,7 +21,7 @@
 
 - Python 3.12+（依赖 requests、python-dotenv、scikit-learn、pandas、streamlit、altair、jinja2）
 - 用于管理依赖的 [uv](https://docs.astral.sh/uv/)
-- 联系邮箱，以及建议配置的免费 [OpenAlex API key](https://help.openalex.org/api/authentication/)
+- 联系邮箱，以及完整抓取所需的已激活免费 [OpenAlex API key](https://help.openalex.org/api/authentication/)
 
 ## 安装与配置
 
@@ -30,13 +30,15 @@ git clone https://github.com/Minjia-Hu/paper-trends.git
 cd paper-trends
 uv sync
 
-# OpenAlex 请求附带联系邮箱。请将你的邮箱写入 .env（已被 Git 忽略）：
-echo "OPENALEX_MAILTO=you@example.com" > .env
-# 强烈建议配置免费的 OpenAlex API key。匿名请求共享当前 IP 的少量每日额度，
-# VPN 和办公网络下的额度可能很快耗尽。
-# 获取 key：https://help.openalex.org/api/authentication/
-echo "OPENALEX_API_KEY=your_key" >> .env
+# 创建本地配置，不覆盖已有的 .env：
+cp -n .env.example .env
+# 编辑 .env：将 OPENALEX_MAILTO 替换为你的联系邮箱，并填写 OPENALEX_API_KEY。
+# 获取并激活免费 key：https://help.openalex.org/api/authentication/
 ```
+
+OpenAlex 的游标分页从第二页开始需要 API key，因此完整抓取会议论文必须配置 key。
+匿名查询还会与同一 IP 地址下的用户共享少量每日额度。
+客户端按受支持的上限每页获取 100 条记录，详见 [OpenAlex 分页规则](https://help.openalex.org/api/paging/)。
 
 在克隆的仓库目录中，通过 `uv run python -m paper_trends` 运行命令行工具。
 本地配置有意使用 `package = false`，以避开部分 macOS 环境中的可编辑安装问题；因此，
@@ -121,6 +123,9 @@ CLI 报告在省略 `--years` 时采用相同默认规则；显式指定年份�
 `<corpus>.jsonl.meta.json`，并通过 SHA-256 将其绑定到语料文件的实际字节。
 来源记录缺失、格式错误或与语料不匹配时显示**未知（unknown）**；复制或编辑文件不会被视为重新获取数据。
 移动语料时，请同时保留该元数据文件。
+
+语料和元数据各自先写入临时文件，再原子替换。读取者会看到完整的语料；
+两次替换之间若校验和暂不一致，获取时间会显示为未知。
 
 同一语料和设置下，Report 与 Explore 共用缓存的关键词、主题和机构分析。
 搜索其他短语时，会查询已保存的词元并将证据加入 Explore，不会重新拟合主题模型。
@@ -471,6 +476,9 @@ CI 在 Python 3.12 和 3.13 上运行离线 Python 测试，并在 Node.js 24 �
 参与贡献请阅读[贡献指南（英文）](CONTRIBUTING.md)。
 
 ## 数据与许可
+
+CSV 导出会为可能被表格软件识别为公式的文本单元格添加单引号前缀，使其按文本处理。
+该规则适用于 CLI、应用下载和 Explore 导出。
 
 元数据来自 [OpenAlex](https://openalex.org)，采用 CC0 许可。项目仅使用公开数据和公开方法。
 代码采用 [MIT 许可证](LICENSE) 发布。

@@ -792,15 +792,15 @@ with st.container(key="explore_body"):
         note(t('Full corpus: {path} ({size:.0f} MB). Current-result export follows the selected period and paper search.', path=f'<span class="mono">{escape(str(corpus_path(slug)))}</span>', size=size_mb))
         # Downloads are generated on click (callables), so large corpora are never pushed to the browser on every rerun.
         d0, d1, d2, d3 = st.columns(4)
-        d0.download_button(t("Current results (CSV)"), listing.to_csv(index=False), file_name=f"{slug}_{years[0]}-{years[1]}_papers.csv", mime="text/csv", key="dl_results")
+        d0.download_button(t("Current results (CSV)"), frames.csv_text(listing), file_name=f"{slug}_{years[0]}-{years[1]}_papers.csv", mime="text/csv", key="dl_results")
         d1.download_button(t("Full corpus (JSONL)"), lambda: corpus_path(slug).read_bytes(), file_name=f"{slug}.jsonl", mime="application/jsonl", key="dl_corpus")
         d2.download_button(
             t("Keyword table (CSV)"),
-            lambda: (lambda kt: frames.keyword_table(kt, kt.top_terms(200)).to_csv(index=False))(cached_keywords(path, mtime, years, "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title", (2, 3), extra_stop)),
+            lambda: (lambda kt: frames.csv_text(frames.keyword_table(kt, kt.top_terms(200))))(cached_keywords(path, mtime, years, "title+abstract" if cov_y["abstracts"].sum() / max(len(recs), 1) >= 0.6 else "title", (2, 3), extra_stop)),
             file_name=f"{slug}_keywords.csv", mime="text/csv", key="dl_keywords",
         )
         d3.download_button(
             t("Institution ranking (CSV)"),
-            lambda: (lambda rk: frames.ranking_table(rk, rk.top(200)).to_csv(index=False))(cached_ranking(path, mtime, years, "institution", True)),
+            lambda: (lambda rk: frames.csv_text(frames.ranking_table(rk, rk.top(200))))(cached_ranking(path, mtime, years, "institution", True)),
             file_name=f"{slug}_institutions.csv", mime="text/csv", key="dl_institutions",
         )

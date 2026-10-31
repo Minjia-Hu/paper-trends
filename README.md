@@ -23,7 +23,7 @@ The same command works for ISSCC, IEDM, or any other venue indexed by OpenAlex.
 
 - Python 3.12+ (dependencies: requests, python-dotenv, scikit-learn, pandas, streamlit, altair, jinja2)
 - [uv](https://docs.astral.sh/uv/) for dependency management
-- A contact email and (recommended) a free [OpenAlex API key](https://help.openalex.org/api/authentication/)
+- A contact email and a free, activated [OpenAlex API key](https://help.openalex.org/api/authentication/) for complete fetches
 
 ## Setup
 
@@ -32,13 +32,16 @@ git clone https://github.com/Minjia-Hu/paper-trends.git
 cd paper-trends
 uv sync
 
-# OpenAlex asks for a contact address on every request. Put yours in .env (git-ignored):
-echo "OPENALEX_MAILTO=you@example.com" > .env
-# Strongly recommended: a free OpenAlex API key. Without one, requests draw on a small
-# daily budget shared by everyone behind your IP address (VPNs and office networks burn
-# through it fast). Keys: https://help.openalex.org/api/authentication/
-echo "OPENALEX_API_KEY=your_key" >> .env
+# Create your local configuration without overwriting an existing .env:
+cp -n .env.example .env
+# Edit .env: replace OPENALEX_MAILTO with your contact email and fill in OPENALEX_API_KEY.
+# Get and activate a free key: https://help.openalex.org/api/authentication/
 ```
+
+OpenAlex requires an API key for cursor paging beyond the first page, so complete
+conference fetches need one. Anonymous queries also share a small daily budget with
+everyone behind your IP address. The client uses the supported maximum of 100 results
+per page; see [OpenAlex's paging rules](https://help.openalex.org/api/paging/).
 
 Run CLI commands from the cloned repository with `uv run python -m paper_trends`.
 The local setup deliberately uses `package = false` to avoid an editable-install
@@ -136,6 +139,10 @@ Reports also show **Data fetched**, separately from the report date. New CLI/app
 save a UTC completion timestamp in `<corpus>.jsonl.meta.json`, bound to the corpus bytes
 by SHA-256. Missing, malformed or mismatched provenance displays **unknown**; copying or
 editing a file does not invent a new fetch date. Keep the sidecar when moving a corpus.
+
+Corpus and metadata files are each written to a temporary file and atomically replaced.
+Readers see a complete corpus; between the two replacements, a mismatched checksum
+reports an unknown fetch date.
 
 Report and Explore share the cached keyword, topic and institution analysis for the same
 corpus and settings. Searching for another phrase queries the stored tokens and adds its
@@ -529,6 +536,9 @@ silently skipping the DOM suite. Historical audit documents under `docs/` retain
 results and corpus snapshots recorded when those audits were performed.
 
 ## Data & license
+
+CSV exports prefix formula-like text cells with an apostrophe so spreadsheet software
+treats them as text. This applies to the CLI, app downloads and Explore exports.
 
 Metadata comes from [OpenAlex](https://openalex.org) (CC0). Only public data and public
 methods are used. Code is released under the MIT License.

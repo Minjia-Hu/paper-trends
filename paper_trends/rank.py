@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+from .csv_export import safe_row
 from .store import Record, filter_years, parse_years, read_jsonl
 
 ENTITIES = ("institution", "author", "country")
@@ -145,7 +146,7 @@ def write_csv(rk: Ranking, keys: list[str], path: Path) -> None:
         wr = csv.writer(fh)
         wr.writerow([rk.entity, "id", "papers", "citations", *[str(y) for y in rk.years]])
         for k in keys:
-            wr.writerow([rk.names[k], k, rk.total(k), rk.citations.get(k, 0), *[rk.by_year[k].get(y, 0) for y in rk.years]])
+            wr.writerow(safe_row([rk.names[k], k, rk.total(k), rk.citations.get(k, 0), *[rk.by_year[k].get(y, 0) for y in rk.years]]))
 
 
 def main(argv: list[str] | None = None) -> int:
