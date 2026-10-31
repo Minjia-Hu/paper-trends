@@ -11,7 +11,7 @@ semiconductor packaging.
 
 **Positioning (decided with the maintainer on 2026-10-02): "any conference" is the
 product; the presets are examples.** The semiconductor-heavy mix of presets reflects
-where the maintainer works, not the tool's scope, and the UI must not suggest otherwise:
+the maintainer's own research area, not the tool's scope, and the UI must not suggest otherwise:
 the masthead carries only the brand, the tagline (`render.TAGLINE`, "Publication trends
 for any academic conference") and, on a conference page, "All conferences →"; the search
 box is the primary entry; presets live on the home page grouped by domain and research
@@ -69,7 +69,7 @@ npm test                                 # core + jsdom interaction tests; missi
 
 The project deliberately sets `[tool.uv] package = false` and uses a flat layout
 (`paper_trends/` at repo root), so it is run in place with `python -m` rather than
-installed into the venv. Reason: on this machine `.pth` files in `.venv` get the macOS
+installed into the venv. Reason: on some macOS setups `.pth` files in `.venv` get the
 "hidden" flag, and Python ≥ 3.12.12 silently skips hidden `.pth` files, which breaks
 editable installs (`ModuleNotFoundError: paper_trends`). Do not switch back to a
 `src/` layout with an editable install without solving that.
@@ -89,9 +89,11 @@ paper_trends/
   validate.py  # title-agreement check of the mention roles (how the counting rule was chosen)
   openalex.py  # API client: polite pool, cursor paging, retries, abstract reconstruction
   fetch.py     # conference -> works resolution, coverage table
+  resolve.py   # `resolve` command: acronym/name -> venue name, DOI prefixes, paper count
   store.py     # JSONL read/write, year filtering (shared by all commands)
   coverage.py  # conservative default report period; excludes current/incomplete trailing editions
   presets.py   # conference registry; derives PRESETS, FULL, SHORT and GROUPS for app/site
+  branding.py  # shared pt mark (inline SVG/data URI) for the app and portable reports
   text.py      # tokenizer (strips inline LaTeX from IEEE abstracts), n-grams, stopwords
   keywords.py  # KeywordTrends: per-year counts of papers about a phrase, rising/falling/emerging
   background.py  # cross-field table of common phrases (resources/background.json) + builder
@@ -444,9 +446,9 @@ positions it absolutely near the last click instead.
   OpenAlex has not yet indexed most 2026 abstracts. Analyses that depend on abstracts
   should treat the latest year as incomplete or exclude it.
 - OpenAlex occasionally returns truncated/non-JSON bodies or drops TLS connections
-  (`SSL: UNEXPECTED_EOF_WHILE_READING`, more often through the local proxy on this
-  machine, 127.0.0.1:1082, which `requests` picks up from macOS system settings); the
-  client retries both with backoff.
+  (`SSL: UNEXPECTED_EOF_WHILE_READING`, more often when `requests` goes through a
+  local HTTP proxy picked up from the OS system settings); the client retries both
+  with backoff.
 - OpenAlex institution disambiguation is imperfect: the same lab can appear under two ids
   ("Institute of Microelectronics" is both A*STAR IME and CAS IME) and a few affiliations
   are mis-resolved. `rank --roll-up` (the app's default for institutions) credits the
