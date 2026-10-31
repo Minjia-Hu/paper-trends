@@ -19,6 +19,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
       - run: uv sync --frozen --python ${{ matrix.python-version }}
+      - run: uv run --frozen ruff check .
+        if: matrix.python-version == '3.12'
       - run: uv run --python ${{ matrix.python-version }} pytest -q
         env:
           OPENALEX_MAILTO: ci@example.com

@@ -75,7 +75,9 @@ installed into the venv. Reason: on some macOS setups `.pth` files in `.venv` ge
 editable installs (`ModuleNotFoundError: paper_trends`). Do not switch back to a
 `src/` layout with an editable install without solving that.
 
-No linter is configured yet.
+Run `uv run ruff check .` for the minimal correctness rules configured in
+`pyproject.toml`. CI also runs this check; formatting is not enforced.
+Dependabot checks uv, npm and GitHub Actions dependencies weekly.
 
 ## Architecture
 

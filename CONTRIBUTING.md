@@ -5,8 +5,9 @@ Thanks for your interest. Bug reports, venue coverage notes and pull requests ar
 ## Setup and checks
 
 ```bash
-uv sync                      # Python 3.12+, dependencies into .venv
+uv sync --frozen             # Python 3.12+, dependencies into .venv
 npm ci --ignore-scripts      # jsdom for the DOM tests (Node 24 recommended)
+uv run ruff check .          # minimal correctness checks
 uv run pytest -q             # offline Python suite
 npm test                     # Node core + jsdom interaction tests
 ```
@@ -16,6 +17,10 @@ installed into the virtual environment (see the note on `package = false` in
 `pyproject.toml`). Copy `.env.example` to a git-ignored `.env` and fill in
 `OPENALEX_MAILTO` and an activated `OPENALEX_API_KEY`. Complete fetches require the key
 because OpenAlex cursor paging beyond the first page is authenticated.
+
+Ruff checks syntax and selected correctness errors; formatting is not enforced.
+Dependabot checks Python, npm and GitHub Actions dependencies weekly and opens
+update pull requests for review.
 
 ## Ground rules
 

@@ -522,6 +522,7 @@ papers; `--count any --keep-common` turns both off.
 
 ```bash
 uv sync --frozen
+uv run ruff check .
 uv run pytest -q
 
 # Node.js 24 recommended (CI); DOM dependencies are pinned in package-lock.json.
@@ -529,11 +530,12 @@ npm ci --ignore-scripts
 npm test
 ```
 
-CI runs the offline Python suite on Python 3.12 and 3.13, plus the Node core and
+CI runs minimal Ruff correctness checks, the offline Python suite on Python 3.12 and 3.13, plus the Node core and
 jsdom interaction tests on Node 24, including Explorer interactions and report entity
 navigation. `npm test` fails if jsdom is missing, rather than
 silently skipping the DOM suite. Historical audit documents under `docs/` retain the
 results and corpus snapshots recorded when those audits were performed.
+Dependabot checks Python, npm and GitHub Actions dependencies weekly and opens update pull requests for review.
 
 ## Data & license
 

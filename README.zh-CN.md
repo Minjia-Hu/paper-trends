@@ -463,6 +463,7 @@ IEEE DOI 包含会议缩写（如 `10.1109/ECTC...`），因此通过 DOI 前缀
 
 ```bash
 uv sync --frozen
+uv run ruff check .
 uv run pytest -q
 
 # 推荐使用 Node.js 24，与 CI 一致；DOM 测试依赖锁定在 package-lock.json 中。
@@ -470,9 +471,10 @@ npm ci --ignore-scripts
 npm test
 ```
 
-CI 在 Python 3.12 和 3.13 上运行离线 Python 测试，并在 Node.js 24 上运行 Node 核心逻辑和 jsdom 交互测试，
+CI 运行最小 Ruff 正确性检查，在 Python 3.12 和 3.13 上运行离线 Python 测试，并在 Node.js 24 上运行 Node 核心逻辑和 jsdom 交互测试，
 覆盖 Explorer 交互与报告实体导航。缺少 jsdom 时，`npm test` 会失败，而不会静默跳过 DOM 测试。
 `docs/` 中的历史审查文档保留执行审查时记录的结果与语料快照说明。
+Dependabot 每周检查 Python、npm 和 GitHub Actions 依赖，并创建更新 PR 供审查。
 参与贡献请阅读[贡献指南（英文）](CONTRIBUTING.md)。
 
 ## 数据与许可
