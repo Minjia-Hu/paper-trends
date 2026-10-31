@@ -1,5 +1,7 @@
 # paper-trends
 
+**English** | [简体中文](README.zh-CN.md)
+
 [![tests](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml/badge.svg)](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
@@ -15,7 +17,7 @@ The same command works for ISSCC, IEDM, or any other venue indexed by OpenAlex.
 
 > Status: early but usable. Command-line tools for fetching and analysis, a static report generator, and a Streamlit app.
 
-![ECTC report page with the detail panel open on “hybrid bonding”: trend, who writes about it, topics, co-occurring phrases](docs/screenshot-report-panel.png)
+![ECTC report overview: conference, period, paper counts and key findings](docs/screenshot-report-overview.png)
 
 ## Requirements
 
@@ -165,6 +167,13 @@ hyphenated display names resolve to their counting keys, and rare phrases remain
 respecting parent roll-up. Title-only corpora disable abstract rules. See
 [interactive exploration behavior and tests (Chinese)](docs/interactive-report.md).
 
+![Explore workspace: time window, counting rules, hybrid bonding trend and supporting papers](docs/screenshot-explore.png)
+
+Clicking a report phrase opens its linked detail panel with related institutions, topics
+and co-occurring phrases:
+
+![ECTC detail panel for hybrid bonding](docs/screenshot-report-panel.png)
+
 The home page presents a curated set of reports in two levels. **Semiconductor &
 microelectronics** is split into packaging & integration (ECTC, EPTC, ICEPT), thermal
 management & multiphysics (ITherm, EuroSimE), reliability (IRPS), and devices & circuits
@@ -190,7 +199,12 @@ the DOI boundary check that excludes unrelated conferences and workshops. Search
 to 2016–2024 because its 2025 records are still sparse; 2026 remains visible under an
 explicit period selection but is excluded from the default trend window.
 
-![The app's home page: a search box for any venue, and the ready-made conferences grouped by field](docs/screenshot-app.png)
+<details>
+<summary>View the home page: conference search and field groups</summary>
+
+![The app home page: conference search and presets grouped by field](docs/screenshot-app.png)
+
+</details>
 
 To host it (e.g. on Streamlit Community Cloud) set `OPENALEX_MAILTO` and `OPENALEX_API_KEY` in
 the app's secrets; the app reads them from `st.secrets` when the environment variables are absent.
@@ -390,22 +404,26 @@ Check the `[sources]` lines printed first to confirm only the intended venue mat
 
 ### Not just semiconductors
 
-The same pipeline on **CVPR 2016–2025** (16.9k papers, workshops excluded, 99.8 % with
-abstracts) recovers the field's history without any vision-specific configuration:
+The same pipeline on **CVPR 2016–2025** (16,894 papers, workshops excluded, 99.8% with
+abstracts) recovers the field's history without any vision-specific configuration.
+The table and screenshot below were regenerated on 2026-11-01 from the existing cached
+corpus with eight NMF topics; the five largest topics are shown. This is the analysis
+date, not a new data-fetch date:
 
 ```
-topic                                    papers    16    17    18    19    20    21    22    23    24    25   delta
-generation / diffusion models / text       1936    0%    3%    5%    5%    6%    8%    6%   10%   21%   23%  +10.0%
-visual / text / vision language            2029    6%    8%    7%    6%    6%    6%    8%   12%   18%   23%   +8.1%
-video / temporal / videos                  1523   13%   12%   11%   10%    9%    9%   11%    9%    7%    7%   -2.0%
-object detection / objects / detectors     1503   14%   10%    9%   10%   11%   12%   11%    9%    7%    5%   -2.5%
-deep / network / neural networks           3466   33%   34%   31%   32%   29%   24%   21%   18%   11%   10%  -15.7%
+topic                                        papers    16    17    18    19    20    21    22    23    24    25   delta
+3d / view / pose                               3473   23%   19%   20%   19%   20%   20%   19%   22%   22%   21%   +1.4%
+deep / network / neural networks               2617   26%   27%   25%   25%   23%   17%   15%   13%    8%    7%  -13.8%
+visual / text / vision-language                2291    7%    8%    8%    7%    7%    8%    9%   13%   20%   26%   +9.1%
+video / temporal / videos                      2016   16%   17%   14%   13%   12%   13%   13%   11%   10%   10%   -2.7%
+generation / diffusion models / text           1811    0%    3%    6%    5%    6%    7%    6%    9%   19%   21%   +8.8%
 ```
 
-Rising phrases: diffusion models, language models, vision-language, contrastive
-learning. Falling: convolutional neural networks, end to end, generative adversarial. Country share: China 33 % → 47 %, United States 44 % → 33 %.
+In the same analysis, rising phrases include diffusion models, vision-language,
+real-world and pre-trained. Falling phrases include neural networks, deep-learning,
+person re-identification and convolutional networks.
 
-![CVPR topic evolution](docs/screenshot-cvpr-topics.png)
+![CVPR 2016–2025 topic evolution: eight NMF topics with five topic descriptions shown by default](docs/screenshot-cvpr-topics.png)
 
 **Interspeech 2016–2025** (9.7k papers, non-IEEE publisher, titles only because OpenAlex
 lacks most of its abstracts): self-supervised, zero-shot, large language and
