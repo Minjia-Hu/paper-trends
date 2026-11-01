@@ -541,6 +541,8 @@ navigation. `npm test` fails if jsdom is missing, rather than
 silently skipping the DOM suite. Historical audit documents under `docs/` retain the
 results and corpus snapshots recorded when those audits were performed.
 Dependabot checks Python, npm and GitHub Actions dependencies weekly and opens update pull requests for review.
+An optional, manually triggered [live OpenAlex check](CONTRIBUTING.md#optional-live-api-check)
+verifies fetching and report generation with real data.
 
 ## Data & license
 

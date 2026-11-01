@@ -480,6 +480,8 @@ CI 运行最小 Ruff 正确性检查，在 Python 3.12 和 3.13 上运行离线 
 覆盖 Explorer 交互与报告实体导航。缺少 jsdom 时，`npm test` 会失败，而不会静默跳过 DOM 测试。
 `docs/` 中的历史审查文档保留执行审查时记录的结果与语料快照说明。
 Dependabot 每周检查 Python、npm 和 GitHub Actions 依赖，并创建更新 PR 供审查。
+另提供手动触发的[真实 OpenAlex 验证](CONTRIBUTING.md#optional-live-api-check)，
+用小范围真实数据检查抓取、报告生成、导出和交互应用；需要配置凭证并消耗 API 额度。
 参与贡献请阅读[贡献指南（英文）](CONTRIBUTING.md)。
 
 ## 数据与许可
