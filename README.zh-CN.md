@@ -15,6 +15,8 @@
 
 > 项目状态：处于早期阶段，已可使用。提供数据获取与分析命令行工具、静态报告生成器，以及 Streamlit 交互应用。
 
+版本记录：[更新日志](CHANGELOG.md)。
+
 ![ECTC 中文报告概览：会议、年份、论文数量与主要趋势](docs/screenshot-report-overview.zh.png)
 
 ## 环境要求

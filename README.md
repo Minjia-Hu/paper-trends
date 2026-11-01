@@ -17,6 +17,8 @@ The same command works for ISSCC, IEDM, or any other venue indexed by OpenAlex.
 
 > Status: early but usable. Command-line tools for fetching and analysis, a static report generator, and a Streamlit app.
 
+Release notes: [Changelog](CHANGELOG.md).
+
 ![ECTC report overview: conference, period, paper counts and key findings](docs/screenshot-report-overview.png)
 
 ## Requirements
