@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-11-01T10:50:20+00:00",
+  "source_revision": "f703ff9eac3ceff2c9480bc783921800e5d284d8",
+  "years": [
+    2016,
+    2025
+  ],
+  "n_topics": 8,
+  "sources": [
+    {
+      "slug": "ectc",
+      "corpus_sha256": "764256596bb2b800f2f8367295e9eca01b29000b2ac76d8205b1b9b5c20df78a",
+      "papers_in_period": 3655,
+      "provenance": {
+        "fetched_at": null,
+        "status": "unrecorded"
+      }
+    },
+    {
+      "slug": "cvpr",
+      "corpus_sha256": "21754a78200c1193d29877c2f11b499c609b712677c1cf3168df69062c8b6946",
+      "papers_in_period": 16894,
+      "provenance": {
+        "fetched_at": null,
+        "status": "unrecorded"
+      }
+    }
+  ]
+}
