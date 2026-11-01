@@ -29,6 +29,7 @@ a:hover { border-bottom-color: var(--red); }
 .masthead .tagline { font-family: var(--sans); font-size: 13.5px; color: var(--muted); }
 .masthead .all { font-family: var(--sans); font-size: 13.5px; color: var(--muted); margin-left: auto; text-decoration: none; border-bottom: 1px solid var(--rule); }
 .masthead .all:hover { color: var(--red); border-color: var(--red); }
+.home-masthead .all, .home-masthead .all a { border-bottom: 0; }
 .home-page header.title { padding-bottom: 0; border-bottom: 0; }
 .home-intro { color: var(--muted); font-size: 16px; max-width: var(--measure); margin: 0 0 16px; }
 .collection-note { max-width: 78ch; margin: 0 0 2px; color: var(--faint); font-family: var(--sans); font-size: 13px; }
@@ -40,14 +41,18 @@ a:hover { border-bottom-color: var(--red); }
 .collection-footer summary { font-size: 12.5px; }
 .collection-footer details[open] p { margin-top: 10px; }
 .domain-jump { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 18px 0 4px; font-family: var(--sans); font-size: 13px; }
-.domain-jump a { color: var(--muted); }
+.domain-jump a { color: var(--muted); border-bottom: 0; }
 .domain-jump a:hover { color: var(--red); }
 .domains { margin-top: 4px; }
-.domain-section { margin: 0; padding: 28px 0 24px; border-top: 1px solid var(--rule); }
+.domain-section { margin: 0; padding: 28px 0 24px; }
 .domain-section > h2 { font-size: 31px; margin: 0 0 18px; }
 .directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
 .directions > .direction { margin: 0; }
 .direction h3 { font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; }
+.home-page .direction h3 { font: 500 13px/1.5 var(--sans); color: var(--muted); margin-bottom: 6px; }
+.home-page .directions .glance li { border: 0; padding: 8px 0; }
+.home-page .glance a { border-bottom: 0; }
+.home-page .glance a:hover { color: var(--red); }
 .directions .glance .n { color: var(--faint); font-family: var(--sans); font-size: 13px; margin-left: 6px; }
 @media (max-width: 700px) { .directions { grid-template-columns: 1fr; gap: 28px; } .domain-section { padding-top: 30px; } .domain-section > h2 { font-size: 27px; } }
 .brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; font-family: var(--serif); font-size: 20px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; border: 0; white-space: nowrap; }
