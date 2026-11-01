@@ -170,6 +170,8 @@ together without a server request. Open an example's abstract or follow its DOI 
 the evidence. Expand **All matching papers & export** to page through all matches or export
 them as CSV. Report phrases link into Explore with the selected period and phrase preserved,
 including custom year ranges.
+All CSV exports (CLI, app downloads and Explore) prefix formula-like text cells with an
+apostrophe so spreadsheet software treats them as text.
 
 Counts cover every matching record; examples contain at most three highest-cited papers
 per phrase/year/mention role. The shortlist contains up to 20 rising, fading, emerging
@@ -545,9 +547,6 @@ An optional, manually triggered [live OpenAlex check](CONTRIBUTING.md#optional-l
 verifies fetching and report generation with real data.
 
 ## Data & license
-
-CSV exports prefix formula-like text cells with an apostrophe so spreadsheet software
-treats them as text. This applies to the CLI, app downloads and Explore exports.
 
 Metadata comes from [OpenAlex](https://openalex.org) (CC0). Only public data and public
 methods are used. Code is released under the MIT License.
