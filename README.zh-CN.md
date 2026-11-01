@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+**[打开在线示例 →](https://minjia-hu.github.io/paper-trends/index.zh.html)** ECTC 与 CVPR 的 2016–2025 年报告，无需安装或配置 API key 即可查看；完整 Explore 请使用本地应用。
+
 [![tests](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml/badge.svg)](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
@@ -465,7 +467,7 @@ IEEE DOI 包含会议缩写（如 `10.1109/ECTC...`），因此通过 DOI 前缀
 - [x] Streamlit 交互应用
 - [x] 跨会议短语比较，支持 CLI 和 Explore
 - [x] 静态报告页面（`report`）
-- [ ] 托管预先获取数据的报告站点（GitHub Pages）
+- [x] 托管 ECTC 与 CVPR 的[在线示例报告](https://minjia-hu.github.io/paper-trends/index.zh.html)（GitHub Pages）
 
 ## 开发检查
 

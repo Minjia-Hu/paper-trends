@@ -24,6 +24,7 @@
   <h1>{{ _('What a field talks about, year by year') }}</h1>
   <p class="home-intro">{{ _('Follow keyword and topic trends, and see who publishes.') }}</p>
 </header>
+{% include "demo_notice.html.j2" %}
 <p class="collection-note">{{ _('Curated conferences, growing over time.') }}</p>
 <nav class="domain-jump" aria-label="{{ '研究领域' if lang == 'zh' else 'Research domains' }}">{% for domain, directions in nav %}<a href="#domain-{{ loop.index0 }}">{{ _(domain) }}</a>{% endfor %}</nav>
 <div class="domains">

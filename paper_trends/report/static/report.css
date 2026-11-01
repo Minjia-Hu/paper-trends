@@ -32,6 +32,9 @@ a:hover { border-bottom-color: var(--red); }
 .home-page header.title { padding-bottom: 0; border-bottom: 0; }
 .home-intro { color: var(--muted); font-size: 16px; max-width: var(--measure); margin: 0 0 16px; }
 .collection-note { max-width: 78ch; margin: 0 0 2px; color: var(--faint); font-family: var(--sans); font-size: 13px; }
+.demo-notice { margin: 24px 0; padding: 12px 0 12px 16px; border-left: 2px solid var(--red); max-width: 86ch; font: 13px/1.65 var(--sans); color: var(--muted); }
+.demo-notice p { margin: 0; }
+.demo-notice .demo-label { color: var(--ink); font-weight: 600; margin-bottom: 4px; }
 .collection-footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--rule); font-family: var(--sans); }
 .collection-footer p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.65; color: var(--faint); max-width: 78ch; }
 .collection-footer summary { font-size: 12.5px; }

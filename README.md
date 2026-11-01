@@ -2,6 +2,8 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+**[Try the live demo →](https://minjia-hu.github.io/paper-trends/)** ECTC and CVPR reports, 2016–2025. No setup or API key needed to view; full Explore is available in the local app.
+
 [![tests](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml/badge.svg)](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
@@ -525,7 +527,7 @@ papers; `--count any --keep-common` turns both off.
 - [x] Streamlit app
 - [x] Compare terms across conferences (CLI + Explore section)
 - [x] Static report pages (`report`)
-- [ ] Hosted report site with pre-fetched presets (GitHub Pages)
+- [x] [Hosted example reports](https://minjia-hu.github.io/paper-trends/) for ECTC and CVPR (GitHub Pages)
 
 ## Development checks
 
