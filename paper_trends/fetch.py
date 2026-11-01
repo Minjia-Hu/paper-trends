@@ -129,10 +129,15 @@ def resolve_sources(client: OpenAlex, query: str) -> list[dict[str, Any]]:
     parentheticals, *equals* the query — so "Conference on Computer Vision and Pattern
     Recognition" does not pull in "... Pattern Recognition Workshops (CVPRW)". If nothing
     matches exactly, fall back to sources whose name merely contains the query.
+    Workshop sources are eligible only when the query explicitly asks for workshops;
+    a missing exact main-conference match must not broaden the corpus to workshops.
     """
     key = _norm(query)
     key_core = _core_name(query)
     candidates = client.search_sources(query)
+    if not re.search(r"\bworkshops?\b", query, re.I):
+        candidates = [s for s in candidates
+                      if not re.search(r"\bworkshops?\b", s["display_name"], re.I)]
     exact = [s for s in candidates if _core_name(s["display_name"]) == key_core]
     if exact:
         return sorted(exact, key=lambda s: s["display_name"])

@@ -88,6 +88,31 @@ def test_doi_prefix_boundary():
     assert [pfx for _, pfx in filters] == ["10.1109/vlsit", "10.23919/vlsic"]
 
 
+def test_source_fallback_excludes_workshops_even_without_exact_main_name():
+    from paper_trends.fetch import resolve_sources
+
+    main = {"id": "S1", "display_name": "IEEE Computer Society Conference on Computer Vision and Pattern Recognition/Proceedings - IEEE Computer Society Conference on Computer Vision and Pattern Recognition/Proceedings"}
+    workshop = {"id": "S2", "display_name": "IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)"}
+
+    class FakeClient:
+        def search_sources(self, query):
+            return [workshop, main]
+
+    query = "Conference on Computer Vision and Pattern Recognition"
+    assert resolve_sources(FakeClient(), query) == [main]
+    assert resolve_sources(FakeClient(), query + " Workshops") == [workshop]
+
+
+def test_workshop_only_search_does_not_substitute_for_main_conference():
+    from paper_trends.fetch import resolve_sources
+
+    class FakeClient:
+        def search_sources(self, query):
+            return [{"id": "S1", "display_name": "Conference on Computer Vision and Pattern Recognition Workshops"}]
+
+    assert resolve_sources(FakeClient(), "Conference on Computer Vision and Pattern Recognition") == []
+
+
 def test_source_matching_prefers_exact_core_name():
     from paper_trends.fetch import _core_name, resolve_sources
 
