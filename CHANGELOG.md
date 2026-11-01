@@ -10,8 +10,8 @@
   detail panels for ECTC and CVPR, covering 2016–2025 without sign-in or an API key.
 - Reproducible demo build script and deployment instructions, with corpus hashes,
   verified fetch timestamps for refreshed data, and the source revision in a manifest.
-- Tighter spacing and fewer dividers on the report index, with conference groups
-  distinguished by typography and whitespace.
+- Tighter spacing on the report index while retaining its section and list dividers;
+  remove redundant underlines from conference and navigation links.
 
 ## [0.1.0](https://github.com/Minjia-Hu/paper-trends/releases/tag/v0.1.0) — 2026-11-01
 
