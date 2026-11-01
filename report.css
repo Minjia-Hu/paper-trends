@@ -44,13 +44,11 @@ a:hover { border-bottom-color: var(--red); }
 .domain-jump a { color: var(--muted); border-bottom: 0; }
 .domain-jump a:hover { color: var(--red); }
 .domains { margin-top: 4px; }
-.domain-section { margin: 0; padding: 28px 0 24px; }
+.domain-section { margin: 0; padding: 28px 0 24px; border-top: 1px solid var(--rule); }
 .domain-section > h2 { font-size: 31px; margin: 0 0 18px; }
 .directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
 .directions > .direction { margin: 0; }
 .direction h3 { font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; }
-.home-page .direction h3 { font: 500 13px/1.5 var(--sans); color: var(--muted); margin-bottom: 6px; }
-.home-page .directions .glance li { border: 0; padding: 8px 0; }
 .home-page .glance a { border-bottom: 0; }
 .home-page .glance a:hover { color: var(--red); }
 .directions .glance .n { color: var(--faint); font-family: var(--sans); font-size: 13px; margin-left: 6px; }
