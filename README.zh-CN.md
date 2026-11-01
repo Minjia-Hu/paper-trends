@@ -95,6 +95,11 @@ Vega 图表库和字体通过 CDN 加载，首次加载需要网络连接。
 
 ### 交互应用
 
+从短语追踪到相关机构及其特色研究：点击 **hybrid bonding**，再点击详情面板中的机构。
+面包屑导航保留完整路径。下方为英文界面的操作演示，中英文界面均支持这些交互。
+
+![ECTC 报告交互：打开 hybrid bonding，再查看相关机构的趋势和特色关键词](docs/demo-interaction.gif)
+
 ```bash
 uv run streamlit run app.py
 ```

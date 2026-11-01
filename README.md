@@ -106,6 +106,11 @@ and fonts load from CDNs and require network access on first load.
 
 ### Interactive app
 
+Follow a phrase to its institutions and their signature research: click **hybrid bonding**,
+then an institution in the detail panel. The breadcrumb keeps the path visible.
+
+![ECTC report interaction: open hybrid bonding, then an institution's trends and signature phrases](docs/demo-interaction.gif)
+
 ```bash
 uv run streamlit run app.py
 ```
