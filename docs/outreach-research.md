@@ -10,7 +10,7 @@
 
 我做了 paper-trends，用 OpenAlex 的公开论文元数据，把这些问题整理成可以点击探索的报告。
 
-以当前 ECTC 样本为例：与 hybrid bonding 匹配的论文占比，从 2016–2020 年的约 1.1%，
+以 2026-11-01 获取的 ECTC 样本为例：与 hybrid bonding 匹配的论文占比，从 2016–2020 年的约 1.1%，
 上升到 2021–2025 年的约 9.6%。这是前后两个五年时段的汇总占比比较；匹配规则是短语出现在标题中，
 或在摘要中至少出现两次。它描述的是这个样本中的论文关注度。
 
@@ -34,7 +34,7 @@ OpenAlex 的会议收录、摘要和机构识别存在差异，报告中附有�
 What has a conference been talking about over the past decade—and who is working on the emerging topics?
 
 I built paper-trends to explore these questions using public metadata from OpenAlex.
-In the current ECTC sample, the share of papers matching “hybrid bonding” rises from about 1.1% in 2016–2020
+In the ECTC sample fetched on 2026-11-01, the share of papers matching “hybrid bonding” rises from about 1.1% in 2016–2020
 to 9.6% in 2021–2025. These are pooled shares across two five-year periods. A paper matches when the phrase
 appears in its title or at least twice in its abstract.
 
@@ -55,4 +55,5 @@ and methods notes. I'd welcome feedback on useful conferences to cover and findi
 
 优先使用 ECTC 趋势截图，或 [8 秒交互 GIF](demo-interaction.gif)。外部直接图片地址：
 <https://raw.githubusercontent.com/Minjia-Hu/paper-trends/main/docs/demo-interaction.gif>。
-统计数字对应首批 2016–2025 示例；更新语料后需要重新核对。
+统计数字已按 2026-11-01 获取的语料重新核对，分析时段仍为 2016–2025；以后更新语料时需要再次核对。
+现有截图和 GIF 是较早的界面快照，数值和主题标签可能不同；发布时可注明，或使用当前在线报告的截图。

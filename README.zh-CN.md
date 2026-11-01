@@ -21,6 +21,8 @@
 
 ![ECTC 中文报告概览：会议、年份、论文数量与主要趋势](docs/screenshot-report-overview.zh.png)
 
+截图和 GIF 保留较早的界面快照，数值和主题标签可能与当前在线示例不同。
+
 ## 环境要求
 
 - Python 3.12+（依赖 requests、python-dotenv、scikit-learn、pandas、streamlit、altair、jinja2）
@@ -74,8 +76,7 @@ uv run streamlit run app.py
 
 ## 使用说明
 
-下文的数值来自已记录的语料快照，用于说明功能，并非当前 OpenAlex 索引或当前分析代码的最新结果。
-比较统计规则或主题规则的变化时，请重新生成结果。
+ECTC 和 CVPR 的正文统计已按 2026-11-01 重新抓取的语料核对。其他会议及历史审查数字保留原快照；跨会议示例结合刷新后的 ECTC 与原有 IEDM、ISSCC 语料。结果会随 OpenAlex 索引和分析规则变化。
 
 ### 报告页面
 
@@ -208,13 +209,13 @@ uv run python -m paper_trends fetch "Electronic Components and Technology Confer
 ```
   year   papers  abstracts  coverage
 -------------------------------------
-  2016      391        388    99.2%
-  2017      336        332    98.8%
+  2016      393        389    99.0%
+  2017      337        332    98.5%
   ...
   2025      382        380    99.5%
-  2026      416         11     2.6%   <- OpenAlex 尚未收录大部分 2026 年摘要
+  2026      417          8     1.9%   <- OpenAlex 尚未收录大部分 2026 年摘要
 -------------------------------------
-   all     4071       3646    89.6%
+   all     4075       3643    89.4%
 ```
 
 每条记录包含：`id`、`doi`、`title`、`publication_year`、`abstract`（纯文本）、
@@ -264,8 +265,8 @@ ECTC 2016–2025 年示例，比较前后半时段的论文占比：
 
 ```
 RISING                       early    late   delta      FALLING                      early    late   delta
-hybrid bonding                1.1%    9.6%   +8.6%      wafer-level                   6.6%    2.6%   -4.0%
-heterogeneous integration     1.9%    4.6%   +2.6%      board-level                   3.2%    1.9%   -1.3%
+hybrid bonding                1.1%    9.6%   +8.6%      wafer-level                   6.6%    2.6%   -3.9%
+heterogeneous integration     1.9%    4.6%   +2.7%      board-level                   3.2%    1.9%   -1.3%
 cu-cu                         1.3%    3.5%   +2.2%      package-on-package            1.6%    0.3%   -1.2%
 advanced packaging            1.4%    3.5%   +2.1%      flip-chip                     4.8%    3.6%   -1.2%
 co-packaged optics            0.1%    1.7%   +1.7%      ultra-thin                    2.2%    1.0%   -1.2%
@@ -287,14 +288,14 @@ uv run python -m paper_trends topics data/ectc.jsonl --years 2016-2025 --n-topic
 展示各年份的主题构成和示例论文：
 
 ```
-topic                                  papers    16    17    18    19    20    21    22    23    24    25   delta
-hybrid bonding / wafer / cu cu            517   10%    9%    7%   10%   12%   14%   16%   19%   26%   18%   +9.1%
-model / reliability / stress              505   17%   16%   17%   13%   13%   14%   13%   13%   11%   11%   -3.0%
-fan / wafer level / fowlp                 394    9%   16%   15%   14%   13%   11%   10%    9%    7%    5%   -4.7%
-dielectric / glass / layer                392   11%    9%   12%   10%   10%   11%   11%    9%   10%   14%   +0.7%
-heat / cooling / temperature              371    9%   10%    9%   11%    8%   11%   12%   11%    7%   14%   +1.5%
-power / design / interposer               360   11%    7%    6%   10%    8%   10%   10%   10%   11%   16%   +2.9%
-sn / joint / solder joints                346   13%   10%    9%   13%   12%    8%    6%    7%    9%    7%   -4.0%
+topic                                        papers    16    17    18    19    20    21    22    23    24    25   delta
+hybrid bonding / wafer / pitch                  574   12%   11%    8%   12%   12%   15%   16%   20%   28%   21%   +9.1%
+fan / rdl / wafer level                         490   10%   17%   18%   15%   15%   14%   14%   12%   11%    9%   -3.0%
+model / finite element / simulation             418   14%   13%   11%   10%   10%   12%   11%   10%    9%   13%   -0.4%
+power / interposer / design                     361   10%    7%    7%   10%    9%   11%   10%    9%   10%   15%   +2.3%
+flexible / printed / electronics                357   11%   12%   12%   12%   12%   10%    8%    8%    8%    5%   -3.9%
+heat / power / temperature                      353    9%   10%    9%   10%    7%   11%   11%   10%    7%   12%   +1.2%
+antenna / loss / frequency                      309    5%    7%   10%    8%   12%   10%   12%    9%    5%    7%   +0.2%
 ```
 
 使用 `--method openalex` 可改用 OpenAlex 自带的主题标签，粒度较粗，但无需拟合。
@@ -329,7 +330,7 @@ uv run python -m paper_trends compare data/ectc.jsonl data/iedm.jsonl --term "hy
 
 ```
 term                          ectc       iedm      isscc
-artificial intelligence      +3.5%      +4.5%      +4.3%
+artificial intelligence      +3.6%      +4.5%      +4.3%
 high density                 +1.4%      +1.1%      +0.4%
 high performance             +2.2%      +0.2%      +0.3%
 power delivery               +0.9%      +0.2%      +0.6%
@@ -376,17 +377,17 @@ uv run python -m paper_trends fetch "International Solid-State Circuits Conferen
 
 ### 不限于半导体领域
 
-将同一流程用于 **CVPR 2016–2025 年**（16,894 篇论文，不含 workshops，99.8% 有摘要），
-无需计算机视觉专用配置，即可观察该领域的历史变化。下表和截图于 2026-11-01 使用现有缓存语料、
-8 个 NMF 主题重新生成，列出论文数最多的五个主题；日期指重新分析时间，不代表重新抓取数据：
+将同一流程用于 **CVPR 2016–2025 年**（16,877 篇论文，排除可识别的 workshop 记录，99.7% 有摘要），
+无需计算机视觉专用配置，即可观察该领域的历史变化。下表使用 2026-11-01 重新获取的语料、
+8 个 NMF 主题生成，列出论文数最多的五个主题；截图保留较早的界面快照：
 
 ```
 topic                                        papers    16    17    18    19    20    21    22    23    24    25   delta
-3d / view / pose                               3473   23%   19%   20%   19%   20%   20%   19%   22%   22%   21%   +1.4%
-deep / network / neural networks               2617   26%   27%   25%   25%   23%   17%   15%   13%    8%    7%  -13.8%
-visual / text / vision-language                2291    7%    8%    8%    7%    7%    8%    9%   13%   20%   26%   +9.1%
-video / temporal / videos                      2016   16%   17%   14%   13%   12%   13%   13%   11%   10%   10%   -2.7%
-generation / diffusion models / text           1811    0%    3%    6%    5%    6%    7%    6%    9%   19%   21%   +8.8%
+3d / view / pose                               3482   22%   19%   20%   19%   20%   20%   20%   23%   22%   21%   +1.4%
+deep / network / neural networks               2611   26%   27%   25%   25%   23%   17%   16%   13%    8%    7%  -13.7%
+visual / text / vision-language                2290    7%    8%    8%    7%    7%    8%    9%   13%   20%   26%   +9.1%
+video / temporal / videos                      2023   16%   17%   14%   13%   12%   13%   13%   11%   10%   10%   -2.5%
+generation / diffusion models / text           1809    0%    3%    6%    5%    6%    7%    6%    9%   19%   21%   +8.7%
 ```
 
 同次分析中，上升短语包括 diffusion models、vision-language、real-world 和 pre-trained；

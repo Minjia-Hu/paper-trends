@@ -23,6 +23,8 @@ Release notes: [Changelog](CHANGELOG.md).
 
 ![ECTC report overview: conference, period, paper counts and key findings](docs/screenshot-report-overview.png)
 
+Screenshots and the GIF show an earlier interface snapshot; figures and topic labels may differ from the current live demo.
+
 ## Requirements
 
 - Python 3.12+ (dependencies: requests, python-dotenv, scikit-learn, pandas, streamlit, altair, jinja2)
@@ -81,9 +83,7 @@ and press **Fetch**.
 
 ## Usage
 
-Numerical examples below describe recorded corpus snapshots. They are illustrations,
-not fresh results for the current OpenAlex index or analysis code; regenerate them
-when comparing changes to the counting and topic rules.
+ECTC and CVPR figures in the text were checked against corpora fetched on 2026-11-01. Other conferences and historical audits retain their earlier snapshots; cross-conference examples combine refreshed ECTC with the existing IEDM and ISSCC corpora. Results can change with the OpenAlex index and analysis rules.
 
 ### Report pages
 
@@ -240,13 +240,13 @@ This writes one paper per line to `data/ectc.jsonl`, records fetch provenance in
 ```
   year   papers  abstracts  coverage
 -------------------------------------
-  2016      391        388    99.2%
-  2017      336        332    98.8%
+  2016      393        389    99.0%
+  2017      337        332    98.5%
   ...
   2025      382        380    99.5%
-  2026      416         11     2.6%   <- OpenAlex has not indexed most 2026 abstracts yet
+  2026      417          8     1.9%   <- OpenAlex has not indexed most 2026 abstracts yet
 -------------------------------------
-   all     4071       3646    89.6%
+   all     4075       3643    89.4%
 ```
 
 Each record contains: `id`, `doi`, `title`, `publication_year`, `abstract` (plain text),
@@ -306,8 +306,8 @@ ECTC 2016–2025, share of papers, first vs. second half of the period:
 
 ```
 RISING                       early    late   delta      FALLING                      early    late   delta
-hybrid bonding                1.1%    9.6%   +8.6%      wafer-level                   6.6%    2.6%   -4.0%
-heterogeneous integration     1.9%    4.6%   +2.6%      board-level                   3.2%    1.9%   -1.3%
+hybrid bonding                1.1%    9.6%   +8.6%      wafer-level                   6.6%    2.6%   -3.9%
+heterogeneous integration     1.9%    4.6%   +2.7%      board-level                   3.2%    1.9%   -1.3%
 cu-cu                         1.3%    3.5%   +2.2%      package-on-package            1.6%    0.3%   -1.2%
 advanced packaging            1.4%    3.5%   +2.1%      flip-chip                     4.8%    3.6%   -1.2%
 co-packaged optics            0.1%    1.7%   +1.7%      ultra-thin                    2.2%    1.0%   -1.2%
@@ -331,14 +331,14 @@ Fits an NMF topic model on titles + abstracts (reproducible, no external models)
 each paper to its dominant topic and shows the topic mix per year with example papers:
 
 ```
-topic                                  papers    16    17    18    19    20    21    22    23    24    25   delta
-hybrid bonding / wafer / cu cu            517   10%    9%    7%   10%   12%   14%   16%   19%   26%   18%   +9.1%
-model / reliability / stress              505   17%   16%   17%   13%   13%   14%   13%   13%   11%   11%   -3.0%
-fan / wafer level / fowlp                 394    9%   16%   15%   14%   13%   11%   10%    9%    7%    5%   -4.7%
-dielectric / glass / layer                392   11%    9%   12%   10%   10%   11%   11%    9%   10%   14%   +0.7%
-heat / cooling / temperature              371    9%   10%    9%   11%    8%   11%   12%   11%    7%   14%   +1.5%
-power / design / interposer               360   11%    7%    6%   10%    8%   10%   10%   10%   11%   16%   +2.9%
-sn / joint / solder joints                346   13%   10%    9%   13%   12%    8%    6%    7%    9%    7%   -4.0%
+topic                                        papers    16    17    18    19    20    21    22    23    24    25   delta
+hybrid bonding / wafer / pitch                  574   12%   11%    8%   12%   12%   15%   16%   20%   28%   21%   +9.1%
+fan / rdl / wafer level                         490   10%   17%   18%   15%   15%   14%   14%   12%   11%    9%   -3.0%
+model / finite element / simulation             418   14%   13%   11%   10%   10%   12%   11%   10%    9%   13%   -0.4%
+power / interposer / design                     361   10%    7%    7%   10%    9%   11%   10%    9%   10%   15%   +2.3%
+flexible / printed / electronics                357   11%   12%   12%   12%   12%   10%    8%    8%    8%    5%   -3.9%
+heat / power / temperature                      353    9%   10%    9%   10%    7%   11%   11%   10%    7%   12%   +1.2%
+antenna / loss / frequency                      309    5%    7%   10%    8%   12%   10%   12%    9%    5%    7%   +0.2%
 ```
 
 `--method openalex` uses OpenAlex's own topic labels instead (coarser, but no fitting).
@@ -374,7 +374,7 @@ and circuits (ISSCC), 2016–2025:
 
 ```
 term                          ectc       iedm      isscc
-artificial intelligence      +3.5%      +4.5%      +4.3%
+artificial intelligence      +3.6%      +4.5%      +4.3%
 high density                 +1.4%      +1.1%      +0.4%
 high performance             +2.2%      +0.2%      +0.3%
 power delivery               +0.9%      +0.2%      +0.6%
@@ -422,19 +422,18 @@ Check the `[sources]` lines printed first to confirm only the intended venue mat
 
 ### Not just semiconductors
 
-The same pipeline on **CVPR 2016–2025** (16,894 papers, workshops excluded, 99.8% with
+The same pipeline on **CVPR 2016–2025** (16,877 papers, identifiable workshop records excluded, 99.7% with
 abstracts) recovers the field's history without any vision-specific configuration.
-The table and screenshot below were regenerated on 2026-11-01 from the existing cached
-corpus with eight NMF topics; the five largest topics are shown. This is the analysis
-date, not a new data-fetch date:
+The table below uses the corpus fetched on 2026-11-01 and eight NMF topics; the five
+largest topics are shown. The screenshot retains an earlier interface snapshot:
 
 ```
 topic                                        papers    16    17    18    19    20    21    22    23    24    25   delta
-3d / view / pose                               3473   23%   19%   20%   19%   20%   20%   19%   22%   22%   21%   +1.4%
-deep / network / neural networks               2617   26%   27%   25%   25%   23%   17%   15%   13%    8%    7%  -13.8%
-visual / text / vision-language                2291    7%    8%    8%    7%    7%    8%    9%   13%   20%   26%   +9.1%
-video / temporal / videos                      2016   16%   17%   14%   13%   12%   13%   13%   11%   10%   10%   -2.7%
-generation / diffusion models / text           1811    0%    3%    6%    5%    6%    7%    6%    9%   19%   21%   +8.8%
+3d / view / pose                               3482   22%   19%   20%   19%   20%   20%   20%   23%   22%   21%   +1.4%
+deep / network / neural networks               2611   26%   27%   25%   25%   23%   17%   16%   13%    8%    7%  -13.7%
+visual / text / vision-language                2290    7%    8%    8%    7%    7%    8%    9%   13%   20%   26%   +9.1%
+video / temporal / videos                      2023   16%   17%   14%   13%   12%   13%   13%   11%   10%   10%   -2.5%
+generation / diffusion models / text           1809    0%    3%    6%    5%    6%    7%    6%    9%   19%   21%   +8.7%
 ```
 
 In the same analysis, rising phrases include diffusion models, vision-language,

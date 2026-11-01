@@ -55,3 +55,4 @@ I'd appreciate feedback on the report navigation, first-run experience and the r
 推荐附上 [8 秒交互 GIF](demo-interaction.gif)，展示短语 → 机构的操作。
 外部直接图片地址：<https://raw.githubusercontent.com/Minjia-Hu/paper-trends/main/docs/demo-interaction.gif>。
 发到 Streamlit 社区时可使用英文标题与正文；发到 V2EX 时可直接使用中文版本。
+现有 GIF 是较早的界面快照，用于展示操作；其中的数值和主题标签可能与刷新后的在线示例不同。

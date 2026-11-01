@@ -9,6 +9,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from .openalex import OpenAlex, OpenAlexError, reconstruct_abstract, year_filter
 from .store import parse_years, write_jsonl
@@ -135,7 +136,7 @@ def resolve_sources(client: OpenAlex, query: str) -> list[dict[str, Any]]:
     key = _norm(query)
     key_core = _core_name(query)
     candidates = client.search_sources(query)
-    if not re.search(r"\bworkshops?\b", query, re.I):
+    if not re.search(r"\bworkshops?\b|\b(?:CVPR|ICCV|ECCV)W\b", query, re.I):
         candidates = [s for s in candidates
                       if not re.search(r"\bworkshops?\b", s["display_name"], re.I)]
     exact = [s for s in candidates if _core_name(s["display_name"]) == key_core]
@@ -143,6 +144,28 @@ def resolve_sources(client: OpenAlex, query: str) -> list[dict[str, Any]]:
         return sorted(exact, key=lambda s: s["display_name"])
     loose = [s for s in candidates if key in _norm(s["display_name"])]
     return sorted(loose, key=lambda s: s["display_name"])
+
+
+def is_workshop_work(work: dict[str, Any]) -> bool:
+    """Detect explicit workshop provenance despite a misassigned main source ID."""
+    loc = work.get("primary_location") or {}
+    names = ((loc.get("source") or {}).get("display_name") or "", loc.get("raw_source_name") or "")
+    if any(re.search(r"\bworkshops?\b", name, re.I) for name in names):
+        return True
+    for key in ("landing_page_url", "pdf_url"):
+        try:
+            url = urlsplit(loc.get(key) or "")
+        except ValueError:
+            continue
+        if url.hostname in {"openaccess.thecvf.com", "www.cv-foundation.org", "cv-foundation.org"} and re.search(
+            r"/content[_/](?:CVPR|ICCV|ECCV)(?:W[_-]?\d{4}|\d{4}W|_?\d{4}_workshops)(?:[/_-]|$)", url.path, re.I
+        ):
+            return True
+        if url.hostname in {"dblp.org", "dblp.uni-trier.de"} and re.search(
+            r"/db/conf/(?:cvpr|iccv|eccv)/(?:cvpr|iccv|eccv)w\d{4}\.html$", url.path, re.I
+        ):
+            return True
+    return False
 
 
 def build_filters(
@@ -398,6 +421,8 @@ def fetch_conference(
     seen: dict[str, dict[str, Any]] = {}
     skipped = 0
     other_venue = 0
+    workshops = 0
+    include_workshops = bool(re.search(r"\bworkshops?\b|\b(?:CVPR|ICCV|ECCV)W\b", query, re.I))
     for f, pfx in filters:
         n_before = len(seen)
         for work in client.works_by_filter(f):
@@ -406,6 +431,9 @@ def fetch_conference(
             if pfx and not doi_has_prefix(work.get("doi"), pfx):
                 other_venue += 1  # e.g. ISCAS caught by the ISCA prefix
                 continue
+            if not include_workshops and is_workshop_work(work):
+                workshops += 1
+                continue
             if is_front_matter(work):
                 skipped += 1
                 continue
@@ -413,7 +441,8 @@ def fetch_conference(
         log(f"[works] +{len(seen) - n_before:>5} new  (filter: {f[:90]}{'...' if len(f) > 90 else ''})")
     records = sorted(deduplicate_dois(list(seen.values())), key=lambda r: (r["publication_year"] or 0, r["id"]))
     log(f"[works] {len(records)} unique works total; {skipped} front-matter items skipped; "
-        f"{other_venue} other-venue DOIs ignored; {len(seen) - len(records)} duplicate DOI records merged")
+        f"{other_venue} other-venue DOIs ignored; {workshops} workshop hits skipped; "
+        f"{len(seen) - len(records)} duplicate DOI records merged")
     resolve_roots(client, records, log=log)
     return records
 

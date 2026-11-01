@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Exclude workshop sources from main-conference searches even when OpenAlex source
+  naming forces a fallback to substring matching. Also reject records with explicit
+  workshop provenance in raw venue names or CVF/DBLP workshop URLs, even when their
+  OpenAlex source ID points to the main conference.
+- Public [bilingual demo](https://minjia-hu.github.io/paper-trends/) with linked
+  detail panels for ECTC and CVPR, covering 2016–2025 without sign-in or an API key.
+- Reproducible demo build script and deployment instructions, with corpus hashes,
+  verified fetch timestamps for refreshed data, and the source revision in a manifest.
+- Tighter spacing between conference groups on the report index.
+
 ## [0.1.0](https://github.com/Minjia-Hu/paper-trends/releases/tag/v0.1.0) — 2026-11-01
 
 The first public release of paper-trends: fetch public conference metadata from
