@@ -51,6 +51,7 @@ a:hover { border-bottom-color: var(--red); }
 .direction h3 { font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; }
 .home-page .glance a { border-bottom: 0; }
 .home-page .glance a:hover { color: var(--red); }
+.home-page .domain-section:not(:last-child) .glance li:last-child { border-bottom: 0; }
 .directions .glance .n { color: var(--faint); font-family: var(--sans); font-size: 13px; margin-left: 6px; }
 @media (max-width: 700px) { .directions { grid-template-columns: 1fr; gap: 28px; } .domain-section { padding-top: 30px; } .domain-section > h2 { font-size: 27px; } }
 .brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; font-family: var(--serif); font-size: 20px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; border: 0; white-space: nowrap; }
