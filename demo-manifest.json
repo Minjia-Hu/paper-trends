@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-01T10:50:20+00:00",
-  "source_revision": "f703ff9eac3ceff2c9480bc783921800e5d284d8",
+  "generated_at": "2026-11-01T12:11:36+00:00",
+  "source_revision": "f243096c5993f5a3629b78562a5984238cac8aef",
   "years": [
     2016,
     2025
@@ -9,20 +9,20 @@
   "sources": [
     {
       "slug": "ectc",
-      "corpus_sha256": "764256596bb2b800f2f8367295e9eca01b29000b2ac76d8205b1b9b5c20df78a",
-      "papers_in_period": 3655,
+      "corpus_sha256": "6cbf22f691645c8d721673504b09934178d6a4d2205b33ddc2a5ffca0ef0127f",
+      "papers_in_period": 3658,
       "provenance": {
-        "fetched_at": null,
-        "status": "unrecorded"
+        "fetched_at": "2026-11-01T11:51:21+00:00",
+        "status": "verified"
       }
     },
     {
       "slug": "cvpr",
-      "corpus_sha256": "21754a78200c1193d29877c2f11b499c609b712677c1cf3168df69062c8b6946",
-      "papers_in_period": 16894,
+      "corpus_sha256": "acf1909f782b9dd9ed204fc44320f96718659f80e6ec0d991d743f6cf11ed8b7",
+      "papers_in_period": 16877,
       "provenance": {
-        "fetched_at": null,
-        "status": "unrecorded"
+        "fetched_at": "2026-11-01T12:06:11+00:00",
+        "status": "verified"
       }
     }
   ]

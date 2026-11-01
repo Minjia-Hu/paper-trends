@@ -43,9 +43,10 @@ a:hover { border-bottom-color: var(--red); }
 .domain-jump a { color: var(--muted); }
 .domain-jump a:hover { color: var(--red); }
 .domains { margin-top: 4px; }
-.domain-section { padding: 28px 0 12px; border-top: 1px solid var(--rule); }
+.domain-section { margin: 0; padding: 28px 0 24px; border-top: 1px solid var(--rule); }
 .domain-section > h2 { font-size: 31px; margin: 0 0 18px; }
 .directions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 48px; }
+.directions > .direction { margin: 0; }
 .direction h3 { font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2; margin: 0 0 8px; }
 .directions .glance .n { color: var(--faint); font-family: var(--sans); font-size: 13px; margin-left: 6px; }
 @media (max-width: 700px) { .directions { grid-template-columns: 1fr; gap: 28px; } .domain-section { padding-top: 30px; } .domain-section > h2 { font-size: 27px; } }
