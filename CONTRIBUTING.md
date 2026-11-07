@@ -6,7 +6,7 @@ Thanks for your interest. Bug reports, venue coverage notes and pull requests ar
 
 ```bash
 uv sync --frozen             # Python 3.12+, dependencies into .venv
-npm ci --ignore-scripts      # jsdom for the DOM tests (Node 24 recommended)
+npm ci --ignore-scripts      # jsdom for the DOM tests (Node 24.15+ recommended)
 uv run ruff check .          # minimal correctness checks
 uv run pytest -q             # offline Python suite
 npm test                     # Node core + jsdom interaction tests

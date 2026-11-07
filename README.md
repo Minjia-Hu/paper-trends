@@ -535,7 +535,7 @@ uv sync --frozen
 uv run ruff check .
 uv run pytest -q
 
-# Node.js 24 recommended (CI); DOM dependencies are pinned in package-lock.json.
+# Node.js 24.15+ recommended (CI); DOM dependencies are pinned in package-lock.json.
 npm ci --ignore-scripts
 npm test
 ```
