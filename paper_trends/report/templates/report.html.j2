@@ -12,7 +12,7 @@
 <meta property="og:description" content="{{ description }}">
 <meta property="og:site_name" content="paper-trends">
 <meta property="og:locale" content="{{ 'zh_CN' if lang == 'zh' else 'en_US' }}">
-{% if not embedded and not standalone %}<link rel="alternate" hreflang="en" href="{{ r.slug }}.html">
+{% if not embedded %}<link rel="alternate" hreflang="en" href="{{ r.slug }}.html">
 <link rel="alternate" hreflang="zh-CN" href="{{ r.slug }}.zh.html">
 <link rel="alternate" hreflang="x-default" href="{{ r.slug }}.html">{% endif %}
 {% if inline_css %}<style>{{ inline_css|safe }}</style>{% else %}<link rel="stylesheet" href="report.css">{% endif %}
@@ -26,7 +26,7 @@
   <span class="tagline">{{ _(tagline) }}</span>
   <a class="all" href="{{ '?lang=' ~ lang if app_links else ('index.zh.html' if lang == 'zh' else 'index.html') }}"{% if app_links %} target="_top"{% endif %}>{{ _('All conferences →') }}</a>
 </div></nav>{% endif %}
-{% if not embedded and not standalone %}<div class="page language-switch"><a href="{{ r.slug }}.zh.html" lang="zh-CN">中文</a> · <a href="{{ r.slug }}.html" lang="en">English</a></div>{% endif %}
+{% if not embedded %}<div class="page language-switch"><a href="{{ r.slug }}.zh.html" lang="zh-CN">中文</a> · <a href="{{ r.slug }}.html" lang="en">English</a></div>{% endif %}
 
 <main class="page{{ ' embedded' if embedded else '' }}">
 {% include "demo_notice.html.j2" %}
@@ -47,7 +47,6 @@
     <details class="report-data" id="report-data">
       <summary><span>{{ _('data from OpenAlex · report generated') }} {{ r.generated }}</span><span class="data-disclosure">{{ _('Data details') }}</span></summary>
       <div class="report-data-body">
-        {% if standalone %}<p>{{ _('Saved report snapshot. An internet connection is needed for chart libraries, fonts and map data.') }}</p>{% endif %}
         <p>{{ _('Reporting period') }}{{ '：' if lang == 'zh' else ': ' }}{{ r.data_coverage.rows[0].year }}–{{ r.data_coverage.rows[-1].year }}{{ '。' if lang == 'zh' else '.' }} {{ r.data_fetched_label }}</p>
         <p>{{ _('The abstract percentage is the share of indexed papers with abstracts, not the completeness of conference proceedings.') }}</p>
         {% if r.data_coverage.exclusions %}

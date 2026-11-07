@@ -21,7 +21,7 @@ for year in range(2018,2021):
             'cited_by_count':i, 'doi':f'10.1109/test.{year}.{i}',
             'authorships':[{'institutions':[{'id':'I1','name':'Lab Alpha','country':'US','root_id':'I1','root_name':'Lab Alpha','root_country':'US'}]}]})
 r=build_report(records,name='Test conference',slug='test',years=(2018,2020),n_topics=2)
-print(json.dumps({lang:render_page(r,lang=lang) for lang in ['en','zh']} | {'download':render_page(r,standalone=True), 'index':render_index([('Test field', [(None, [('test', 'Test', 'Test conference', 48)])])],lang='zh')}))
+print(json.dumps({lang:render_page(r,lang=lang) for lang in ['en','zh']} | {'index':render_index([('Test field', [(None, [('test', 'Test', 'Test conference', 48)])])],lang='zh')}))
 `], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   fixture = JSON.parse(result.stdout);
@@ -34,23 +34,6 @@ async function mount(lang = 'en', embed) {
   await dom.window.REPORT_CHARTS_READY;
   return dom;
 }
-
-test('downloaded reports retain detail navigation without links back to the app', async () => {
-  const dom = await mount('download'), doc = dom.window.document;
-  try {
-    assert.equal(dom.window.EXPLORE_URL, null);
-    assert.equal(doc.querySelector('.language-switch'), null);
-    assert.ok(doc.querySelector('style'));
-    doc.querySelector('[data-ent="term"]').click();
-    assert.equal(doc.getElementById('ent-drawer').hidden, false);
-    assert.equal(doc.querySelector('[data-obs-phrase]'), null);
-    doc.querySelector('#ent-drawer [data-ent="inst"]').click();
-    assert.equal(doc.getElementById('ent-heading').textContent, 'Lab Alpha');
-    doc.getElementById('ent-back').click();
-    doc.getElementById('ent-close').click();
-    assert.equal(doc.getElementById('ent-drawer').hidden, true);
-  } finally { dom.window.close(); }
-});
 
 test('entity details use buttons, trap focus and restore the opener after Escape', { skip: !JSDOM }, async () => {
   const dom = await mount(), win = dom.window, doc = win.document;

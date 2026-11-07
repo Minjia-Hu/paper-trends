@@ -12,9 +12,6 @@ def language(value=None, accept_language=""):
 
 
 ZH = {
-    "Download HTML report": "下载 HTML 报告",
-    "Save the current conference, period and language with interactive details. Opening charts, fonts and maps requires internet access; no app or API key is needed.": "保存当前会议、时段和语言的报告，保留详情交互。打开图表、字体和地图需联网；无需运行应用或配置 API key。",
-    "Saved report snapshot. An internet connection is needed for chart libraries, fonts and map data.": "这是已保存的报告快照。加载图表库、字体和地图数据需要联网。",
     "Some parent institutions could not be resolved. Institution rankings use the original affiliations for these records.": "部分上级机构信息未能获取；相关论文按原始署名机构参与排名。",
     "Compare the share of the same phrase across conferences.": "比较同一关键词在不同会议中的论文占比。",
     "Choose a topic method and follow how the research mix changes over time.": "选择分析方法，查看研究主题的分布与演进。",

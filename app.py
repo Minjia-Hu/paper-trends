@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import threading
 from datetime import date, datetime, timezone
-from functools import partial
 from html import escape
 from urllib.parse import urlencode
 from pathlib import Path
@@ -514,7 +513,6 @@ if not recs:
 cov_y = frames.coverage_frame(recs)
 
 if mode == "Report":
-    report_day = date.today().isoformat()
     loading_slot = st.empty()
     with loading_slot.container(key="report_loading"):
         st.markdown(
@@ -524,21 +522,9 @@ if mode == "Report":
         )
         with st.skeleton(height=360):
             report_html = cached_report_html(path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                                             report_day, LANG, link(view="explore", section=None, term=None),
+                                             date.today().isoformat(), LANG, link(view="explore", section=None, term=None),
                                              report_asset_version())
     loading_slot.empty()
-    # Capture the displayed snapshot now. The download callback only renders it;
-    # a later corpus refresh must not change an already-prepared download.
-    report_snapshot = cached_report_data(path, mtime, years, query, slug, extra_stop, provenance, default_span,
-                                         int(report_day[:4]), analysis_version())
-    with st.container(horizontal=True, horizontal_alignment="right", key="report_download"):
-        st.download_button(
-            t("Download HTML report"),
-            partial(render_page, report_snapshot, lang=LANG, generated_on=report_day, standalone=True),
-            file_name=f"{slug}_{years[0]}-{years[1]}_{LANG}.html", mime="text/html",
-            key="dl_report", on_click="ignore", type="tertiary", icon=":material/download:",
-            help=t("Save the current conference, period and language with interactive details. Opening charts, fonts and maps requires internet access; no app or API key is needed."),
-        )
     st.iframe(report_html, height="content")
     st.stop()
 

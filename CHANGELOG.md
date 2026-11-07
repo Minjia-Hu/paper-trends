@@ -2,9 +2,6 @@
 
 ## Unreleased
 
-- Download the current Report view from the app as a single HTML file in the selected
-  language and period, retaining interactive details without requiring the app or an
-  API key. Chart libraries, fonts and map data still require internet access.
 - Exclude workshop sources from main-conference searches even when OpenAlex source
   naming forces a fallback to substring matching. Also reject records with explicit
   workshop provenance in raw venue names or CVF/DBLP workshop URLs, even when their

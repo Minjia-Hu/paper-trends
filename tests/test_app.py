@@ -218,52 +218,6 @@ def test_search_residual_text_does_not_reset_explore_controls(tmp_path, monkeypa
     assert at.query_params["period"] in ("5", ["5"])
 
 
-def test_report_download_preserves_snapshot_period_language_and_analysis(tmp_path, monkeypatch):
-    import streamlit as st
-    from paper_trends.report import analysis
-
-    monkeypatch.chdir(tmp_path)
-    corpus = tmp_path / "data" / "ectc.jsonl"
-    _write_corpus(corpus)
-    downloads, fits = [], []
-    download_button, fit = st.download_button, analysis.compute_nmf
-
-    def capture(label, data, **kwargs):
-        if kwargs.get("key") == "dl_report":
-            downloads.append((label, data, kwargs))
-        return download_button(label, data, **kwargs)
-
-    def track_fit(*args, **kwargs):
-        fits.append(1)
-        return fit(*args, **kwargs)
-
-    monkeypatch.setattr(st, "download_button", capture)
-    monkeypatch.setattr(analysis, "compute_nmf", track_fit)
-    at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
-    at.query_params.update(conference="ectc", lang="en", period="custom", years=["2017", "2020"])
-    at.run()
-    assert not at.exception
-    label, download_en, options_en = downloads[-1]
-    assert label == "Download HTML report" and callable(download_en)
-    assert options_en["file_name"] == "ectc_2017-2020_en.html"
-    assert options_en["mime"] == "text/html" and options_en["on_click"] == "ignore"
-    displayed_entities = json.loads(re.search(r"window.ENTITIES = (.*);", _iframe(at))[1])
-
-    at.query_params.update(lang="zh", period="all")
-    at.run()
-    assert not at.exception
-    label, download_zh, options_zh = downloads[-1]
-    assert label == "下载 HTML 报告" and options_zh["file_name"] == "ectc_2016-2021_zh.html"
-    fits_before_download = len(fits)
-    corpus.write_text("")  # Downloads must retain the snapshot shown before a refresh.
-    en, zh = download_en(), download_zh()
-    assert len(fits) == fits_before_download
-    assert '<html lang="en">' in en and '2017–2020' in en
-    assert '<html lang="zh-CN">' in zh and '2016–2021' in zh
-    assert json.loads(re.search(r"window.ENTITIES = (.*);", en)[1]) == displayed_entities
-    assert 'window.EXPLORE_URL = null;' in en and 'window.EXPLORE_URL = null;' in zh
-
-
 def test_failed_resolve_is_not_cached(tmp_path, monkeypatch):
     import paper_trends.fetch as fetch
     from paper_trends.openalex import OpenAlexError

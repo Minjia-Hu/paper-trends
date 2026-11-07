@@ -49,34 +49,6 @@ def test_build_and_render(tmp_path):
     assert (tmp_path / "index.html").exists() and (tmp_path / "report.css").exists()
 
 
-@pytest.mark.parametrize("lang", ["en", "zh"])
-def test_standalone_report_has_embedded_assets_and_no_local_navigation(lang):
-    from html.parser import HTMLParser
-    from paper_trends.report.render import render_page
-
-    report = build_report(_corpus(), name="Test Conf", slug="test", years=(2017, 2020), n_topics=2)
-    html = render_page(report, nav=[("test", "Test")], embedded=True, app_links=True,
-                       explore_href="?conference=test&view=explore", lang=lang, standalone=True,
-                       generated_on="2026-11-07")
-
-    class Links(HTMLParser):
-        def handle_starttag(self, tag, attrs):
-            for key, value in attrs:
-                if key in {"href", "src"}:
-                    assert value.startswith(("https://", "data:", "#")), value
-
-    Links().feed(html)
-    assert '<style>' in html and 'window.openEntity' in html
-    assert 'class="page embedded"' not in html
-    assert 'hreflang=' not in html and 'class="page language-switch"' not in html
-    assert 'window.EXPLORE_URL = null;' in html
-    assert '2026-11-07' in html and '2017–2020' in html
-    assert f'<html lang="{"zh-CN" if lang == "zh" else "en"}">' in html
-    entities = json.loads(re.search(r"window.ENTITIES = (.*);", html)[1])
-    assert entities == {k: v for k, v in report['entities'].items() if k != 'explorer'}
-    assert ('报告快照' if lang == 'zh' else 'Saved report snapshot') in html
-
-
 def test_report_and_explorer_are_separate_surfaces():
     from paper_trends.report.render import render_page
 
