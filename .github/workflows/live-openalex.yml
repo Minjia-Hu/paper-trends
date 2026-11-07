@@ -1,0 +1,31 @@
+name: Live OpenAlex smoke check
+
+# Opt-in only: regular CI and pull requests must never spend API quota.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-openalex
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Fetch a small corpus and verify reports, exports and app views
+        run: uv run --frozen python -m scripts.smoke_openalex
+        env:
+          OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
