@@ -29,6 +29,7 @@
 {% if not embedded %}<div class="page language-switch"><a href="{{ r.slug }}.zh.html" lang="zh-CN">中文</a> · <a href="{{ r.slug }}.html" lang="en">English</a></div>{% endif %}
 
 <main class="page{{ ' embedded' if embedded else '' }}">
+{% include "demo_notice.html.j2" %}
 <header class="title">
   <div class="title-grid">
     <div class="title-identity">
