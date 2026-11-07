@@ -92,7 +92,8 @@ def _css() -> str:
 
 
 def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False,
-                lang: str = "en", explore_href: str | None = None, generated_on: str | None = None) -> str:
+                lang: str = "en", explore_href: str | None = None, generated_on: str | None = None,
+                demo: bool = False) -> str:
     """HTML for one report. `embedded=True` inlines the CSS (for a Streamlit iframe);
     `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`)."""
     lang = language(lang)
@@ -103,7 +104,7 @@ def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = 
         r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), nav=nav or [], tagline=TAGLINE,
         short=SHORT.get(r.get("slug")), explore_href=explore_href,
         specs=chart_labels(figure_specs(r), lang), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
-        embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links,
+        embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links, demo=demo,
         entities=entities, map_lines=r.get("map_lines") or {},
         entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
     )
@@ -125,12 +126,13 @@ def render_explorer_page(r: dict[str, Any], *, lang: str = "en", initial_term: s
     )
 
 
-def render_index(nav_full: list, *, embedded: bool = False, app_links: bool = False, lang: str = "en") -> str:
+def render_index(nav_full: list, *, embedded: bool = False, app_links: bool = False, lang: str = "en",
+                 demo: bool = False) -> str:
     lang = language(lang)
-    return _env().get_template("index.html.j2").render(nav=nav_full, lang=lang, _=lambda s: tr(s, lang), tagline=TAGLINE, embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links)
+    return _env().get_template("index.html.j2").render(nav=nav_full, lang=lang, _=lambda s: tr(s, lang), tagline=TAGLINE, embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links, demo=demo)
 
 
-def render_site(reports: list[dict[str, Any]], out: Path) -> None:
+def render_site(reports: list[dict[str, Any]], out: Path, *, demo: bool = False) -> None:
     out.mkdir(parents=True, exist_ok=True)
     env = _env()
     available = {r["slug"]: r for r in reports}
@@ -139,11 +141,11 @@ def render_site(reports: list[dict[str, Any]], out: Path) -> None:
                            for direction, items in directions])
                  for domain, directions in nav_full]
     for r in reports:
-        (out / f"{r['slug']}.html").write_text(render_page(r, nav_short), encoding="utf-8")
-        (out / f"{r['slug']}.zh.html").write_text(render_page(r, nav_short, lang="zh"), encoding="utf-8")
+        (out / f"{r['slug']}.html").write_text(render_page(r, nav_short, demo=demo), encoding="utf-8")
+        (out / f"{r['slug']}.zh.html").write_text(render_page(r, nav_short, lang="zh", demo=demo), encoding="utf-8")
         (out / f"{r['slug']}.json").write_text(json.dumps({k: v for k, v in r.items() if k not in ("topic_rows", "entities")}, ensure_ascii=False), encoding="utf-8")
-    (out / "index.html").write_text(render_index(nav_full), encoding="utf-8")
-    (out / "index.zh.html").write_text(render_index(nav_full, lang="zh"), encoding="utf-8")
+    (out / "index.html").write_text(render_index(nav_full, demo=demo), encoding="utf-8")
+    (out / "index.zh.html").write_text(render_index(nav_full, lang="zh", demo=demo), encoding="utf-8")
     shutil.copy(HERE / "static" / "report.css", out / "report.css")
 
 
