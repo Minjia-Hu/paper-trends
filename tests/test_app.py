@@ -206,13 +206,16 @@ def test_search_residual_text_does_not_reset_explore_controls(tmp_path, monkeypa
     at = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=120)
     at.run()
     at.text_input(key="search").set_value("IMW").run()
-    assert not at.exception and at.query_params["conference"] == ["imw"]
+    # AppTest exposes singleton query values as strings since Streamlit 1.66;
+    # keep validating the value on both the minimum and locked versions.
+    assert not at.exception and at.query_params["conference"] in ("imw", ["imw"])
     at.query_params.update({"view": "explore", "section": "papers", "period": "5"})
     at.run()
-    assert not at.exception and at.query_params["view"] == ["explore"]
+    assert not at.exception and at.query_params["view"] in ("explore", ["explore"])
     at.text_input(key="paper_filter").set_value("hybrid").run()
     assert not at.exception
-    assert at.query_params["section"] == ["papers"] and at.query_params["period"] == ["5"]
+    assert at.query_params["section"] in ("papers", ["papers"])
+    assert at.query_params["period"] in ("5", ["5"])
 
 
 def test_failed_resolve_is_not_cached(tmp_path, monkeypatch):
