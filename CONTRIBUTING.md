@@ -22,6 +22,11 @@ Ruff checks syntax and selected correctness errors; formatting is not enforced.
 Dependabot checks Python, npm and GitHub Actions dependencies weekly and opens
 update pull requests for review.
 
+CI also builds a source distribution and then a wheel from it with
+`uv build --force-pep517`. Use an up-to-date uv for this packaging check; uv 0.13.7
+is verified, while uv 0.10.7 can fail when extracting the generated source archive.
+This does not change the in-place development setup above.
+
 ## Optional live API check
 
 `uv run --frozen python -m scripts.smoke_openalex` fetches ECTC 2019–2020 into a
