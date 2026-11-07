@@ -17,10 +17,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from paper_trends.fetch import doi_has_prefix, is_front_matter, resolve_sources, resolve_venue, strip_decoration
-from paper_trends.openalex import OpenAlex, OpenAlexError
+from paper_trends.openalex import PER_PAGE, OpenAlex, OpenAlexError
 
 YEARS = (2016, 2025)
-SAMPLE = 200
+SAMPLE = PER_PAGE
 CANDIDATES = {
     "icc": ("ICC", "International Conference on Communications", "Communications"),
     "globecom": ("GLOBECOM", "Global Communications Conference", "Communications"),

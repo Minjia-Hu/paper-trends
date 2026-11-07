@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+**[打开在线示例 →](https://minjia-hu.github.io/paper-trends/index.zh.html)** ECTC 与 CVPR 的 2016–2025 年报告，无需安装或配置 API key 即可查看；完整 Explore 请使用本地应用。
+
 [![tests](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml/badge.svg)](https://github.com/Minjia-Hu/paper-trends/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
@@ -15,7 +17,11 @@
 
 > 项目状态：处于早期阶段，已可使用。提供数据获取与分析命令行工具、静态报告生成器，以及 Streamlit 交互应用。
 
+版本记录：[更新日志](CHANGELOG.md)。
+
 ![ECTC 中文报告概览：会议、年份、论文数量与主要趋势](docs/screenshot-report-overview.zh.png)
+
+截图和 GIF 保留较早的界面快照，数值和主题标签可能与当前在线示例不同。
 
 ## 环境要求
 
@@ -70,8 +76,7 @@ uv run streamlit run app.py
 
 ## 使用说明
 
-下文的数值来自已记录的语料快照，用于说明功能，并非当前 OpenAlex 索引或当前分析代码的最新结果。
-比较统计规则或主题规则的变化时，请重新生成结果。
+ECTC 和 CVPR 的正文统计已按 2026-11-01 重新抓取的语料核对。其他会议及历史审查数字保留原快照；跨会议示例结合刷新后的 ECTC 与原有 IEDM、ISSCC 语料。结果会随 OpenAlex 索引和分析规则变化。
 
 ### 报告页面
 
@@ -94,6 +99,11 @@ open site/ectc.html
 Vega 图表库和字体通过 CDN 加载，首次加载需要网络连接。
 
 ### 交互应用
+
+从短语追踪到相关机构及其特色研究：点击 **hybrid bonding**，再点击详情面板中的机构。
+面包屑导航保留完整路径。下方为英文界面的操作演示，中英文界面均支持这些交互。
+
+![ECTC 报告交互：打开 hybrid bonding，再查看相关机构的趋势和特色关键词](docs/demo-interaction.gif)
 
 ```bash
 uv run streamlit run app.py
@@ -143,6 +153,7 @@ Explore 中的 **Trends & evidence（趋势与证据）**提供领域观察视�
 可以展开示例摘要，或通过 DOI 查看原始证据。
 展开 **All matching papers & export（全部匹配论文与导出）**，可分页浏览所有匹配结果或导出 CSV。
 报告中的短语链接会保留所选时段和短语，包括自定义年份范围。
+所有 CSV 导出（CLI、应用下载和 Explore）都会为可能被表格软件识别为公式的文本单元格添加单引号前缀，使其按文本处理。
 
 计数覆盖所有匹配记录；每个短语、年份和提及类别最多展示三篇被引次数最高的示例论文。
 候选列表包含最多 20 个上升、下降、新出现和高频短语。
@@ -198,13 +209,13 @@ uv run python -m paper_trends fetch "Electronic Components and Technology Confer
 ```
   year   papers  abstracts  coverage
 -------------------------------------
-  2016      391        388    99.2%
-  2017      336        332    98.8%
+  2016      393        389    99.0%
+  2017      337        332    98.5%
   ...
   2025      382        380    99.5%
-  2026      416         11     2.6%   <- OpenAlex 尚未收录大部分 2026 年摘要
+  2026      417          8     1.9%   <- OpenAlex 尚未收录大部分 2026 年摘要
 -------------------------------------
-   all     4071       3646    89.6%
+   all     4075       3643    89.4%
 ```
 
 每条记录包含：`id`、`doi`、`title`、`publication_year`、`abstract`（纯文本）、
@@ -254,8 +265,8 @@ ECTC 2016–2025 年示例，比较前后半时段的论文占比：
 
 ```
 RISING                       early    late   delta      FALLING                      early    late   delta
-hybrid bonding                1.1%    9.6%   +8.6%      wafer-level                   6.6%    2.6%   -4.0%
-heterogeneous integration     1.9%    4.6%   +2.6%      board-level                   3.2%    1.9%   -1.3%
+hybrid bonding                1.1%    9.6%   +8.6%      wafer-level                   6.6%    2.6%   -3.9%
+heterogeneous integration     1.9%    4.6%   +2.7%      board-level                   3.2%    1.9%   -1.3%
 cu-cu                         1.3%    3.5%   +2.2%      package-on-package            1.6%    0.3%   -1.2%
 advanced packaging            1.4%    3.5%   +2.1%      flip-chip                     4.8%    3.6%   -1.2%
 co-packaged optics            0.1%    1.7%   +1.7%      ultra-thin                    2.2%    1.0%   -1.2%
@@ -277,14 +288,14 @@ uv run python -m paper_trends topics data/ectc.jsonl --years 2016-2025 --n-topic
 展示各年份的主题构成和示例论文：
 
 ```
-topic                                  papers    16    17    18    19    20    21    22    23    24    25   delta
-hybrid bonding / wafer / cu cu            517   10%    9%    7%   10%   12%   14%   16%   19%   26%   18%   +9.1%
-model / reliability / stress              505   17%   16%   17%   13%   13%   14%   13%   13%   11%   11%   -3.0%
-fan / wafer level / fowlp                 394    9%   16%   15%   14%   13%   11%   10%    9%    7%    5%   -4.7%
-dielectric / glass / layer                392   11%    9%   12%   10%   10%   11%   11%    9%   10%   14%   +0.7%
-heat / cooling / temperature              371    9%   10%    9%   11%    8%   11%   12%   11%    7%   14%   +1.5%
-power / design / interposer               360   11%    7%    6%   10%    8%   10%   10%   10%   11%   16%   +2.9%
-sn / joint / solder joints                346   13%   10%    9%   13%   12%    8%    6%    7%    9%    7%   -4.0%
+topic                                        papers    16    17    18    19    20    21    22    23    24    25   delta
+hybrid bonding / wafer / pitch                  574   12%   11%    8%   12%   12%   15%   16%   20%   28%   21%   +9.1%
+fan / rdl / wafer level                         490   10%   17%   18%   15%   15%   14%   14%   12%   11%    9%   -3.0%
+model / finite element / simulation             418   14%   13%   11%   10%   10%   12%   11%   10%    9%   13%   -0.4%
+power / interposer / design                     361   10%    7%    7%   10%    9%   11%   10%    9%   10%   15%   +2.3%
+flexible / printed / electronics                357   11%   12%   12%   12%   12%   10%    8%    8%    8%    5%   -3.9%
+heat / power / temperature                      353    9%   10%    9%   10%    7%   11%   11%   10%    7%   12%   +1.2%
+antenna / loss / frequency                      309    5%    7%   10%    8%   12%   10%   12%    9%    5%    7%   +0.2%
 ```
 
 使用 `--method openalex` 可改用 OpenAlex 自带的主题标签，粒度较粗，但无需拟合。
@@ -319,7 +330,7 @@ uv run python -m paper_trends compare data/ectc.jsonl data/iedm.jsonl --term "hy
 
 ```
 term                          ectc       iedm      isscc
-artificial intelligence      +3.5%      +4.5%      +4.3%
+artificial intelligence      +3.6%      +4.5%      +4.3%
 high density                 +1.4%      +1.1%      +0.4%
 high performance             +2.2%      +0.2%      +0.3%
 power delivery               +0.9%      +0.2%      +0.6%
@@ -366,17 +377,17 @@ uv run python -m paper_trends fetch "International Solid-State Circuits Conferen
 
 ### 不限于半导体领域
 
-将同一流程用于 **CVPR 2016–2025 年**（16,894 篇论文，不含 workshops，99.8% 有摘要），
-无需计算机视觉专用配置，即可观察该领域的历史变化。下表和截图于 2026-11-01 使用现有缓存语料、
-8 个 NMF 主题重新生成，列出论文数最多的五个主题；日期指重新分析时间，不代表重新抓取数据：
+将同一流程用于 **CVPR 2016–2025 年**（16,877 篇论文，排除可识别的 workshop 记录，99.7% 有摘要），
+无需计算机视觉专用配置，即可观察该领域的历史变化。下表使用 2026-11-01 重新获取的语料、
+8 个 NMF 主题生成，列出论文数最多的五个主题；截图保留较早的界面快照：
 
 ```
 topic                                        papers    16    17    18    19    20    21    22    23    24    25   delta
-3d / view / pose                               3473   23%   19%   20%   19%   20%   20%   19%   22%   22%   21%   +1.4%
-deep / network / neural networks               2617   26%   27%   25%   25%   23%   17%   15%   13%    8%    7%  -13.8%
-visual / text / vision-language                2291    7%    8%    8%    7%    7%    8%    9%   13%   20%   26%   +9.1%
-video / temporal / videos                      2016   16%   17%   14%   13%   12%   13%   13%   11%   10%   10%   -2.7%
-generation / diffusion models / text           1811    0%    3%    6%    5%    6%    7%    6%    9%   19%   21%   +8.8%
+3d / view / pose                               3482   22%   19%   20%   19%   20%   20%   20%   23%   22%   21%   +1.4%
+deep / network / neural networks               2611   26%   27%   25%   25%   23%   17%   16%   13%    8%    7%  -13.7%
+visual / text / vision-language                2290    7%    8%    8%    7%    7%    8%    9%   13%   20%   26%   +9.1%
+video / temporal / videos                      2023   16%   17%   14%   13%   12%   13%   13%   11%   10%   10%   -2.5%
+generation / diffusion models / text           1809    0%    3%    6%    5%    6%    7%    6%    9%   19%   21%   +8.7%
 ```
 
 同次分析中，上升短语包括 diffusion models、vision-language、real-world 和 pre-trained；
@@ -457,7 +468,7 @@ IEEE DOI 包含会议缩写（如 `10.1109/ECTC...`），因此通过 DOI 前缀
 - [x] Streamlit 交互应用
 - [x] 跨会议短语比较，支持 CLI 和 Explore
 - [x] 静态报告页面（`report`）
-- [ ] 托管预先获取数据的报告站点（GitHub Pages）
+- [x] 托管 ECTC 与 CVPR 的[在线示例报告](https://minjia-hu.github.io/paper-trends/index.zh.html)（GitHub Pages）
 
 ## 开发检查
 
@@ -466,7 +477,7 @@ uv sync --frozen
 uv run ruff check .
 uv run pytest -q
 
-# 推荐使用 Node.js 24，与 CI 一致；DOM 测试依赖锁定在 package-lock.json 中。
+# 推荐使用 Node.js 24.15+，与 CI 一致；DOM 测试依赖锁定在 package-lock.json 中。
 npm ci --ignore-scripts
 npm test
 ```
@@ -475,12 +486,11 @@ CI 运行最小 Ruff 正确性检查，在 Python 3.12 和 3.13 上运行离线 
 覆盖 Explorer 交互与报告实体导航。缺少 jsdom 时，`npm test` 会失败，而不会静默跳过 DOM 测试。
 `docs/` 中的历史审查文档保留执行审查时记录的结果与语料快照说明。
 Dependabot 每周检查 Python、npm 和 GitHub Actions 依赖，并创建更新 PR 供审查。
+另提供手动触发的[真实 OpenAlex 验证](CONTRIBUTING.md#optional-live-api-check)，
+用小范围真实数据检查抓取、报告生成、导出和交互应用；需要配置凭证并消耗 API 额度。
 参与贡献请阅读[贡献指南（英文）](CONTRIBUTING.md)。
 
 ## 数据与许可
-
-CSV 导出会为可能被表格软件识别为公式的文本单元格添加单引号前缀，使其按文本处理。
-该规则适用于 CLI、应用下载和 Explore 导出。
 
 元数据来自 [OpenAlex](https://openalex.org)，采用 CC0 许可。项目仅使用公开数据和公开方法。
 代码采用 [MIT 许可证](LICENSE) 发布。
