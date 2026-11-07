@@ -477,7 +477,7 @@ uv sync --frozen
 uv run ruff check .
 uv run pytest -q
 
-# 推荐使用 Node.js 24，与 CI 一致；DOM 测试依赖锁定在 package-lock.json 中。
+# 推荐使用 Node.js 24.15+，与 CI 一致；DOM 测试依赖锁定在 package-lock.json 中。
 npm ci --ignore-scripts
 npm test
 ```

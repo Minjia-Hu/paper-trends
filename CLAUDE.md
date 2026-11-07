@@ -64,7 +64,7 @@ uv run python -m paper_trends report data/ectc.jsonl --name "..." --years 2016-2
 uv run python -m paper_trends fetch --help
 uv run pytest -q                          # tests live in tests/, pythonpath="." set in pyproject
 uv run pytest -q tests/test_keywords.py::test_rising_and_falling   # single test
-npm ci --ignore-scripts                    # test deps (Node 24 recommended, matching CI)
+npm ci --ignore-scripts                    # test deps (Node 24.15+ recommended, matching CI)
 npm test                                 # core + jsdom interaction tests; missing jsdom is an error
 ```
 
