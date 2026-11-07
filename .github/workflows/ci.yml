@@ -24,6 +24,8 @@ jobs:
       - run: uv run --python ${{ matrix.python-version }} pytest -q
         env:
           OPENALEX_MAILTO: ci@example.com
+      - run: uv build --force-pep517
+        if: matrix.python-version == '3.12'
 
   frontend:
     runs-on: ubuntu-latest
