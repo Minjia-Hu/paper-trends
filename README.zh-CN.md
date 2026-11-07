@@ -23,6 +23,16 @@
 
 截图和 GIF 保留较早的界面快照，数值和主题标签可能与当前在线示例不同。
 
+## 选择使用方式
+
+| 方式 | 可以做什么 | 是否需要安装 | OpenAlex API key |
+| --- | --- | --- | --- |
+| [在线示例](https://minjia-hu.github.io/paper-trends/index.zh.html) | 浏览已生成的 ECTC、CVPR 报告，点击查看短语、机构和主题的关联详情 | 无需安装 | 不需要 |
+| 本地应用 | 使用完整 Explore、调整分析时段、比较已缓存的会议、筛选论文和导出 CSV | Python + uv | 完整抓取或刷新数据时需要；分析已缓存数据不需要 |
+| 命令行（CLI） | 获取数据、运行分析、生成静态 HTML 报告 | Python + uv | 完整抓取或刷新数据时需要；分析本地文件不需要 |
+
+在线示例使用固定数据快照。下面的安装与配置步骤适用于本地应用和 CLI。
+
 ## 环境要求
 
 - Python 3.12+（依赖 requests、python-dotenv、scikit-learn、pandas、streamlit、altair、jinja2）
@@ -63,7 +73,7 @@ uv run python -m paper_trends fetch "Electronic Components and Technology Confer
 
 # 3. 生成报告页面，或启动交互应用
 uv run python -m paper_trends report data/ectc.jsonl --name "Electronic Components and Technology Conference" --years 2016-2025 --out site
-open site/ectc.html
+# 用浏览器打开 site/ectc.zh.html（macOS 可运行 open site/ectc.zh.html）。
 uv run streamlit run app.py
 ```
 
@@ -82,7 +92,7 @@ ECTC 和 CVPR 的正文统计已按 2026-11-01 重新抓取的语料核对。其
 
 ```bash
 uv run python -m paper_trends report data/ectc.jsonl --name "Electronic Components and Technology Conference" --years 2016-2025 --out site
-open site/ectc.html
+# 用浏览器打开 site/ectc.zh.html（macOS 可运行 open site/ectc.zh.html）。
 ```
 
 每个会议生成一份采用编辑式排版的简洁静态报告：先用几句话概述，再展示各四个主要上升、下降短语，
@@ -459,16 +469,16 @@ IEEE DOI 包含会议缩写（如 `10.1109/ECTC...`），因此通过 DOI 前缀
 两项短语过滤规则均为基于数据选择的启发式规则，未通过人工标注论文验证；
 `--count any --keep-common` 可关闭这两项规则。
 
-## 路线图
+## 已实现功能
 
-- [x] `fetch`：获取会议论文并保存为 JSONL，附覆盖率报告
-- [x] `keywords`：逐年关键词与 n-gram 趋势，上升和下降短语
-- [x] `topics`：主题随时间的演变，支持 NMF 或 OpenAlex 标签
-- [x] `rank`：机构、作者与国家排名，包含被引次数
-- [x] Streamlit 交互应用
-- [x] 跨会议短语比较，支持 CLI 和 Explore
-- [x] 静态报告页面（`report`）
-- [x] 托管 ECTC 与 CVPR 的[在线示例报告](https://minjia-hu.github.io/paper-trends/index.zh.html)（GitHub Pages）
+- `fetch`：获取会议论文记录并保存为 JSONL，附覆盖率报告
+- `keywords`：逐年关键词与 n-gram 趋势，上升和下降短语
+- `topics`：主题随时间的演变，支持 NMF 或 OpenAlex 标签
+- `rank`：机构、作者与国家排名，包含被引次数
+- Streamlit 交互应用
+- 跨会议短语比较，支持 CLI 和 Explore
+- 静态报告页面（`report`）
+- 托管 ECTC 与 CVPR 的[在线示例报告](https://minjia-hu.github.io/paper-trends/index.zh.html)（GitHub Pages）
 
 ## 开发检查
 
@@ -485,6 +495,8 @@ npm test
 CI 运行最小 Ruff 正确性检查，在 Python 3.12 和 3.13 上运行离线 Python 测试，并在 Node.js 24 上运行 Node 核心逻辑和 jsdom 交互测试，
 覆盖 Explorer 交互与报告实体导航。缺少 jsdom 时，`npm test` 会失败，而不会静默跳过 DOM 测试。
 `docs/` 中的历史审查文档保留执行审查时记录的结果与语料快照说明。
+CI 还通过 `uv build --force-pep517` 构建源码包，再从源码包构建 wheel。
+打包检查与 uv 兼容说明见[贡献指南（英文）](CONTRIBUTING.md#setup-and-checks)。
 Dependabot 每周检查 Python、npm 和 GitHub Actions 依赖，并创建更新 PR 供审查。
 另提供手动触发的[真实 OpenAlex 验证](CONTRIBUTING.md#optional-live-api-check)，
 用小范围真实数据检查抓取、报告生成、导出和交互应用；需要配置凭证并消耗 API 额度。

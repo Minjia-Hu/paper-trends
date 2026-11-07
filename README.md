@@ -25,6 +25,16 @@ Release notes: [Changelog](CHANGELOG.md).
 
 Screenshots and the GIF show an earlier interface snapshot; figures and topic labels may differ from the current live demo.
 
+## Choose how to use it
+
+| Mode | What you can do | Installation | OpenAlex API key |
+| --- | --- | --- | --- |
+| [Online demo](https://minjia-hu.github.io/paper-trends/) | Browse saved ECTC and CVPR reports and follow linked phrase, institution and topic details | None | Not needed |
+| Local app | Use full Explore, change analysis periods, compare cached conferences, filter papers and export CSV | Python + uv | Required for complete fetches and refreshes; not for analysing cached data |
+| CLI | Fetch data, run analyses and generate static HTML reports | Python + uv | Required for complete fetches and refreshes; not for analysing local files |
+
+The online demo uses a fixed data snapshot. The setup below is for the local app and CLI.
+
 ## Requirements
 
 - Python 3.12+ (dependencies: requests, python-dotenv, scikit-learn, pandas, streamlit, altair, jinja2)
@@ -67,7 +77,7 @@ uv run python -m paper_trends fetch "Electronic Components and Technology Confer
 
 # 3. a report page, and/or the app
 uv run python -m paper_trends report data/ectc.jsonl --name "Electronic Components and Technology Conference" --years 2016-2025 --out site
-open site/ectc.html
+# Open site/ectc.html in your browser (macOS shortcut: open site/ectc.html).
 uv run streamlit run app.py
 ```
 
@@ -89,7 +99,7 @@ ECTC and CVPR figures in the text were checked against corpora fetched on 2026-1
 
 ```bash
 uv run python -m paper_trends report data/ectc.jsonl --name "Electronic Components and Technology Conference" --years 2016-2025 --out site
-open site/ectc.html
+# Open site/ectc.html in your browser (macOS shortcut: open site/ectc.html).
 ```
 
 Renders one concise static page per conference in an editorial layout: a few sentences
@@ -517,16 +527,16 @@ pass your field's boilerplate with `--stopwords` or under Options in the app. Th
 phrase rules are heuristics chosen from the data, not validated against hand-labelled
 papers; `--count any --keep-common` turns both off.
 
-## Roadmap
+## Implemented features
 
-- [x] `fetch`: pull all works of a conference into JSONL with coverage report
-- [x] `keywords`: keyword / n-gram trends by year, rising and falling terms
-- [x] `topics`: topic evolution over time (NMF or OpenAlex labels)
-- [x] `rank`: institution / author / country rankings with citations
-- [x] Streamlit app
-- [x] Compare terms across conferences (CLI + Explore section)
-- [x] Static report pages (`report`)
-- [x] [Hosted example reports](https://minjia-hu.github.io/paper-trends/) for ECTC and CVPR (GitHub Pages)
+- `fetch`: retrieve conference records into JSONL with a coverage report
+- `keywords`: keyword / n-gram trends by year, rising and falling terms
+- `topics`: topic evolution over time (NMF or OpenAlex labels)
+- `rank`: institution / author / country rankings with citations
+- Streamlit app
+- Compare terms across conferences (CLI + Explore section)
+- Static report pages (`report`)
+- [Hosted example reports](https://minjia-hu.github.io/paper-trends/) for ECTC and CVPR (GitHub Pages)
 
 ## Development checks
 
@@ -545,6 +555,8 @@ jsdom interaction tests on Node 24, including Explorer interactions and report e
 navigation. `npm test` fails if jsdom is missing, rather than
 silently skipping the DOM suite. Historical audit documents under `docs/` retain the
 results and corpus snapshots recorded when those audits were performed.
+CI also builds a source distribution and a wheel from it with `uv build --force-pep517`.
+See the [contributing guide](CONTRIBUTING.md#setup-and-checks) for packaging checks and uv compatibility.
 Dependabot checks Python, npm and GitHub Actions dependencies weekly and opens update pull requests for review.
 An optional, manually triggered [live OpenAlex check](CONTRIBUTING.md#optional-live-api-check)
 verifies fetching and report generation with real data.
