@@ -140,6 +140,13 @@ conferences, and export filtered papers. Explore starts with the report's period
 counting rule; its filters apply to the curve, evidence and CSV together. Fetched data is cached under `data/`; a DOI prefix for a custom venue and extra
 stopwords live under **Options**.
 
+In **Report**, click **Download HTML report** to save the current conference, period
+and language as one HTML file, including the interactive detail panels and data/method
+notes. Open it in a browser or share it with someone who does not have the app or an
+API key. The file is a fixed snapshot; downloading uses cached data and makes no
+OpenAlex requests. Chart libraries, fonts and map data still require internet access.
+The download contains the Report view, not Explore's temporary filters or playback state.
+
 The default report period is the last ten years ending before the current calendar
 year. It also skips trailing years with fewer than 20% of the preceding three observed
 editions' typical paper count, or delayed abstracts at a venue that normally has them.

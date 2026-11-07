@@ -93,10 +93,15 @@ def _css() -> str:
 
 def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = False, app_links: bool = False,
                 lang: str = "en", explore_href: str | None = None, generated_on: str | None = None,
-                demo: bool = False) -> str:
+                demo: bool = False, standalone: bool = False) -> str:
     """HTML for one report. `embedded=True` inlines the CSS (for a Streamlit iframe);
-    `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`)."""
+    `app_links=True` makes masthead links reload the hosting app (`?conference=<slug>`).
+    `standalone=True` produces a single-file snapshot with inline CSS and no
+    navigation to other local files or the app. Chart libraries still use a CDN.
+    """
     lang = language(lang)
+    if standalone:
+        embedded, app_links, nav, explore_href, demo = False, False, [], None, False
     if generated_on is not None:
         r = {**r, "generated": generated_on}
     entities = {k: v for k, v in (r.get("entities") or {}).items() if k != "explorer"}
@@ -104,7 +109,8 @@ def render_page(r: dict[str, Any], nav: list | None = None, *, embedded: bool = 
         r=report_copy(r, lang), lang=lang, _=lambda s: tr(s, lang), nav=nav or [], tagline=TAGLINE,
         short=SHORT.get(r.get("slug")), explore_href=explore_href,
         specs=chart_labels(figure_specs(r), lang), topic_colors=charts.TOPIC_COLORS, other_color=charts.OTHER,
-        embedded=embedded, inline_css=_css() if embedded else None, app_links=app_links, demo=demo,
+        embedded=embedded, inline_css=_css() if embedded or standalone else None,
+        app_links=app_links, demo=demo, standalone=standalone,
         entities=entities, map_lines=r.get("map_lines") or {},
         entities_js=(HERE / "static" / "entities.js").read_text(encoding="utf-8"),
     )
