@@ -1,0 +1,7 @@
+{% if demo and not embedded %}
+<aside class="demo-notice" aria-label="{{ '在线示例说明' if lang == 'zh' else 'About this demo' }}">
+  <p class="demo-label">{{ '在线示例 · 无需注册或 API key' if lang == 'zh' else 'Live demo · no sign-in or API key needed' }}</p>
+  <p>{{ '这是基于已有数据生成的报告。点击短语、机构和主题，可继续查看关联详情。' if lang == 'zh' else 'These reports use a saved data snapshot. Click phrases, institutions and topics to follow their linked details.' }}
+  <a href="https://github.com/Minjia-Hu/paper-trends/blob/main/{{ 'README.zh-CN.md' if lang == 'zh' else 'README.md' }}">{{ '更改时段或分析其他会议，请使用完整应用 →' if lang == 'zh' else 'Use the full app to change periods or analyze another conference →' }}</a></p>
+</aside>
+{% endif %}

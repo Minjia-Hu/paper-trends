@@ -88,6 +88,69 @@ def test_doi_prefix_boundary():
     assert [pfx for _, pfx in filters] == ["10.1109/vlsit", "10.23919/vlsic"]
 
 
+def test_source_fallback_excludes_workshops_even_without_exact_main_name():
+    from paper_trends.fetch import resolve_sources
+
+    main = {"id": "S1", "display_name": "IEEE Computer Society Conference on Computer Vision and Pattern Recognition/Proceedings - IEEE Computer Society Conference on Computer Vision and Pattern Recognition/Proceedings"}
+    workshop = {"id": "S2", "display_name": "IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)"}
+
+    class FakeClient:
+        def search_sources(self, query):
+            return [workshop, main]
+
+    query = "Conference on Computer Vision and Pattern Recognition"
+    assert resolve_sources(FakeClient(), query) == [main]
+    assert resolve_sources(FakeClient(), query + " Workshops") == [workshop]
+    assert resolve_sources(FakeClient(), "CVPRW") == [workshop]
+
+
+def test_workshop_provenance_uses_cvf_urls_and_raw_venue_not_paper_titles():
+    from paper_trends.fetch import is_workshop_work
+
+    for path in ("content_CVPRW_2019/papers/test.pdf", "content/CVPR2024W/html/test.html",
+                 "content_ICCVW_2017/papers/test.pdf", "content/ECCV2022W/html/test.html",
+                 "content_cvpr_2018_workshops/papers/test.pdf"):
+        assert is_workshop_work({"primary_location": {
+            "source": {"display_name": "Conference on Computer Vision and Pattern Recognition"},
+            "landing_page_url": "https://openaccess.thecvf.com/" + path}})
+    assert is_workshop_work({"primary_location": {"raw_source_name": "CVPR Workshops"}})
+    for url in ("https://www.cv-foundation.org/openaccess/content_cvpr_2016_workshops/w20/papers/test.pdf",
+                "https://dblp.uni-trier.de/db/conf/cvpr/cvprw2019.html#test",
+                "https://dblp.org/db/conf/iccv/iccvw2019.html#test"):
+        assert is_workshop_work({"primary_location": {"pdf_url": url}})
+    for url in ("https://openaccess.thecvf.com/content/CVPR2024/html/test.html",
+                "https://example.org/content/CVPR2024W/html/test.html", "http://[broken"):
+        assert not is_workshop_work({"title": "Learning from workshops", "primary_location": {"landing_page_url": url}})
+    assert not is_workshop_work({"primary_location": None})
+
+
+def test_fetch_skips_misassigned_workshop_records_unless_requested():
+    from paper_trends.fetch import fetch_conference
+
+    class FakeClient:
+        def works_by_filter(self, query):
+            yield {"id": "W1", "title": "Main paper", "publication_year": 2019}
+            yield {"id": "W2", "title": "Workshop paper", "publication_year": 2019,
+                   "primary_location": {"landing_page_url": "https://openaccess.thecvf.com/content_CVPRW_2019/papers/test.pdf"}}
+
+    records = fetch_conference(FakeClient(), "Conference on Computer Vision and Pattern Recognition",
+                               source_ids=["S1"], log=lambda message: None)
+    assert [r["id"] for r in records] == ["W1"]
+    records = fetch_conference(FakeClient(), "Conference on Computer Vision and Pattern Recognition Workshops",
+                               source_ids=["S1"], log=lambda message: None)
+    assert [r["id"] for r in records] == ["W1", "W2"]
+
+
+def test_workshop_only_search_does_not_substitute_for_main_conference():
+    from paper_trends.fetch import resolve_sources
+
+    class FakeClient:
+        def search_sources(self, query):
+            return [{"id": "S1", "display_name": "Conference on Computer Vision and Pattern Recognition Workshops"}]
+
+    assert resolve_sources(FakeClient(), "Conference on Computer Vision and Pattern Recognition") == []
+
+
 def test_source_matching_prefers_exact_core_name():
     from paper_trends.fetch import _core_name, resolve_sources
 

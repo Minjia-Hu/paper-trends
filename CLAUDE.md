@@ -234,6 +234,10 @@ frontend runtime dependencies are required. jsdom is a test-only dependency.
    "Proceedings of the 38th") and trailing "(CVPR)"/"Digest of Technical Papers" — so
    CVPR does not absorb "CVPR Workshops" and ICML does not absorb "Machine Learning and
    Applications". Only if nothing matches exactly fall back to substring containment.
+   Exclude sources whose names contain "Workshop" or "Workshops" unless the query
+   explicitly asks for workshops, including in the substring fallback.
+   Also inspect each work's raw venue and CVF/DBLP landing/PDF URL: OpenAlex can attach
+   workshop records to a main-conference source ID. Explicit workshop queries retain them.
 2. Optionally add `doi_starts_with:<prefix>` filters (`--doi-prefix`, repeatable). OpenAlex
    matches these against lower-cased DOIs, so prefixes are lower-cased (`10.1109/ectc`).
    Each hit must then pass `doi_has_prefix`: prefix + optional conference number + "."
